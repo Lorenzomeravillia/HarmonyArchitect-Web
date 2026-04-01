@@ -73,7 +73,7 @@ class GUI {
             
             for (let i = window.noteHitboxes.length - 1; i >= 0; i--) {
                 let hb = window.noteHitboxes[i];
-                if(Math.hypot(x - hb.x, y - hb.y) <= 18 * rt) { // Hitbox area ingrandita notevolmente
+                if(Math.hypot(x - hb.x, y - hb.y) <= 7 * rt) { // Clic interno stretto (circa 3/4 raggio)
                     if(window.audioEngine.ctx.state === 'suspended') window.audioEngine.ctx.resume();
                     window.audioEngine.playPitch(hb.voiceIdx, hb.freq, 1.0);
                     
@@ -210,8 +210,8 @@ class GUI {
             orb.className = "glow-orb";
             orb.style.left = (h.x / rt) + "px";
             orb.style.top = (h.y / rt) + "px";
-            orb.style.backgroundColor = "transparent";
-            orb.style.boxShadow = `0 0 20px 8px ${h.color}`; 
+            orb.style.backgroundColor = h.color; // Copre perfettamente la nota
+            orb.style.boxShadow = `0 0 14px 4px ${h.color}`; // Irradia il colore attorno
             
             container.appendChild(orb);
             
