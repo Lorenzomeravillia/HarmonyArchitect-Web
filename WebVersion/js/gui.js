@@ -94,7 +94,7 @@ class GUI {
     drawEmptyStaff() {
         // Usa le dimensioni logiche
         const w = this.canvas.width / window.devicePixelRatio || 600;
-        const h = this.canvas.height / window.devicePixelRatio || 380;
+        const h = this.canvas.height / window.devicePixelRatio || 440;
         
         this.ctx.clearRect(0, 0, w, h);
         
@@ -109,22 +109,22 @@ class GUI {
         this.ctx.textBaseline = "alphabetic";
 
         // Treble
-        [44, 68, 92, 116, 140].forEach(y => {
+        [39, 73, 107, 141, 175].forEach(y => {
+            this.ctx.beginPath(); this.ctx.moveTo(30, y); this.ctx.lineTo(w - 30, y); this.ctx.stroke();
+        });
+        this.ctx.font = "normal 120px serif";
+        this.ctx.fillText("𝄞", 30, 169); 
+
+        // Bass
+        [243, 277, 311, 345, 379].forEach(y => {
             this.ctx.beginPath(); this.ctx.moveTo(30, y); this.ctx.lineTo(w - 30, y); this.ctx.stroke();
         });
         this.ctx.font = "normal 110px serif";
-        this.ctx.fillText("𝄞", 30, 134); 
-
-        // Bass
-        [236, 260, 284, 308, 332].forEach(y => {
-            this.ctx.beginPath(); this.ctx.moveTo(30, y); this.ctx.lineTo(w - 30, y); this.ctx.stroke();
-        });
-        this.ctx.font = "normal 100px serif";
-        this.ctx.fillText("𝄢", 30, 310);
+        this.ctx.fillText("𝄢", 30, 357);
 
         // Bracket
         this.ctx.lineWidth = 2;
-        this.ctx.beginPath(); this.ctx.moveTo(30, 44); this.ctx.lineTo(30, 332); this.ctx.stroke();
+        this.ctx.beginPath(); this.ctx.moveTo(30, 39); this.ctx.lineTo(30, 379); this.ctx.stroke();
     }
     
     drawPitches(chords) {
@@ -143,18 +143,18 @@ class GUI {
             chordList.forEach((n) => {
                 let j = n.voiceIdx;
                 let step = n.step;
-                let y = j === 0 ? (236 - (step - 26) * 12) : (140 - (step - 30) * 12);
+                let y = j === 0 ? (243 - (step - 26) * 17) : (175 - (step - 30) * 17);
                 let x = xBase;
                 
                 // Ledgers espansi
                 this.ctx.strokeStyle = "#4A65A5";
                 this.ctx.lineWidth = 2;
                 if (j === 0) {
-                    if (y >= 356) for (let ly = 356; ly <= y + 5; ly += 24) { this.ctx.beginPath(); this.ctx.moveTo(x-8, ly); this.ctx.lineTo(x+28, ly); this.ctx.stroke(); }
-                    if (y <= 212) for (let ly = 212; ly >= y - 5; ly -= 24) { this.ctx.beginPath(); this.ctx.moveTo(x-8, ly); this.ctx.lineTo(x+28, ly); this.ctx.stroke(); }
+                    if (y >= 413) for (let ly = 413; ly <= y + 5; ly += 34) { this.ctx.beginPath(); this.ctx.moveTo(x-8, ly); this.ctx.lineTo(x+28, ly); this.ctx.stroke(); }
+                    if (y <= 209) for (let ly = 209; ly >= y - 5; ly -= 34) { this.ctx.beginPath(); this.ctx.moveTo(x-8, ly); this.ctx.lineTo(x+28, ly); this.ctx.stroke(); }
                 } else {
-                    if (y >= 164) for (let ly = 164; ly <= y + 5; ly += 24) { this.ctx.beginPath(); this.ctx.moveTo(x-8, ly); this.ctx.lineTo(x+28, ly); this.ctx.stroke(); }
-                    if (y <= 20)  for (let ly = 20;  ly >= y - 5; ly -= 24) { this.ctx.beginPath(); this.ctx.moveTo(x-8, ly); this.ctx.lineTo(x+28, ly); this.ctx.stroke(); }
+                    if (y >= 209) for (let ly = 209; ly <= y + 5; ly += 34) { this.ctx.beginPath(); this.ctx.moveTo(x-8, ly); this.ctx.lineTo(x+28, ly); this.ctx.stroke(); }
+                    if (y <= 5)  for (let ly = 5;  ly >= y - 5; ly -= 34) { this.ctx.beginPath(); this.ctx.moveTo(x-8, ly); this.ctx.lineTo(x+28, ly); this.ctx.stroke(); }
                 }
 
                 // Note Base "cicciotte" ripristinate

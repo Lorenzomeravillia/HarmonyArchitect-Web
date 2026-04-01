@@ -101,8 +101,8 @@ class MusicEngine {
                         let avgCand = cand.reduce((a,b)=>a+b)/cand.length;
                         let dist = Math.abs(avgCand - avgPrev);
                         
-                        // Penalizza estremi di registro 
-                        if (cand[cand.length-1] > 86 || cand[0] < 53) dist += 100;
+                        // Penalizza estremi di registro vocali rigorosi: Mai sotto D3 (50) e mai sopra G5 (79)
+                        if (cand[cand.length-1] > 79 || cand[0] < 50) dist += 200;
                         
                         // Penalizza salti grossi nella top voice (Lead)
                         let topCand = cand[cand.length-1];
@@ -121,8 +121,18 @@ class MusicEngine {
             notesMidi.unshift(dropped);
         }
         
+        // Force clamp sotto G5 (79)
+        while(notesMidi[notesMidi.length-1] > 79) { 
+            for(let i=0; i<notesMidi.length; i++) notesMidi[i] -= 12; 
+        }
+        
         // Aggiungi la linea di Basso alla fine (inizio array, in fondo al pitch)
         let bassMidi = this.getMidi(rootStr, baseOctInt === 4 ? 3 : 2);
+        
+        // Il basso assoluto non può MAI scendere sotto F2 (41) e resta sotto F3 (53)
+        if (bassMidi < 41) bassMidi += 12;
+        if (bassMidi > 53) bassMidi -= 12;
+        
         notesMidi.unshift(bassMidi);
         
         let result = notesMidi.map((midi, idx) => {
