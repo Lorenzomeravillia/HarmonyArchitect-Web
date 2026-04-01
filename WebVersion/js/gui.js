@@ -92,9 +92,18 @@ class GUI {
     }
     
     drawEmptyStaff() {
-        // Usa le dimensioni logiche
-        const w = this.canvas.width / window.devicePixelRatio || 600;
-        const h = this.canvas.height / window.devicePixelRatio || 440;
+        const ratio = window.devicePixelRatio || 1;
+        const rect = this.canvas.getBoundingClientRect();
+        
+        // Auto-Resize se il CSS ha scalato il canvas
+        if (this.canvas.width !== Math.floor(rect.width * ratio) || this.canvas.height !== Math.floor(rect.height * ratio)) {
+            this.canvas.width = Math.floor(rect.width * ratio);
+            this.canvas.height = Math.floor(rect.height * ratio);
+            this.ctx.scale(ratio, ratio);
+        }
+        
+        const w = rect.width;
+        const h = rect.height;
         
         this.ctx.clearRect(0, 0, w, h);
         
@@ -133,7 +142,8 @@ class GUI {
         this.drawEmptyStaff();
         if(!chords || chords.length === 0) return;
         
-        const w = this.canvas.width / window.devicePixelRatio || 600;
+        const rect = this.canvas.getBoundingClientRect();
+        const w = rect.width;
         let spacing = Math.min((w - 150) / (chords.length + 1), 160);
         
         chords.forEach((chordList, i) => {
@@ -213,9 +223,10 @@ class GUI {
         hits.forEach(h => {
             let orb = document.createElement("div");
             orb.className = "glow-orb";
-            // Normalizza le coordinate al layout CSS reale decurtando l'offset locale del padding
-            orb.style.left = (h.x / rt - 5) + "px";
-            orb.style.top = (h.y / rt - 5) + "px";
+            
+            // Coordinate native del Canvas allineate grazie al parent padding 0 offset
+            orb.style.left = (h.x / rt) + "px";
+            orb.style.top = (h.y / rt) + "px";
             orb.style.backgroundColor = h.color;
             orb.style.boxShadow = `0 0 16px 6px ${h.color}`;
             
