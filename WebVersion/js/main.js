@@ -1,6 +1,13 @@
 document.addEventListener("DOMContentLoaded", () => {
     window.gui = new GUI();
 
+    // Sblocca WebAudio su iOS al primissimo tocco (Policy Apple)
+    document.addEventListener('touchstart', function() {
+        if(window.audioEngine && window.audioEngine.ctx && window.audioEngine.ctx.state === 'suspended') {
+            window.audioEngine.ctx.resume();
+        }
+    }, { passive: true });
+
     const ROOTS = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
     
     const LEVEL_POOLS_SINGLE = {
