@@ -1,130 +1,307 @@
-import numpy as np
-import sounddevice as sd
-import threading
 import time
+import threading
+import fluidsynth
+import os
+import math
+
+# ---------------------------------------------------------------------------
+# Ensemble Orchestrale -- 7 canali MIDI
+# ch 0 = voce più grave (Contrabbasso), ch 6 = voce più acuta (Flauto)
+# ---------------------------------------------------------------------------
+ORCHESTRA = [
+    ("Contrabbasso", 43, 85),
+    ("Violoncello",  42, 82),
+    ("Fagotto",      70, 80),
+    ("Corno",        60, 78),
+    ("Viola",        41, 75),
+    ("Clarinetto",   71, 70),
+    ("Flauto",       73, 65),
+]
+NUM_CHANNELS = len(ORCHESTRA)   # 7
+
+# Canale dedicato per preview nota singola (click sul pentagramma)
+# Usa canale 8 — fuori dall'orchestra, nessuna interferenza
+PREVIEW_CH = 8
+
 
 class AudioEngine:
     def __init__(self):
+        self.fs = fluidsynth.Synth()
+        self.fs.start(driver="coreaudio")
+
+        assets_dir = os.path.join(os.path.dirname(__file__), "assets")
+        self.sfid = None
+        for sf_path in [
+            os.path.join(assets_dir, "orchestra.sf2"),
+            os.path.join(assets_dir, "piano.sf2"),
+        ]:
+            if self.sfid is None and os.path.exists(sf_path):
+                try:
+                    self.sfid = self.fs.sfload(sf_path)
+                    print(f"[AudioEngine] SoundFont caricato: {sf_path}")
+                except Exception as e:
+                    print(f"[AudioEngine] Errore caricamento {sf_path}: {e}")
+
+        if self.sfid is None:
+            print("[AudioEngine] WARNING: nessun SoundFont caricato.")
+
+        if self.sfid is not None:
+            for ch, (name, program, _) in enumerate(ORCHESTRA):
+                try:
+                    self.fs.program_select(ch, self.sfid, 0, program)
+                    print(f"[AudioEngine] ch{ch} -> {name} (GM {program})")
+                except Exception as e:
+                    print(f"[AudioEngine] Errore program_select ch{ch}: {e}")
+            # Preview channel: Violoncello
+            try:
+                self.fs.program_select(PREVIEW_CH, self.sfid, 0, 42)
+            except Exception:
+                pass
+
+        # Generazione playback principale (play_pitches / play_progression).
+        # I thread controllano self._gen == loro gen; se diverso, escono.
+        self._gen = 0
+        self._gen_lock = threading.Lock()
+
+        # Generazione separata per layer/preview, una per canale.
+        # Così note su canali diversi non si annullano a vicenda.
+        self._layer_gens = [0] * 16  # 16 canali MIDI
+        self._layer_lock = threading.Lock()
+
+        self.custom_instruments = list(ORCHESTRA)
+
+    # -----------------------------------------------------------------------
+    # Utility interne
+    # -----------------------------------------------------------------------
+
+    def _midi(self, pitch_obj):
+        """Pitch music21 → MIDI int, clamped 0-127."""
+        return max(0, min(127, pitch_obj.midi))
+
+    def _vel(self, ch):
+        src = self.custom_instruments if ch < len(self.custom_instruments) else ORCHESTRA
+        _, _, v = src[ch]
+        return min(127, max(1, int(round(80 * v / 80.0))))
+
+    def _velocity_for_channel(self, ch, base_velocity=80):
+        """Alias per compatibilità."""
+        return self._vel(ch)
+
+    def _pitch_to_midi(self, pitch_obj):
+        """Alias per compatibilità."""
+        return self._midi(pitch_obj)
+
+    def _new_session(self):
+        """Nuova sessione playback principale: invalida thread attivi e silenzia tutto."""
+        with self._gen_lock:
+            self._gen += 1
+            gen = self._gen
+        for ch in range(NUM_CHANNELS):
+            try:
+                self.fs.all_notes_off(ch)
+            except Exception:
+                pass
+        return gen
+
+    def _new_layer_session(self, ch):
+        """Nuova sessione layer per il canale ch: invalida solo il thread precedente su quel canale."""
+        with self._layer_lock:
+            self._layer_gens[ch] += 1
+            gen = self._layer_gens[ch]
         try:
-            self.sample_rate = int(sd.query_devices(sd.default.device[1], 'output')['default_samplerate'])
+            self.fs.all_notes_off(ch)
         except Exception:
-            self.sample_rate = 44100
-            
-        self.wave_type = "epiano" 
-        
-    def set_wave_type(self, wave_type):
-        self.wave_type = wave_type
-        
-    def generate_wave(self, freq, duration):
-        t = np.linspace(0, duration, int(self.sample_rate * duration), False)
-        
-        if self.wave_type == "sine":
-            wave = np.sin(2 * np.pi * freq * t)
-        elif self.wave_type == "triangle":
-            wave = (2 / np.pi) * np.arcsin(np.sin(2 * np.pi * freq * t))
-        elif self.wave_type == "epiano":
-            wave = np.sin(2 * np.pi * freq * t) + 0.3 * np.sin(4 * np.pi * freq * t) + 0.1 * np.sin(6 * np.pi * freq * t)
-        else:
-            wave = np.sin(2 * np.pi * freq * t)
-            
-        envelope = np.ones_like(wave)
-        attack = 0.05
-        release = 0.1
-        attack_samples = int(attack * self.sample_rate)
-        release_samples = int(release * self.sample_rate)
-        
-        if attack_samples > 0 and len(envelope) > attack_samples:
-            envelope[:attack_samples] = np.linspace(0, 1, attack_samples)
-        if release_samples > 0 and len(envelope) > release_samples:
-            envelope[-release_samples:] = np.linspace(1, 0, release_samples)
-            
-        return wave * envelope
+            pass
+        return gen
 
-    def play_pitches(self, pitches, duration=2.5, arpeggio=False, arpeggio_delay=0.45, ui_callback=None, done_callback=None):
-        if not pitches: return
-            
-        if not arpeggio:
-            chord_wave = np.zeros(int(self.sample_rate * duration))
-            for p in pitches:
-                chord_wave += self.generate_wave(p.frequency, duration)
-        else:
-            num_notes = len(pitches)
-            chord_dur = duration + arpeggio_delay * (num_notes - 1)
-            chord_wave = np.zeros(int(self.sample_rate * chord_dur))
-            for i, p in enumerate(pitches):
-                wave = self.generate_wave(p.frequency, duration)
-                start_idx = int(i * arpeggio_delay * self.sample_rate)
-                chord_wave[start_idx:start_idx + len(wave)] += wave
-                
-        max_amp = np.max(np.abs(chord_wave))
-        if max_amp > 0:
-            chord_wave = chord_wave / max_amp
-        chord_wave *= 0.4
-        
+    def _ok_layer(self, gen, ch):
+        return gen == self._layer_gens[ch]
+
+    def _ok(self, gen):
+        """True se questa sessione è ancora quella corrente (non è stata interrotta)."""
+        return gen == self._gen
+
+    def _sleep(self, seconds, gen, step=0.02):
+        """Sleep interrompibile per sessione principale."""
+        end = time.time() + seconds
+        while time.time() < end:
+            if not self._ok(gen):
+                return False
+            time.sleep(min(step, end - time.time()))
+        return True
+
+    def _sleep_layer(self, seconds, gen, ch, step=0.02):
+        """Sleep interrompibile per sessione layer su canale ch."""
+        end = time.time() + seconds
+        while time.time() < end:
+            if not self._ok_layer(gen, ch):
+                return False
+            time.sleep(min(step, end - time.time()))
+        return True
+
+    def _assign(self, midi_notes):
+        """
+        Ordina le note (bassa→alta) e assegna i canali orchestra in ordine.
+        """
+        return [(note, min(i, NUM_CHANNELS - 1))
+                for i, note in enumerate(sorted(midi_notes))]
+
+    # -----------------------------------------------------------------------
+    # API Pubblica
+    # -----------------------------------------------------------------------
+
+    def play_pitches(self, pitches, duration=2.0, arpeggio=False,
+                     arpeggio_delay=0.35, ui_callback=None, done_callback=None):
+        """Suona un singolo accordo (o arpeggio) in modo asincrono."""
+        gen = self._new_session()
+        assignments = self._assign([self._midi(p) for p in pitches])
+
         def _play():
-            try:
-                audio_data = np.ascontiguousarray(chord_wave, dtype=np.float32)
-                if ui_callback: ui_callback(0)
-                sd.play(audio_data, self.sample_rate)
-                sd.wait()
-            except Exception as e:
-                print(f"Audio Driver Error: {e}")
-            finally:
-                if done_callback: done_callback()
-                
-        threading.Thread(target=_play, daemon=True).start()
-        
-    def play_progression(self, progression_pitches_list, duration=1.5, delay_between=0.2, arpeggio=False, arpeggio_delay=0.35, ui_callback=None, done_callback=None):
-        """JIT per-chord playback. Fires ui_callback(i) before each chord, done_callback at end."""
-        if not progression_pitches_list: return
-        
-        def _play():
-            try:
-                for i, pitches in enumerate(progression_pitches_list):
-                    if not pitches:
-                        time.sleep(duration + delay_between)
-                        continue
-                    
-                    if not arpeggio:
-                        chord_wave = np.zeros(int(self.sample_rate * duration))
-                        for p in pitches:
-                            chord_wave += self.generate_wave(p.frequency, duration)
-                    else:
-                        chord_dur = duration + arpeggio_delay * (len(pitches) - 1)
-                        chord_wave = np.zeros(int(self.sample_rate * chord_dur))
-                        for j, p in enumerate(pitches):
-                            wave = self.generate_wave(p.frequency, duration)
-                            start_idx = int(j * arpeggio_delay * self.sample_rate)
-                            chord_wave[start_idx:start_idx + len(wave)] += wave
+            if ui_callback:
+                ui_callback(0)
+            if not self._ok(gen):
+                return
 
-                    max_amp = np.max(np.abs(chord_wave))
-                    if max_amp > 0: chord_wave /= max_amp
-                    chord_wave *= 0.4
+            if arpeggio:
+                for note, ch in assignments:
+                    if not self._ok(gen):
+                        break
+                    self.fs.noteon(ch, note, self._vel(ch))
+                    if not self._sleep(arpeggio_delay, gen):
+                        break
 
-                    audio_data = np.ascontiguousarray(chord_wave, dtype=np.float32)
-                    if ui_callback: ui_callback(i)
-                    sd.play(audio_data, self.sample_rate)
-                    sd.wait()
-                    time.sleep(delay_between)
-            except Exception as e:
-                print(f"Audio Driver Error: {e}")
-            finally:
-                if done_callback: done_callback()
-            
+                stay = duration - len(assignments) * arpeggio_delay
+                if stay > 0:
+                    self._sleep(stay, gen)
+            else:
+                for note, ch in assignments:
+                    if not self._ok(gen):
+                        return
+                    self.fs.noteon(ch, note, self._vel(ch))
+                self._sleep(duration, gen)
+
+            if self._ok(gen):
+                for note, ch in assignments:
+                    self.fs.noteoff(ch, note)
+            # done_callback sempre chiamata: garantisce _is_playing = False
+            if done_callback:
+                done_callback()
+
         threading.Thread(target=_play, daemon=True).start()
 
-    def play_voice_layer(self, pitches, layer_index, is_progression=False, duration=1.2, delay_between=0.6, ui_callback=None):
-        """ Plays a single isolated voice/layer horizontally across the generated context """
-        if not pitches: return
-        
-        if is_progression:
-            layer_progression = []
-            for chord in pitches:
-                if layer_index < len(chord):
-                    layer_progression.append([chord[layer_index]])
+    def play_progression(self, chords, duration=1.2, delay_between=0.1,
+                         arpeggio=False, arpeggio_delay=0.35,
+                         ui_callback=None, done_callback=None):
+        """Suona una progressione di accordi in modo asincrono."""
+        gen = self._new_session()
+
+        def _play():
+            for i, chord in enumerate(chords):
+                if not self._ok(gen):
+                    return
+                if ui_callback:
+                    ui_callback(i)
+
+                assignments = self._assign([self._midi(p) for p in chord])
+
+                if arpeggio:
+                    for note, ch in assignments:
+                        if not self._ok(gen):
+                            break
+                        self.fs.noteon(ch, note, self._vel(ch))
+                        if not self._sleep(arpeggio_delay, gen):
+                            break
+                    stay = duration - len(assignments) * arpeggio_delay
+                    if stay > 0:
+                        self._sleep(stay, gen)
                 else:
-                    layer_progression.append([])
-            self.play_progression(layer_progression, duration=duration, delay_between=delay_between, arpeggio=False, ui_callback=ui_callback)
-        else:
-            if layer_index < len(pitches):
-                self.play_pitches([pitches[layer_index]], duration=duration, arpeggio=False, ui_callback=ui_callback)
+                    for note, ch in assignments:
+                        if not self._ok(gen):
+                            return
+                        self.fs.noteon(ch, note, self._vel(ch))
+                    self._sleep(duration, gen)
+
+                if not self._ok(gen):
+                    return
+                for note, ch in assignments:
+                    self.fs.noteoff(ch, note)
+
+                if delay_between > 0:
+                    if not self._sleep(delay_between, gen):
+                        return
+
+            # done_callback sempre chiamata
+            if done_callback:
+                done_callback()
+
+        threading.Thread(target=_play, daemon=True).start()
+
+    def play_voice_layer(self, chords, voice_idx, is_progression,
+                         duration=1.2, delay_between=0.6, ui_callback=None):
+        """Suona solo la voce voice_idx. Usa _layer_gen separato: non invalida il playback principale."""
+        ch = min(voice_idx, NUM_CHANNELS - 1)
+        gen = self._new_layer_session(ch)
+
+        def _play():
+            chord_list = chords if is_progression else [chords[0] if isinstance(chords[0], list) else chords]
+
+            for i, chord in enumerate(chord_list):
+                if not self._ok_layer(gen, ch):
+                    return
+                if ui_callback:
+                    ui_callback(i)
+
+                sorted_notes = sorted([self._midi(p) for p in chord])
+
+                if voice_idx < len(sorted_notes):
+                    note = sorted_notes[voice_idx]
+                    self.fs.noteon(ch, note, self._vel(ch))
+                    if not self._sleep_layer(duration, gen, ch):
+                        self.fs.noteoff(ch, note)
+                        return
+                    self.fs.noteoff(ch, note)
+                else:
+                    self._sleep_layer(duration, gen, ch)
+
+                if is_progression and i < len(chord_list) - 1 and delay_between > 0:
+                    if not self._sleep_layer(delay_between, gen, ch):
+                        return
+
+        threading.Thread(target=_play, daemon=True).start()
+
+    def play_freq_as_midi(self, freq, duration=1.0, voice_idx=0):
+        """
+        Preview nota singola cliccata sul pentagramma.
+        Usa il canale corretto per la voce (voice_idx) — NON interrompe il playback principale.
+        """
+        midi_note = max(0, min(127, int(round(69 + 12 * math.log2(freq / 440.0)))))
+        ch = min(voice_idx, NUM_CHANNELS - 1)
+        gen = self._new_layer_session(ch)
+
+        def _preview():
+            if not self._ok_layer(gen, ch):
+                return
+            try:
+                self.fs.noteon(ch, midi_note, self._vel(ch))
+                self._sleep_layer(duration, gen, ch)
+                self.fs.noteoff(ch, midi_note)
+            except Exception as e:
+                print(f"[AudioEngine] play_freq_as_midi error: {e}")
+
+        threading.Thread(target=_preview, daemon=True).start()
+
+    def set_instrument_program(self, channel, program):
+        """Imposta il programma MIDI per un canale specifico."""
+        if self.sfid is not None and 0 <= channel < NUM_CHANNELS:
+            try:
+                self.fs.program_select(channel, self.sfid, 0, program)
+                if channel < len(self.custom_instruments):
+                    old = self.custom_instruments[channel]
+                    self.custom_instruments[channel] = (old[0], program, old[2])
+                print(f"[AudioEngine] Canale {channel} impostato su programma MIDI {program}")
+            except Exception as e:
+                print(f"[AudioEngine] Errore programma {program} ch{channel}: {e}")
+
+    def set_wave_type(self, wtype):
+        """Deprecato — FluidSynth usa i profili SF2."""
+        pass

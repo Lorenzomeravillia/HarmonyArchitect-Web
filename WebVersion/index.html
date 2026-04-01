@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Harmony Architect PWA</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Courier+Prime:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    
+    <!-- Motore Custom Zero Dependency (Sostituisce Tonal.js) -->
+    <!-- WebAudioFontPlayer -->
+    <script src="https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js"></script>
+</head>
+<body>
+    <div id="app" class="main-scrollable">
+        <!-- 1. Header & Level Selection -->
+        <header class="panel flex-row justify-between top-frame">
+            <div class="flex-row">
+                <span class="label text-bold">Livello:</span>
+                <select id="level_select" class="dropdown">
+                    <!-- Options populated by JS -->
+                </select>
+            </div>
+            
+            <div class="flex-row gap-large score-status">
+                <div class="flex-col align-end">
+                    <span id="ai_focus_label" class="text-alert font-courier"></span>
+                    <span id="score_label" class="text-cyan font-courier">Score Sessione: 0 / 0 | Win Rate Globale: 0%</span>
+                </div>
+                <button id="reset_btn" class="btn icon-btn btn-danger" title="Azzera History">🗑️</button>
+                <button id="next_btn" class="btn btn-primary" style="margin-left: 20px;">↻ Nuova Sfida</button>
+            </div>
+        </header>
+
+        <!-- 1.5 Settings Panel ROW 1 -->
+        <div class="panel flex-row settings-frame">
+            <div class="flex-row gap-small">
+                <span class="label">Modalità:</span>
+                <select id="play_mode_menu" class="dropdown purple-btn">
+                    <option>Accordo Singolo</option>
+                    <option>Progressione</option>
+                </select>
+            </div>
+            <div class="flex-row gap-small" style="margin-left: 20px;">
+                <span class="label text-normal">Base:</span>
+                <select id="octave_menu" class="dropdown small-btn">
+                    <option>C3</option>
+                    <option selected>C4</option>
+                </select>
+            </div>
+            <div class="flex-row gap-small" style="margin-left: 20px;">
+                <span class="label">Voice Leading:</span>
+                <select id="voice_leading_menu" class="dropdown">
+                    <option>Root Position</option>
+                    <option selected>Ottimizzata (Drop-2)</option>
+                </select>
+            </div>
+            <div class="flex-row gap-small" style="margin-left: 20px;">
+                <span class="label">Tempo:</span>
+                <select id="tempo_menu" class="dropdown small-btn">
+                    <option value="1800">Lento</option>
+                    <option value="1300" selected>Medio</option>
+                    <option value="800">Veloce</option>
+                </select>
+            </div>
+            <div class="flex-row gap-small" style="margin-left: 20px;">
+                <span class="label">Training:</span>
+                <select id="training_menu" class="dropdown orange-btn">
+                    <option selected>Standard</option>
+                    <option>Adaptive</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Orchestra Row -->
+        <div class="panel flex-row instruments-row">
+            <span class="label text-cyan" style="margin-right: 15px;">Orchestra:</span>
+            <div id="voice_instruments_frame" class="flex-row expand j-around">
+                <!-- Dropdowns will be populated by JS -->
+            </div>
+        </div>
+
+        <!-- Play commands -->
+        <div class="panel flex-row play-frame justify-between">
+            <button id="play_btn" class="btn hardware-btn flex-1 margin-r">▶ PLAY</button>
+            <div id="combo_label" class="combo-text"></div>
+            <button id="arpeggio_btn" class="btn hardware-btn alt-hardware-btn flex-1 margin-l">〰 ARPEGGIATOR</button>
+        </div>
+
+        <!-- Staff and Answers -->
+        <div class="middle-frame flex-row">
+            <div class="panel staff-frame flex-1 border-thick">
+                <canvas id="staff_canvas" width="600" height="380"></canvas>
+            </div>
+            <div class="answers-frame flex-col">
+                <!-- Buttons populated by JS -->
+            </div>
+        </div>
+
+        <!-- Voice Isolation (Solo) -->
+        <div class="panel flex-row solo-frame">
+            <span class="label text-muted margin-r">ISOLATE:</span>
+            <div id="solo_buttons_frame" class="flex-row expanded gap-small">
+                <!-- Filled by JS -->
+            </div>
+        </div>
+
+        <!-- Theory Insight Panel -->
+        <div class="panel insight-frame">
+            <p id="insight_label" class="font-courier text-muted text-center"></p>
+        </div>
+    </div>
+
+    <!-- Modals Overlay -->
+    <div id="modal_overlay" class="modal-overlay hidden">
+        <!-- Modals will be injected here -->
+    </div>
+
+    <script src="js/audio_engine.js?v=3"></script>
+    <script src="js/music_engine.js?v=3"></script>
+    <script src="js/gui.js?v=3"></script>
+    <script src="js/main.js?v=3"></script>
+</body>
+</html>
