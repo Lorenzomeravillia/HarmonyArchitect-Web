@@ -167,7 +167,7 @@ document.addEventListener("DOMContentLoaded", () => {
             setTimeout(() => comboLbl.style.transform = "scale(1)", 200);
         }
         
-        let baseOctave = document.getElementById("octave_menu").value;
+        let baseOctave = "C3";
         let isOptimized = document.getElementById("voice_leading_menu").value.includes("Ottimizzata");
         
         let tempoMenu = document.getElementById("tempo_menu");
@@ -195,7 +195,7 @@ document.addEventListener("DOMContentLoaded", () => {
             window.gui.drawPitches([targetVoicing]); 
             window.audioEngine.playChord(targetVoicing, cutDuration);
             
-            let insight = `Base: ${baseOctave} | Inversioni: ${isOptimized ? "Ott. (Drop-2)" : "Root"}`;
+            let insight = `Base: C3 | Inversioni: ${isOptimized ? "Ott. (Drop-2)" : "Root"}`;
             window.gui.setInsight(insight);
         }
     });
