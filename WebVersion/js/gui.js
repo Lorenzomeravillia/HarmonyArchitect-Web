@@ -73,7 +73,7 @@ class GUI {
             
             for (let i = window.noteHitboxes.length - 1; i >= 0; i--) {
                 let hb = window.noteHitboxes[i];
-                if(Math.hypot(x - hb.x, y - hb.y) <= 7 * rt) { // Clic interno stretto (circa 3/4 raggio)
+                if(Math.hypot(x - hb.x, y - hb.y) <= 11 * rt) { // Raggio esatto del pallino (11px orizzontale reale)
                     if(window.audioEngine.ctx.state === 'suspended') window.audioEngine.ctx.resume();
                     window.audioEngine.playPitch(hb.voiceIdx, hb.freq, 1.0);
                     
@@ -172,9 +172,9 @@ class GUI {
                 this.ctx.ellipse(x + 5, y - 2, 4, 3, 0, 0, 2 * Math.PI);
                 this.ctx.fill();
 
-                // Salva Hitbox per l'interazione del mouse
+                // Salva Hitbox per l'interazione del mouse. Il centro reale dell'ellisse è x + 10!
                 window.noteHitboxes.push({
-                    x: (x+10) * (window.devicePixelRatio || 1), 
+                    x: (x + 10) * (window.devicePixelRatio || 1), 
                     y: y * (window.devicePixelRatio || 1), 
                     freq: n.frequency, 
                     voiceIdx: n.voiceIdx,
@@ -208,10 +208,11 @@ class GUI {
         hits.forEach(h => {
             let orb = document.createElement("div");
             orb.className = "glow-orb";
-            orb.style.left = (h.x / rt) + "px";
-            orb.style.top = (h.y / rt) + "px";
-            orb.style.backgroundColor = h.color; // Copre perfettamente la nota
-            orb.style.boxShadow = `0 0 14px 4px ${h.color}`; // Irradia il colore attorno
+            // Normalizza le coordinate al layout CSS reale decurtando l'offset locale del padding
+            orb.style.left = (h.x / rt - 5) + "px";
+            orb.style.top = (h.y / rt - 5) + "px";
+            orb.style.backgroundColor = h.color;
+            orb.style.boxShadow = `0 0 16px 6px ${h.color}`;
             
             container.appendChild(orb);
             
