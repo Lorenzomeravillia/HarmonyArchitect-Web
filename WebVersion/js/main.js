@@ -185,7 +185,7 @@ document.addEventListener("DOMContentLoaded", () => {
             window.gui.drawPitches(voicings);
             
             voicings.forEach((v, i) => {
-                setTimeout(() => window.audioEngine.playChord(v, cutDuration), i * tempoMs); 
+                setTimeout(() => window.audioEngine.playChord(v, cutDuration, i), i * tempoMs); 
             });
             window.gui.setInsight("Progressione (" + tempoMs + "ms). Drop-2: " + (isOptimized ? "ON" : "OFF"));
         } else {
@@ -193,7 +193,8 @@ document.addEventListener("DOMContentLoaded", () => {
             let targetVoicing = window.musicEngine.generateVoicing(sym, baseOctave, isOptimized);
             window.currentVoicings = [targetVoicing];
             window.gui.drawPitches([targetVoicing]); 
-            window.audioEngine.playChord(targetVoicing, cutDuration);
+            // In modalità accordo singolo indichiamo chordIdx 0
+            window.audioEngine.playChord(targetVoicing, cutDuration, 0);
             
             let insight = `Base: C3 | Inversioni: ${isOptimized ? "Ott. (Drop-2)" : "Root"}`;
             window.gui.setInsight(insight);
@@ -224,7 +225,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             
             let note = chord[pIdx];
-            window.audioEngine.playPitch(note.voiceIdx, note.frequency, 0.6);
+            window.audioEngine.playPitch(note.voiceIdx, note.frequency, 0.6, cIdx);
             pIdx++;
             setTimeout(arpNext, tempoMs * 0.18); 
         }

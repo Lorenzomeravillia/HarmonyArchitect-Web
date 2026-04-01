@@ -44,13 +44,13 @@ class AudioEngine {
         }
     }
 
-    playPitch(channelIdx, freq, duration=1.5) {
+    playPitch(channelIdx, freq, duration=1.5, chordIdx=null) {
         // Frequency to MIDI Note
         let pitch = Math.round(69 + 12 * Math.log2(freq / 440));
-        this.playNote(channelIdx, pitch, 100, duration);
+        this.playNote(channelIdx, pitch, 100, duration, chordIdx);
     }
 
-    playNote(channelIdx, midiPitch, velocity=100, duration=1.5) {
+    playNote(channelIdx, midiPitch, velocity=100, duration=1.5, chordIdx=null) {
         if (this.ctx.state === 'suspended') this.ctx.resume();
         let prog = this.channels[channelIdx];
         let info = this.player.loader.instrumentInfo(prog);
@@ -61,11 +61,11 @@ class AudioEngine {
             this.player.queueWaveTable(this.ctx, this.ctx.destination, preset, this.ctx.currentTime, midiPitch, duration, velocity/127);
             
             let freq = 440 * Math.pow(2, (midiPitch-69)/12);
-            if(window.gui && window.gui.highlight) window.gui.highlight(channelIdx, freq, duration * 1000);
+            if(window.gui && window.gui.highlight) window.gui.highlight(channelIdx, freq, duration * 1000, chordIdx);
         }
     }
 
-    playChord(notesArray, durationOverride=null) {
+    playChord(notesArray, durationOverride=null, chordIdx=null) {
         let time = this.ctx.currentTime;
         notesArray.forEach((item, idx) => {
             let freq = item.frequency || item.freq;
@@ -76,13 +76,12 @@ class AudioEngine {
             let info = this.player.loader.instrumentInfo(prog);
             let preset = window[info.variable]; 
             if(preset) {
-                // Decay netto all'85% del duty cycle o forzato
                 let dur = durationOverride !== null ? durationOverride : 1.2;
                 this.player.queueWaveTable(this.ctx, this.ctx.destination, preset, st, pitch, dur, 0.35); // V=0.35
                 
                 // Overlay CSS Highlighter async
                 if(window.gui && window.gui.highlight) {
-                    setTimeout(() => window.gui.highlight(item.voiceIdx, freq, dur * 800), (0.1 + (idx * 0.04)) * 1000);
+                    setTimeout(() => window.gui.highlight(item.voiceIdx, freq, dur * 800, chordIdx), (0.1 + (idx * 0.04)) * 1000);
                 }
             }
         });

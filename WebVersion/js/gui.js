@@ -178,6 +178,7 @@ class GUI {
                     y: y * (window.devicePixelRatio || 1), 
                     freq: n.frequency, 
                     voiceIdx: n.voiceIdx,
+                    chordIdx: i,
                     color: n.color
                 });
 
@@ -196,14 +197,18 @@ class GUI {
         document.getElementById("insight_label").innerText = text;
     }
 
-    highlight(voiceIdx, freq, durationMs) {
+    highlight(voiceIdx, freq, durationMs, chordIdx=null) {
         if(!window.noteHitboxes) return;
         
         let container = document.getElementById("glow_container");
         if(!container) return;
         
         let rt = window.devicePixelRatio || 1;
-        let hits = window.noteHitboxes.filter(h => h.voiceIdx === voiceIdx && Math.abs(h.freq - freq) < 2);
+        let hits = window.noteHitboxes.filter(h => {
+            let matchFreq = h.voiceIdx === voiceIdx && Math.abs(h.freq - freq) < 2;
+            if (chordIdx !== null && chordIdx !== undefined) return matchFreq && h.chordIdx === chordIdx;
+            return matchFreq;
+        });
         
         hits.forEach(h => {
             let orb = document.createElement("div");
