@@ -33,10 +33,11 @@ body {
     background-color: var(--bg-main);
     color: var(--text-primary);
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    padding: 10px 20px;
+    padding: 10px;
     margin: 0;
-    height: 100vh;
-    overflow: hidden;
+    min-height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
     line-height: 1.6;
 }
 
@@ -55,6 +56,7 @@ body {
 .justify-between { justify-content: space-between; }
 .j-around { justify-content: space-around; }
 .align-end { align-items: flex-end; }
+.flex-wrap { flex-wrap: wrap; }
 
 .gap-small { gap: 10px; }
 .gap-large { gap: 20px; }

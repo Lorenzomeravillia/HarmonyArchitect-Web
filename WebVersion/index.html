@@ -34,7 +34,7 @@
         </header>
 
         <!-- 1.5 Settings Panel ROW 1 -->
-        <div class="panel flex-row settings-frame">
+        <div class="panel flex-row flex-wrap settings-frame">
             <div class="flex-row gap-small">
                 <span class="label">Modalità:</span>
                 <select id="play_mode_menu" class="dropdown purple-btn">
@@ -74,7 +74,7 @@
         </div>
 
         <!-- Orchestra Row -->
-        <div class="panel flex-row instruments-row">
+        <div class="panel flex-row flex-wrap instruments-row">
             <span class="label text-cyan" style="margin-right: 15px;">Orchestra:</span>
             <div id="voice_instruments_frame" class="flex-row expand j-around">
                 <!-- Dropdowns will be populated by JS -->
@@ -89,7 +89,7 @@
         </div>
 
         <!-- Staff and Answers -->
-        <div class="middle-frame flex-row">
+        <div class="middle-frame flex-row flex-wrap">
             <div class="panel staff-frame flex-1 border-thick">
                 <canvas id="staff_canvas" width="600" height="380"></canvas>
             </div>
@@ -99,7 +99,7 @@
         </div>
 
         <!-- Voice Isolation (Solo) -->
-        <div class="panel flex-row solo-frame">
+        <div class="panel flex-row flex-wrap solo-frame">
             <span class="label text-muted margin-r">ISOLATE:</span>
             <div id="solo_buttons_frame" class="flex-row expanded gap-small">
                 <!-- Filled by JS -->
