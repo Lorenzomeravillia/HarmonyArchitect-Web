@@ -67,20 +67,24 @@ class GUI {
         this.canvas.addEventListener("mousedown", (e) => {
             if(!window.noteHitboxes) return;
             const rct = this.canvas.getBoundingClientRect();
-            const rt = window.devicePixelRatio || 1;
-            const x = (e.clientX - rct.left) * rt;
-            const y = (e.clientY - rct.top) * rt;
+            
+            // Proietta le coordinate CSS reali dello schermo sulle coordinate logiche (600x440) del Canvas
+            const scaleX = 600 / rct.width;
+            const scaleY = 440 / rct.height;
+            
+            const px = (e.clientX - rct.left) * scaleX;
+            const py = (e.clientY - rct.top) * scaleY;
             
             for (let i = window.noteHitboxes.length - 1; i >= 0; i--) {
                 let hb = window.noteHitboxes[i];
-                if(Math.hypot(x - hb.x, y - hb.y) <= 11 * rt) { // Raggio esatto del pallino (11px orizzontale reale)
+                if(Math.hypot(px - hb.x, py - hb.y) <= 11) { // 11px LOGICI di raggio
                     if(window.audioEngine.ctx.state === 'suspended') window.audioEngine.ctx.resume();
                     window.audioEngine.playPitch(hb.voiceIdx, hb.freq, 1.0);
                     
-                    // Flash effect
+                    // Flash effect scalato
                     this.ctx.fillStyle = "#FFFFFF";
                     this.ctx.beginPath();
-                    this.ctx.ellipse(hb.x / rt, hb.y / rt, 8.5, 4.5, 0, 0, 2*Math.PI);
+                    this.ctx.ellipse(hb.x, hb.y, 8.5, 4.5, 0, 0, 2*Math.PI);
                     this.ctx.fill();
                     setTimeout(() => window.gui.drawPitches(window.lastChords), 150);
                     break; // Clicca solo LA PRIMA nota in pila, non attiva adiacenti
@@ -119,14 +123,14 @@ class GUI {
 
         // Treble
         [39, 73, 107, 141, 175].forEach(y => {
-            this.ctx.beginPath(); this.ctx.moveTo(30, y); this.ctx.lineTo(w - 30, y); this.ctx.stroke();
+            this.ctx.beginPath(); this.ctx.moveTo(30, y); this.ctx.lineTo(logicW - 30, y); this.ctx.stroke();
         });
         this.ctx.font = "normal 120px serif";
         this.ctx.fillText("𝄞", 30, 169); 
 
         // Bass
         [243, 277, 311, 345, 379].forEach(y => {
-            this.ctx.beginPath(); this.ctx.moveTo(30, y); this.ctx.lineTo(w - 30, y); this.ctx.stroke();
+            this.ctx.beginPath(); this.ctx.moveTo(30, y); this.ctx.lineTo(logicW - 30, y); this.ctx.stroke();
         });
         this.ctx.font = "normal 110px serif";
         this.ctx.fillText("𝄢", 30, 357);
@@ -142,8 +146,7 @@ class GUI {
         this.drawEmptyStaff();
         if(!chords || chords.length === 0) return;
         
-        const rect = this.canvas.getBoundingClientRect();
-        const w = rect.width;
+        const w = 600; // Logico ripristinato
         let spacing = Math.min((w - 150) / (chords.length + 1), 160);
         
         chords.forEach((chordList, i) => {
@@ -182,10 +185,10 @@ class GUI {
                 this.ctx.ellipse(x + 5, y - 2, 4, 3, 0, 0, 2 * Math.PI);
                 this.ctx.fill();
 
-                // Salva Hitbox per l'interazione del mouse. Il centro reale dell'ellisse è x + 10!
+                // Salva Hitbox per l'interazione del mouse con mapping logico puro
                 window.noteHitboxes.push({
-                    x: (x + 10) * (window.devicePixelRatio || 1), 
-                    y: y * (window.devicePixelRatio || 1), 
+                    x: x + 10, 
+                    y: y, 
                     freq: n.frequency, 
                     voiceIdx: n.voiceIdx,
                     chordIdx: i,
@@ -220,13 +223,18 @@ class GUI {
             return matchFreq;
         });
         
+        // Conversione da coordinate Logiche (600x440) a CSS viewbox scalata
+        const rct = this.canvas.getBoundingClientRect();
+        const scaleXCSS = rct.width / 600;
+        const scaleYCSS = rct.height / 440;
+        
         hits.forEach(h => {
             let orb = document.createElement("div");
             orb.className = "glow-orb";
             
-            // Coordinate native del Canvas allineate grazie al parent padding 0 offset
-            orb.style.left = (h.x / rt) + "px";
-            orb.style.top = (h.y / rt) + "px";
+            // Coordinate ricalcolate per adattarsi fluidamente al resize della finestra
+            orb.style.left = (h.x * scaleXCSS) + "px";
+            orb.style.top = (h.y * scaleYCSS) + "px";
             orb.style.backgroundColor = h.color;
             orb.style.boxShadow = `0 0 16px 6px ${h.color}`;
             

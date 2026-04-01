@@ -43,14 +43,7 @@ body {
     flex-direction: column;
 }
 
-@media (min-height: 600px) {
-    body {
-        overflow: hidden;
-        justify-content: center;
-    }
-}
-
-/* Utils */
+/* Modals */
 .font-courier { font-family: 'Courier Prime', 'Courier New', monospace; font-weight: 700; }
 .text-bold { font-weight: 800; }
 .text-normal { font-weight: 400; }
