@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/", "destination": "/WebVersion/index.html" },
+    { "source": "/(.*)", "destination": "/WebVersion/$1" }
+  ]
+}
