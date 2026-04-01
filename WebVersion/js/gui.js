@@ -73,7 +73,7 @@ class GUI {
             
             for (let i = window.noteHitboxes.length - 1; i >= 0; i--) {
                 let hb = window.noteHitboxes[i];
-                if(Math.hypot(x - hb.x, y - hb.y) < 10 * rt) { // Raggio di clic molto più stretto
+                if(Math.hypot(x - hb.x, y - hb.y) <= 18 * rt) { // Hitbox area ingrandita notevolmente
                     if(window.audioEngine.ctx.state === 'suspended') window.audioEngine.ctx.resume();
                     window.audioEngine.playPitch(hb.voiceIdx, hb.freq, 1.0);
                     
@@ -136,9 +136,6 @@ class GUI {
         const w = this.canvas.width / window.devicePixelRatio || 600;
         let spacing = Math.min((w - 150) / (chords.length + 1), 160);
         
-        // Setup glow set se non esiste
-        if(!window.activeGlows) window.activeGlows = new Set();
-        
         chords.forEach((chordList, i) => {
             // Seleziona la coordinata x base. Se è 1 accordo centrato, lo mettiamo a metà.
             let xBase = chords.length === 1 ? w/2 - 20 : 100 + spacing * i;
@@ -164,22 +161,10 @@ class GUI {
                 this.ctx.fillStyle = n.color;
                 this.ctx.beginPath();
                 this.ctx.ellipse(x + 10, y, 11, 9, 0, 0, 2 * Math.PI);
-                
-                // Glow Effect on Play
-                if (window.activeGlows.has(j)) {
-                    this.ctx.shadowColor = "white";
-                    this.ctx.shadowBlur = 12;
-                    this.ctx.strokeStyle = "white";
-                    this.ctx.lineWidth = 2;
-                } else {
-                    this.ctx.shadowBlur = 0;
-                    this.ctx.strokeStyle = "#010205";
-                    this.ctx.lineWidth = 1;
-                }
-                
                 this.ctx.fill();
+                this.ctx.strokeStyle = "#010205";
+                this.ctx.lineWidth = 1;
                 this.ctx.stroke();
-                this.ctx.shadowBlur = 0; // Reset shadow
 
                 // Gloss proporzionato
                 this.ctx.fillStyle = "#FFFFFF";
@@ -192,7 +177,8 @@ class GUI {
                     x: (x+10) * (window.devicePixelRatio || 1), 
                     y: y * (window.devicePixelRatio || 1), 
                     freq: n.frequency, 
-                    voiceIdx: n.voiceIdx
+                    voiceIdx: n.voiceIdx,
+                    color: n.color
                 });
 
                 // Accidental
@@ -210,13 +196,27 @@ class GUI {
         document.getElementById("insight_label").innerText = text;
     }
 
-    highlight(voiceIdx, durationMs) {
-        if(!window.activeGlows) window.activeGlows = new Set();
-        window.activeGlows.add(voiceIdx);
-        this.drawPitches(window.lastChords);
-        setTimeout(() => {
-            if(window.activeGlows) window.activeGlows.delete(voiceIdx);
-            this.drawPitches(window.lastChords);
-        }, durationMs);
+    highlight(voiceIdx, freq, durationMs) {
+        if(!window.noteHitboxes) return;
+        
+        let container = document.getElementById("glow_container");
+        if(!container) return;
+        
+        let rt = window.devicePixelRatio || 1;
+        let hits = window.noteHitboxes.filter(h => h.voiceIdx === voiceIdx && Math.abs(h.freq - freq) < 2);
+        
+        hits.forEach(h => {
+            let orb = document.createElement("div");
+            orb.className = "glow-orb";
+            orb.style.left = (h.x / rt) + "px";
+            orb.style.top = (h.y / rt) + "px";
+            orb.style.backgroundColor = "transparent";
+            orb.style.boxShadow = `0 0 20px 8px ${h.color}`; 
+            
+            container.appendChild(orb);
+            
+            setTimeout(() => orb.style.opacity = "0", Math.max(50, durationMs - 400));
+            setTimeout(() => orb.remove(), durationMs + 200);
+        });
     }
 }

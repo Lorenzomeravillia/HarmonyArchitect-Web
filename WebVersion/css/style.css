@@ -221,6 +221,18 @@ canvas {
     height: 440px;
 }
 
+.glow-orb {
+    position: absolute;
+    width: 22px;
+    height: 18px;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    transition: opacity 0.5s ease-out;
+    opacity: 1;
+    z-index: 10;
+}
+
 /* Modals */
 .modal-overlay {
     position: fixed;

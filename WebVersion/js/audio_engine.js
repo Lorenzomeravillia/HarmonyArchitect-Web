@@ -59,11 +59,13 @@ class AudioEngine {
         let preset = window[info.variable]; 
         if (preset) {
             this.player.queueWaveTable(this.ctx, this.ctx.destination, preset, this.ctx.currentTime, midiPitch, duration, velocity/127);
-            if(window.gui && window.gui.highlight) window.gui.highlight(channelIdx, duration * 1000);
+            
+            let freq = 440 * Math.pow(2, (midiPitch-69)/12);
+            if(window.gui && window.gui.highlight) window.gui.highlight(channelIdx, freq, duration * 1000);
         }
     }
 
-    playChord(notesArray) {
+    playChord(notesArray, durationOverride=null) {
         let time = this.ctx.currentTime;
         notesArray.forEach((item, idx) => {
             let freq = item.frequency || item.freq;
@@ -74,8 +76,14 @@ class AudioEngine {
             let info = this.player.loader.instrumentInfo(prog);
             let preset = window[info.variable]; 
             if(preset) {
-                // durata fissa a 1.2 secondi e stop di coda sfumato
-                this.player.queueWaveTable(this.ctx, this.ctx.destination, preset, st, pitch, 1.2, 0.35); // V=0.35
+                // Decay netto all'85% del duty cycle o forzato
+                let dur = durationOverride !== null ? durationOverride : 1.2;
+                this.player.queueWaveTable(this.ctx, this.ctx.destination, preset, st, pitch, dur, 0.35); // V=0.35
+                
+                // Overlay CSS Highlighter async
+                if(window.gui && window.gui.highlight) {
+                    setTimeout(() => window.gui.highlight(item.voiceIdx, freq, dur * 800), (0.1 + (idx * 0.04)) * 1000);
+                }
             }
         });
     }
