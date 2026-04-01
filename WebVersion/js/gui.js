@@ -6,7 +6,7 @@ class GUI {
         // Populate instruments
         const selectContainer = document.getElementById("voice_instruments_frame");
         const voices = ["Basso", "V2", "V3", "V4", "V5", "V6", "Alto"];
-        const defaults = ["Contrabbasso", "Violoncello", "Fagotto", "Corno", "Viola", "Clarinetto", "Flauto"];
+        const defaults = ["Contrabbasso", "Violoncello", "Tromba", "Corno", "Viola", "Clarinetto", "Flauto"];
         const avail = Object.keys(window.audioEngine.instrumentPrograms);
         
         voices.forEach((v, i) => {
@@ -136,6 +136,9 @@ class GUI {
         const w = this.canvas.width / window.devicePixelRatio || 600;
         let spacing = Math.min((w - 150) / (chords.length + 1), 160);
         
+        // Setup glow set se non esiste
+        if(!window.activeGlows) window.activeGlows = new Set();
+        
         chords.forEach((chordList, i) => {
             // Seleziona la coordinata x base. Se è 1 accordo centrato, lo mettiamo a metà.
             let xBase = chords.length === 1 ? w/2 - 20 : 100 + spacing * i;
@@ -157,14 +160,26 @@ class GUI {
                     if (y <= 5)  for (let ly = 5;  ly >= y - 5; ly -= 34) { this.ctx.beginPath(); this.ctx.moveTo(x-8, ly); this.ctx.lineTo(x+28, ly); this.ctx.stroke(); }
                 }
 
-                // Note Base "cicciotte" ripristinate
+                // Note Base
                 this.ctx.fillStyle = n.color;
                 this.ctx.beginPath();
                 this.ctx.ellipse(x + 10, y, 11, 9, 0, 0, 2 * Math.PI);
+                
+                // Glow Effect on Play
+                if (window.activeGlows.has(j)) {
+                    this.ctx.shadowColor = "white";
+                    this.ctx.shadowBlur = 12;
+                    this.ctx.strokeStyle = "white";
+                    this.ctx.lineWidth = 2;
+                } else {
+                    this.ctx.shadowBlur = 0;
+                    this.ctx.strokeStyle = "#010205";
+                    this.ctx.lineWidth = 1;
+                }
+                
                 this.ctx.fill();
-                this.ctx.strokeStyle = "#010205";
-                this.ctx.lineWidth = 1;
                 this.ctx.stroke();
+                this.ctx.shadowBlur = 0; // Reset shadow
 
                 // Gloss proporzionato
                 this.ctx.fillStyle = "#FFFFFF";
@@ -193,5 +208,15 @@ class GUI {
 
     setInsight(text) {
         document.getElementById("insight_label").innerText = text;
+    }
+
+    highlight(voiceIdx, durationMs) {
+        if(!window.activeGlows) window.activeGlows = new Set();
+        window.activeGlows.add(voiceIdx);
+        this.drawPitches(window.lastChords);
+        setTimeout(() => {
+            if(window.activeGlows) window.activeGlows.delete(voiceIdx);
+            this.drawPitches(window.lastChords);
+        }, durationMs);
     }
 }

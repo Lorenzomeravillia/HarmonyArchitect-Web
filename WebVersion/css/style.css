@@ -39,6 +39,15 @@ body {
     overflow-y: auto;
     overflow-x: hidden;
     line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+}
+
+@media (min-height: 800px) {
+    body {
+        overflow: hidden;
+        justify-content: center;
+    }
 }
 
 /* Utils */

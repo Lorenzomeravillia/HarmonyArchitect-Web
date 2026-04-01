@@ -21,7 +21,7 @@ class AudioEngine {
             "Arpa": 46
         };
 
-        this.channels = [43, 42, 70, 60, 41, 71, 73]; // default GM voices
+        this.channels = [43, 42, 56, 60, 41, 71, 73]; // default GM voices: Basso, Cello, Tromba(56), Corno, Viola...
         
         // Load initial
         this.channels.forEach((prog) => this.loadInstrument(prog));
@@ -59,6 +59,7 @@ class AudioEngine {
         let preset = window[info.variable]; 
         if (preset) {
             this.player.queueWaveTable(this.ctx, this.ctx.destination, preset, this.ctx.currentTime, midiPitch, duration, velocity/127);
+            if(window.gui && window.gui.highlight) window.gui.highlight(channelIdx, duration * 1000);
         }
     }
 
