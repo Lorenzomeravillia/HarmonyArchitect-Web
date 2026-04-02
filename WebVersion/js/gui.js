@@ -56,12 +56,9 @@ class GUI {
             solo_frame.appendChild(b);
         });
 
-        // Make canvas sharp on HiDPI displays
-        const ratio = window.devicePixelRatio || 1;
-        const rect = this.canvas.getBoundingClientRect();
-        this.canvas.width = rect.width * ratio;
-        this.canvas.height = rect.height * ratio;
-        this.ctx.scale(ratio, ratio);
+        // Initial sizing deferred to drawEmptyStaff
+        this.logicW = 600;
+        this.logicH = 440;
         
         // Canvas onclick to play individual notes
         this.canvas.addEventListener("mousedown", (e) => {
@@ -90,17 +87,24 @@ class GUI {
     
     drawEmptyStaff() {
         const ratio = window.devicePixelRatio || 1;
-        const logicW = 600;
-        const logicH = 440;
+        const rect = this.canvas.getBoundingClientRect();
+        const cssW = rect.width;
+        const cssH = rect.height;
         
-        if (this.canvas.width !== Math.floor(logicW * ratio) || this.canvas.height !== Math.floor(logicH * ratio)) {
-            this.canvas.width = Math.floor(logicW * ratio);
-            this.canvas.height = Math.floor(logicH * ratio);
-            this.ctx.scale(ratio, ratio);
+        // Resize canvas backing store to match CSS display size
+        const needW = Math.floor(cssW * ratio);
+        const needH = Math.floor(cssH * ratio);
+        if (this.canvas.width !== needW || this.canvas.height !== needH) {
+            this.canvas.width = needW;
+            this.canvas.height = needH;
         }
         
-        const w = logicW;
-        const h = logicH;
+        // Scale from logical 600x440 to actual CSS pixels
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+        this.ctx.scale((cssW * ratio) / this.logicW, (cssH * ratio) / this.logicH);
+        
+        const w = this.logicW;
+        const h = this.logicH;
         
         this.ctx.clearRect(0, 0, w, h);
         
