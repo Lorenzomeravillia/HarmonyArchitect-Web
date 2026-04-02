@@ -191,9 +191,7 @@ body {
     flex-direction: column;
     gap: 4px;
     min-height: 0;
-    overflow: auto;
-    justify-content: center;
-    flex-shrink: 0;
+    align-self: stretch;
 }
 .answer-btn {
     background-color: var(--bg-panel);
@@ -233,6 +231,7 @@ canvas {
     flex: 1;
     min-height: 0;
     overflow: hidden;
+    align-items: stretch;
 }
 
 #voice_instruments_frame {
