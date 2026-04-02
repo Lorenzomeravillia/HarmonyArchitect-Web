@@ -199,6 +199,12 @@ body {
 .answer-btn:hover { background-color: var(--border-panel); }
 
 /* Canvas Area */
+.staff-frame {
+    aspect-ratio: 600 / 440;
+    max-height: 48vh;
+    margin: 0 auto;
+}
+
 .border-thick {
     background-color: #050814;
     border: 2px solid #101A35;

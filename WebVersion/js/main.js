@@ -1,4 +1,17 @@
 document.addEventListener("DOMContentLoaded", () => {
+    // PWA Start Overlay for Interaction-gated FullScreen trigger
+    let startOverlay = document.getElementById("start_overlay");
+    if(startOverlay) {
+        startOverlay.addEventListener("click", (e) => {
+            startOverlay.style.display = "none";
+            if (document.documentElement.requestFullscreen) {
+                document.documentElement.requestFullscreen();
+            } else if (document.documentElement.webkitRequestFullscreen) {
+                document.documentElement.webkitRequestFullscreen();
+            }
+        });
+    }
+
     window.gui = new GUI();
 
     // Sblocca WebAudio su iOS al primissimo tocco (Policy Apple)
