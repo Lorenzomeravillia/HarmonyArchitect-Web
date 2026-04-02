@@ -191,7 +191,9 @@ body {
     flex-direction: column;
     gap: 4px;
     min-height: 0;
-    overflow: hidden;
+    overflow: auto;
+    justify-content: center;
+    flex-shrink: 0;
 }
 .answer-btn {
     background-color: var(--bg-panel);
