@@ -33,11 +33,12 @@ body {
     background-color: var(--bg-main);
     color: var(--text-primary);
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    padding: 10px;
+    padding: 6px;
     margin: 0;
     height: 100vh;
+    height: 100dvh;
     overflow: hidden;
-    line-height: 1.6;
+    line-height: 1.4;
     display: flex;
     flex-direction: column;
 }
@@ -66,14 +67,15 @@ body {
 
 /* Layout Structure */
 .main-scrollable {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+    display: grid;
+    grid-template-rows: auto auto auto auto 1fr auto auto;
+    gap: 3px;
     width: 95%;
     max-width: 1250px;
     margin: 0 auto;
     flex: 1;
     min-height: 0;
+    overflow: hidden;
 }
 
 .panel {
@@ -221,8 +223,8 @@ canvas {
 }
 
 .middle-frame {
-    flex: 1;
     min-height: 0;
+    overflow: hidden;
 }
 
 #voice_instruments_frame {
