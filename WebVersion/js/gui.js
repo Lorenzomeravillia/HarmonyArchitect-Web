@@ -97,17 +97,17 @@ class GUI {
     
     drawEmptyStaff() {
         const ratio = window.devicePixelRatio || 1;
-        const rect = this.canvas.getBoundingClientRect();
+        const logicW = 600;
+        const logicH = 440;
         
-        // Auto-Resize se il CSS ha scalato il canvas
-        if (this.canvas.width !== Math.floor(rect.width * ratio) || this.canvas.height !== Math.floor(rect.height * ratio)) {
-            this.canvas.width = Math.floor(rect.width * ratio);
-            this.canvas.height = Math.floor(rect.height * ratio);
+        if (this.canvas.width !== Math.floor(logicW * ratio) || this.canvas.height !== Math.floor(logicH * ratio)) {
+            this.canvas.width = Math.floor(logicW * ratio);
+            this.canvas.height = Math.floor(logicH * ratio);
             this.ctx.scale(ratio, ratio);
         }
         
-        const w = rect.width;
-        const h = rect.height;
+        const w = logicW;
+        const h = logicH;
         
         this.ctx.clearRect(0, 0, w, h);
         

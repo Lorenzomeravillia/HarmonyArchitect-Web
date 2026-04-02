@@ -70,7 +70,8 @@ body {
     display: flex;
     flex-direction: column;
     gap: 4px;
-    max-width: 1050px;
+    width: 95%;
+    max-width: 1250px;
     margin: 0 auto;
 }
 
