@@ -79,7 +79,7 @@ class GUI {
                 let hb = window.noteHitboxes[i];
                 if(Math.hypot(px - hb.x, py - hb.y) <= 11) { // 11px LOGICI di raggio
                     if(window.audioEngine.ctx.state === 'suspended') window.audioEngine.ctx.resume();
-                    window.audioEngine.playPitch(hb.voiceIdx, hb.freq, 1.0);
+                    window.audioEngine.playPitch(hb.voiceIdx, hb.freq, 1.0, hb.chordIdx);
                     
                     // Flash effect scalato
                     this.ctx.fillStyle = "#FFFFFF";
