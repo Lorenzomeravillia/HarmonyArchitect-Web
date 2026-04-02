@@ -65,19 +65,36 @@ class GUI {
             if(!window.noteHitboxes) return;
             const rct = this.canvas.getBoundingClientRect();
             
-            // Proietta le coordinate CSS reali dello schermo sulle coordinate logiche (600x440) del Canvas
-            const scaleX = 600 / rct.width;
-            const scaleY = 440 / rct.height;
+            // Account for object-fit: contain letterboxing
+            const cssW = rct.width;
+            const cssH = rct.height;
+            const canvasRatio = this.canvas.width / this.canvas.height;
+            const cssRatio = cssW / cssH;
             
-            const px = (e.clientX - rct.left) * scaleX;
-            const py = (e.clientY - rct.top) * scaleY;
+            let renderW, renderH, offsetX, offsetY;
+            if (cssRatio > canvasRatio) {
+                // Letterboxed horizontally (pillarboxing)
+                renderH = cssH;
+                renderW = cssH * canvasRatio;
+                offsetX = (cssW - renderW) / 2;
+                offsetY = 0;
+            } else {
+                // Letterboxed vertically
+                renderW = cssW;
+                renderH = cssW / canvasRatio;
+                offsetX = 0;
+                offsetY = (cssH - renderH) / 2;
+            }
+            
+            const px = ((e.clientX - rct.left - offsetX) / renderW) * 600;
+            const py = ((e.clientY - rct.top - offsetY) / renderH) * 440;
             
             for (let i = window.noteHitboxes.length - 1; i >= 0; i--) {
                 let hb = window.noteHitboxes[i];
-                if(Math.hypot(px - hb.x, py - hb.y) <= 11) { // 11px LOGICI di raggio
+                if(Math.hypot(px - hb.x, py - hb.y) <= 11) {
                     if(window.audioEngine.ctx.state === 'suspended') window.audioEngine.ctx.resume();
                     window.audioEngine.playPitch(hb.voiceIdx, hb.freq, 1.0, hb.chordIdx);
-                    break; // Clicca solo LA PRIMA nota in pila, non attiva adiacenti
+                    break;
                 }
             }
         });
@@ -87,21 +104,20 @@ class GUI {
     
     drawEmptyStaff() {
         const ratio = window.devicePixelRatio || 1;
-        const rect = this.canvas.getBoundingClientRect();
-        const cssW = rect.width;
-        const cssH = rect.height;
+        const logicW = this.logicW;  // 600
+        const logicH = this.logicH;  // 440
         
-        // Resize canvas backing store to match CSS display size
-        const needW = Math.floor(cssW * ratio);
-        const needH = Math.floor(cssH * ratio);
+        // Set canvas buffer to logical dimensions (object-fit:contain handles display scaling)
+        const needW = Math.floor(logicW * ratio);
+        const needH = Math.floor(logicH * ratio);
         if (this.canvas.width !== needW || this.canvas.height !== needH) {
             this.canvas.width = needW;
             this.canvas.height = needH;
         }
         
-        // Scale from logical 600x440 to actual CSS pixels
+        // Scale context for HiDPI
         this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-        this.ctx.scale((cssW * ratio) / this.logicW, (cssH * ratio) / this.logicH);
+        this.ctx.scale(ratio, ratio);
         
         const w = this.logicW;
         const h = this.logicH;
