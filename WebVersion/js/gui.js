@@ -56,7 +56,7 @@ class GUI {
             solo_frame.appendChild(b);
         });
 
-        // Initial sizing deferred to drawEmptyStaff
+        // Logical coordinate space (all drawing uses these coords)
         this.logicW = 600;
         this.logicH = 440;
         
@@ -65,29 +65,9 @@ class GUI {
             if(!window.noteHitboxes) return;
             const rct = this.canvas.getBoundingClientRect();
             
-            // Account for object-fit: contain letterboxing
-            const cssW = rct.width;
-            const cssH = rct.height;
-            const canvasRatio = this.canvas.width / this.canvas.height;
-            const cssRatio = cssW / cssH;
-            
-            let renderW, renderH, offsetX, offsetY;
-            if (cssRatio > canvasRatio) {
-                // Letterboxed horizontally (pillarboxing)
-                renderH = cssH;
-                renderW = cssH * canvasRatio;
-                offsetX = (cssW - renderW) / 2;
-                offsetY = 0;
-            } else {
-                // Letterboxed vertically
-                renderW = cssW;
-                renderH = cssW / canvasRatio;
-                offsetX = 0;
-                offsetY = (cssH - renderH) / 2;
-            }
-            
-            const px = ((e.clientX - rct.left - offsetX) / renderW) * 600;
-            const py = ((e.clientY - rct.top - offsetY) / renderH) * 440;
+            // Direct mapping: CSS display size == logical size (no object-fit needed)
+            const px = ((e.clientX - rct.left) / rct.width) * this.logicW;
+            const py = ((e.clientY - rct.top) / rct.height) * this.logicH;
             
             for (let i = window.noteHitboxes.length - 1; i >= 0; i--) {
                 let hb = window.noteHitboxes[i];
@@ -99,21 +79,59 @@ class GUI {
             }
         });
 
+        // Auto-resize on container size change
+        this._resizeObserver = new ResizeObserver(() => {
+            if (window.lastChords) {
+                this.drawPitches(window.lastChords);
+            } else {
+                this.drawEmptyStaff();
+            }
+        });
+        const staffFrame = this.canvas.closest('.staff-frame');
+        if (staffFrame) this._resizeObserver.observe(staffFrame);
+
         this.drawEmptyStaff();
     }
     
-    drawEmptyStaff() {
-        const ratio = window.devicePixelRatio || 1;
-        const logicW = this.logicW;  // 600
-        const logicH = this.logicH;  // 440
+    _sizeCanvas() {
+        // Measure the container available space
+        const container = this.canvas.closest('.staff-frame');
+        if (!container) return;
         
-        // Set canvas buffer to logical dimensions (object-fit:contain handles display scaling)
-        const needW = Math.floor(logicW * ratio);
-        const needH = Math.floor(logicH * ratio);
+        const containerW = container.clientWidth - 8;  // padding compensation
+        const containerH = container.clientHeight - 8;
+        
+        const targetRatio = this.logicW / this.logicH; // 600/440 = 1.3636
+        
+        let displayW, displayH;
+        if (containerW / containerH > targetRatio) {
+            // Container is wider than needed — height is the constraint
+            displayH = containerH;
+            displayW = Math.floor(containerH * targetRatio);
+        } else {
+            // Container is taller than needed — width is the constraint
+            displayW = containerW;
+            displayH = Math.floor(containerW / targetRatio);
+        }
+        
+        // Set CSS display size
+        this.canvas.style.width = displayW + 'px';
+        this.canvas.style.height = displayH + 'px';
+        
+        // Set buffer size (HiDPI)
+        const ratio = window.devicePixelRatio || 1;
+        const needW = Math.floor(this.logicW * ratio);
+        const needH = Math.floor(this.logicH * ratio);
         if (this.canvas.width !== needW || this.canvas.height !== needH) {
             this.canvas.width = needW;
             this.canvas.height = needH;
         }
+    }
+    
+    drawEmptyStaff() {
+        this._sizeCanvas();
+        
+        const ratio = window.devicePixelRatio || 1;
         
         // Scale context for HiDPI
         this.ctx.setTransform(1, 0, 0, 1, 0, 0);
