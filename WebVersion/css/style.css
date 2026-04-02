@@ -82,7 +82,7 @@ body {
     background-color: var(--bg-panel);
     border: 1px solid var(--border-panel);
     border-radius: 10px;
-    padding: 6px 12px;
+    padding: 4px 10px;
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 5px 15px rgba(0, 0, 0, 0.4);
 }
 
@@ -165,8 +165,8 @@ body {
 .hardware-btn {
     background: linear-gradient(180deg, var(--hw-play-top) 0%, var(--hw-play-bot) 100%);
     color: white;
-    font-size: 18px;
-    padding: 8px 0;
+    font-size: 16px;
+    padding: 6px 0;
     border: 1px solid rgba(255,255,255,0.1);
     box-shadow: 0 8px 15px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.2);
     text-shadow: 0 2px 4px rgba(0,0,0,0.5);
@@ -189,15 +189,18 @@ body {
     width: 200px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 4px;
+    min-height: 0;
+    overflow: hidden;
 }
 .answer-btn {
     background-color: var(--bg-panel);
     border: 2px solid var(--border-panel);
     color: white;
-    font-size: 15px;
-    padding: 10px 6px;
+    font-size: 14px;
+    padding: 6px 6px;
     flex: 1;
+    min-height: 0;
 }
 .answer-btn:hover { background-color: var(--border-panel); }
 
