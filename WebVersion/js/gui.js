@@ -143,6 +143,8 @@ class GUI {
     drawPitches(chords) {
         window.lastChords = chords;
         window.noteHitboxes = [];
+        if(!window.activeGlows) window.activeGlows = new Set();
+        
         this.drawEmptyStaff();
         if(!chords || chords.length === 0) return;
         
@@ -174,10 +176,21 @@ class GUI {
                 this.ctx.fillStyle = n.color;
                 this.ctx.beginPath();
                 this.ctx.ellipse(x + 10, y, 11, 9, 0, 0, 2 * Math.PI);
+                
+                if (window.activeGlows.has(j + "-" + i)) {
+                    this.ctx.shadowColor = "white";
+                    this.ctx.shadowBlur = 18;
+                    this.ctx.strokeStyle = "white";
+                    this.ctx.lineWidth = 2;
+                } else {
+                    this.ctx.shadowBlur = 0;
+                    this.ctx.strokeStyle = "#010205";
+                    this.ctx.lineWidth = 1;
+                }
+                
                 this.ctx.fill();
-                this.ctx.strokeStyle = "#010205";
-                this.ctx.lineWidth = 1;
                 this.ctx.stroke();
+                this.ctx.shadowBlur = 0;
 
                 // Gloss proporzionato
                 this.ctx.fillStyle = "#FFFFFF";
@@ -212,36 +225,28 @@ class GUI {
 
     highlight(voiceIdx, freq, durationMs, chordIdx=null) {
         if(!window.noteHitboxes) return;
+        if(!window.activeGlows) window.activeGlows = new Set();
         
-        let container = document.getElementById("glow_container");
-        if(!container) return;
-        
-        let rt = window.devicePixelRatio || 1;
         let hits = window.noteHitboxes.filter(h => {
             let matchFreq = h.voiceIdx === voiceIdx && Math.abs(h.freq - freq) < 2;
             if (chordIdx !== null && chordIdx !== undefined) return matchFreq && h.chordIdx === chordIdx;
             return matchFreq;
         });
         
-        // Conversione da coordinate Logiche (600x440) a CSS viewbox scalata
-        const rct = this.canvas.getBoundingClientRect();
-        const scaleXCSS = rct.width / 600;
-        const scaleYCSS = rct.height / 440;
-        
+        let keys = [];
         hits.forEach(h => {
-            let orb = document.createElement("div");
-            orb.className = "glow-orb";
-            
-            // Coordinate ricalcolate per adattarsi fluidamente al resize della finestra
-            orb.style.left = (h.x * scaleXCSS) + "px";
-            orb.style.top = (h.y * scaleYCSS) + "px";
-            orb.style.backgroundColor = h.color;
-            orb.style.boxShadow = `0 0 16px 6px ${h.color}`;
-            
-            container.appendChild(orb);
-            
-            setTimeout(() => orb.style.opacity = "0", Math.max(50, durationMs - 400));
-            setTimeout(() => orb.remove(), durationMs + 200);
+            let key = h.voiceIdx + "-" + h.chordIdx;
+            window.activeGlows.add(key);
+            keys.push(key);
         });
+        
+        this.drawPitches(window.lastChords);
+        
+        setTimeout(() => {
+            if(window.activeGlows) {
+                keys.forEach(k => window.activeGlows.delete(k));
+                this.drawPitches(window.lastChords);
+            }
+        }, durationMs);
     }
 }
