@@ -212,6 +212,9 @@ body {
     min-width: 0;
     overflow: hidden;
     flex-shrink: 1;
+    display: flex;
+    justify-content: center;
+    align-items: stretch;
 }
 
 .border-thick {
@@ -224,8 +227,9 @@ canvas {
     background-color: #050814;
     border-radius: 8px;
     box-shadow: inset 0 0 15px rgba(0,0,0,0.8);
-    width: 100%;
     height: 100%;
+    width: auto;
+    aspect-ratio: 600 / 440;
     display: block;
 }
 
