@@ -142,6 +142,23 @@ document.addEventListener("DOMContentLoaded", () => {
                 wrongOpts.push(pparts[0] + "\n(" + pparts.slice(1).map(c => transposeChord(c, root)).join(" - ") + ")");
             });
             
+            // Borrow from other levels if not enough distractors
+            if (wrongOpts.length < 3) {
+                let usedNames = new Set([parts[0], ...safePool.map(p => p.split("|")[0])]);
+                let allLevels = Object.values(LEVEL_POOLS_PROG);
+                for (let lvlPool of allLevels) {
+                    for (let p of lvlPool) {
+                        if (wrongOpts.length >= 3) break;
+                        let pparts = p.split("|");
+                        if (!usedNames.has(pparts[0])) {
+                            usedNames.add(pparts[0]);
+                            wrongOpts.push(pparts[0] + "\n(" + pparts.slice(1).map(c => transposeChord(c, root)).join(" - ") + ")");
+                        }
+                    }
+                    if (wrongOpts.length >= 3) break;
+                }
+            }
+            
             createAnswers(name, wrongOpts);
         } else {
             window.currentProgression = null;
