@@ -123,14 +123,14 @@ class GUI {
 
         // Treble
         [39, 73, 107, 141, 175].forEach(y => {
-            this.ctx.beginPath(); this.ctx.moveTo(30, y); this.ctx.lineTo(logicW - 30, y); this.ctx.stroke();
+            this.ctx.beginPath(); this.ctx.moveTo(30, y); this.ctx.lineTo(w - 30, y); this.ctx.stroke();
         });
         this.ctx.font = "normal 120px serif";
         this.ctx.fillText("𝄞", 30, 169); 
 
         // Bass
         [243, 277, 311, 345, 379].forEach(y => {
-            this.ctx.beginPath(); this.ctx.moveTo(30, y); this.ctx.lineTo(logicW - 30, y); this.ctx.stroke();
+            this.ctx.beginPath(); this.ctx.moveTo(30, y); this.ctx.lineTo(w - 30, y); this.ctx.stroke();
         });
         this.ctx.font = "normal 110px serif";
         this.ctx.fillText("𝄢", 30, 357);
