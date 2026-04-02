@@ -46,7 +46,7 @@ class GUI {
                     let chord = window.currentVoicings[cIdx];
                     if (chord && chord.length > i) {
                         let n = chord[i];
-                        window.audioEngine.playPitch(n.voiceIdx, n.frequency, 1.2);
+                        window.audioEngine.playPitch(n.voiceIdx, n.frequency, 1.2, cIdx);
                     }
                     cIdx++;
                     if(cIdx < window.currentVoicings.length) setTimeout(solNext, 1200);
