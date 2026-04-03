@@ -81,12 +81,41 @@ class MusicEngine {
         };
     }
     
+    // Normalize roots that produce ugly double-flats or excessively complex spellings.
+    // Rules:
+    //   Cb → B always (Cb has 7 flats; B has 5 sharps — always simpler)
+    //   Gb minor → F# minor (Gb minor produces Bbb; F# minor is clean)
+    //   Db minor → C# minor (Db minor produces Fb; C# minor is clean)
+    //   Inverse: C# major → Db major, G# major → Ab major (flat keys preferred for major)
+    _normalizeRoot(rootStr, typeStr) {
+        const isMinor = /^(m|dim|ø|-)[^a-z]?/.test(typeStr) || typeStr === 'm' || typeStr === 'dim' || typeStr === 'dim7' || typeStr === 'm7' || typeStr === 'm7b5' || typeStr === 'm9' || typeStr === 'ø7';
+
+        // Always simpler enharmonics (no musical context needed)
+        const always = { 'Cb': 'B', 'B#': 'C', 'E#': 'F', 'Fb': 'E' };
+        if (always[rootStr]) return always[rootStr];
+
+        if (isMinor) {
+            // Flat roots that produce double-flats in minor → use sharp enharmonic
+            const minorFix = { 'Db': 'C#', 'Gb': 'F#' };
+            if (minorFix[rootStr]) return minorFix[rootStr];
+        } else {
+            // Sharp roots for major chords → use standard flat enharmonic
+            const majorFix = { 'C#': 'Db', 'G#': 'Ab', 'D#': 'Eb', 'A#': 'Bb' };
+            if (majorFix[rootStr]) return majorFix[rootStr];
+        }
+
+        return rootStr;
+    }
+
     generateVoicing(symbol, baseOctave="C4", drop2=true, prevVoicing=null) {
         let match = symbol.match(/^([A-G][b#]?)(.*)/);
         if(!match) return [];
         let rootStr = match[1];
         let typeStr = match[2];
-        
+
+        // Normalize to enharmonic equivalent with simpler spelling
+        rootStr = this._normalizeRoot(rootStr, typeStr);
+
         // Determine enharmonic spelling from root
         let spelling = this.getSpellingForRoot(rootStr);
         let useSharp = (spelling === 'sharp');

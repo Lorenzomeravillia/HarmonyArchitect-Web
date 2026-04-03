@@ -31,10 +31,23 @@ class AudioEngine {
         this._loaded      = false;
     }
 
-    // Call this once on first user gesture (iOS requires AudioContext to be running before loading)
+    // Call this once on first user gesture.
+    // iOS requires TWO things: (1) a real BufferSource played synchronously,
+    // (2) ctx.resume(). Neither alone is sufficient.
     unlockAndLoad() {
         if (this._loaded) return;
         this._loaded = true;
+
+        // Step 1 — synchronous silent buffer (must happen inside the gesture call stack)
+        try {
+            const silentBuf = this.ctx.createBuffer(1, 1, 22050);
+            const silentSrc = this.ctx.createBufferSource();
+            silentSrc.buffer = silentBuf;
+            silentSrc.connect(this.ctx.destination);
+            silentSrc.start(0);
+        } catch(e) {}
+
+        // Step 2 — resume context, then load instruments
         this.ctx.resume().then(() => {
             this.channelNames.forEach((name, i) => this._loadOne(i, name));
         });
