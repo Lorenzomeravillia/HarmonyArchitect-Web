@@ -44,7 +44,7 @@ class AudioEngine {
         }
     }
 
-    playPitch(channelIdx, freq, duration=1.5, chordIdx=null) {
+    playPitch(channelIdx, freq, duration=1.8, chordIdx=null) {
         // Frequency to MIDI Note
         let pitch = Math.round(69 + 12 * Math.log2(freq / 440));
         this.playNote(channelIdx, pitch, 100, duration, chordIdx);
@@ -76,7 +76,7 @@ class AudioEngine {
             let info = this.player.loader.instrumentInfo(prog);
             let preset = window[info.variable]; 
             if(preset) {
-                let dur = durationOverride !== null ? durationOverride : 1.2;
+                let dur = durationOverride !== null ? durationOverride : 1.87; // ~1.56 * 1.2 for 20% slower
                 this.player.queueWaveTable(this.ctx, this.ctx.destination, preset, st, pitch, dur, 0.35); // V=0.35
                 
                 // Overlay CSS Highlighter async

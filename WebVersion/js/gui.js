@@ -49,7 +49,8 @@ class GUI {
                         window.audioEngine.playPitch(n.voiceIdx, n.frequency, 1.2, cIdx);
                     }
                     cIdx++;
-                    if(cIdx < window.currentVoicings.length) setTimeout(solNext, 1200);
+                    let isoTempo = parseInt((document.getElementById('tempo_menu') || {}).value) || 1560;
+                    if(cIdx < window.currentVoicings.length) setTimeout(solNext, isoTempo);
                 }
                 solNext();
             };

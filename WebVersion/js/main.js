@@ -393,7 +393,7 @@ document.addEventListener("DOMContentLoaded", () => {
         let isOptimized = document.getElementById("voice_leading_menu").value.includes("Ottimizzata");
         
         let tempoMenu = document.getElementById("tempo_menu");
-        let tempoMs = tempoMenu ? parseInt(tempoMenu.value) : 1300;
+        let tempoMs = tempoMenu ? parseInt(tempoMenu.value) : 1560;
         let cutDuration = (tempoMs / 1000) * 0.82; // L'accordo muore all'82% dello span temporale!
         
         if (window.currentProgression) {
@@ -428,7 +428,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if(!window.currentVoicings) return; 
         
         let tempoMenu = document.getElementById("tempo_menu");
-        let tempoMs = tempoMenu ? parseInt(tempoMenu.value) : 1300;
+        let tempoMs = tempoMenu ? parseInt(tempoMenu.value) : 1560;
         
         let cIdx = 0;
         let pIdx = 0;
@@ -440,9 +440,8 @@ document.addEventListener("DOMContentLoaded", () => {
             if(pIdx >= chord.length) {
                 pIdx = 0;
                 cIdx++;
-                if (cIdx < window.currentVoicings.length) {
-                    setTimeout(arpNext, tempoMs * 0.4); 
-                }
+                let isoTempo = parseInt((document.getElementById('tempo_menu') || {}).value) || 1560;
+                if(cIdx < window.currentVoicings.length) setTimeout(arpNext, isoTempo);
                 return;
             }
             
