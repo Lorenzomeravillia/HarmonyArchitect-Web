@@ -47,11 +47,13 @@ class AudioEngine {
         // Close the possibly-suspended placeholder ctx
         try { this.ctx.close(); } catch(e) {}
 
-        // New ctx created synchronously inside user gesture — iOS starts it 'running'
+        // New ctx — on iOS 17+ always starts 'suspended' even inside a gesture.
+        // Must call resume() synchronously within the same gesture call stack.
         this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-        if (window.dlog) window.dlog('new ctx created — state: ' + this.ctx.state);
+        this.ctx.resume();
+        if (window.dlog) window.dlog('new ctx + resume() — state: ' + this.ctx.state);
 
-        // Silent buffer: canonical iOS WebAudio unlock
+        // Silent buffer: belt-and-suspenders unlock
         try {
             const buf = this.ctx.createBuffer(1, 1, 22050);
             const src = this.ctx.createBufferSource();
