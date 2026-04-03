@@ -6,7 +6,7 @@
     <title>Harmony Architect PWA</title>
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Courier+Prime:wght@700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=8">
+    <link rel="stylesheet" href="css/style.css?v=9">
     
     <!-- Motore Custom Zero Dependency (Sostituisce Tonal.js) -->
     <!-- WebAudioFontPlayer -->
@@ -26,7 +26,14 @@
             <div class="flex-row gap-large score-status">
                 <div class="flex-col align-end">
                     <span id="ai_focus_label" class="text-alert font-courier"></span>
-                    <span id="score_label" class="text-cyan font-courier">Score Sessione: 0 / 0 | Win Rate Globale: 0%</span>
+                    <div class="flex-row" style="gap: 6px; align-items: center;">
+                        <span id="score_label" class="text-cyan font-courier">Score Sessione: 0 / 0 | Win Rate Globale: 0%</span>
+                        <span id="streak_badge" class="streak-badge" style="display:none;"></span>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar"><div id="progress_fill" class="progress-fill" style="width: 0%;"></div></div>
+                        <span id="progress_text" class="progress-text">0/10</span>
+                    </div>
                 </div>
                 <button id="reset_btn" class="btn icon-btn btn-danger" title="Azzera History">🗑️</button>
                 <button id="settings_toggle" class="btn mobile-only" title="Settings">MENU ▾</button>
@@ -124,12 +131,12 @@
     <!-- PWA Fullscreen Start Overlay -->
     <div id="start_overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg-main);z-index:9999;display:flex;align-items:center;justify-content:center;color:white;font-size:24px;cursor:pointer;flex-direction:column;gap:20px;">
         <span style="font-size: 40px;">🎹</span>
-        <span>Tocca per entrare in Fullscreen Studio</span>
+        <span>Tocca per iniziare</span>
     </div>
 
-    <script src="js/audio_engine.js?v=8"></script>
-    <script src="js/music_engine.js?v=8"></script>
-    <script src="js/gui.js?v=8"></script>
-    <script src="js/main.js?v=8"></script>
+    <script src="js/audio_engine.js?v=9"></script>
+    <script src="js/music_engine.js?v=9"></script>
+    <script src="js/gui.js?v=9"></script>
+    <script src="js/main.js?v=9"></script>
 </body>
 </html>

@@ -4,7 +4,7 @@
     --border-panel: #2A375E;
     
     --text-primary: #E2E8F0;
-    --text-muted: #A0AEC0;
+    --text-muted: #B0BEC5;
     
     --cyan: #55EFC4;
     --blue: #0984E3;
@@ -265,6 +265,65 @@ canvas {
     text-shadow: 0 0 10px rgba(243, 156, 18, 0.5);
 }
 
+/* Answer Animations */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+}
+@keyframes correctPulse {
+    0% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.6); }
+    70% { box-shadow: 0 0 0 12px rgba(46, 204, 113, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
+}
+.answer-btn.correct {
+    background-color: var(--green) !important;
+    animation: correctPulse 0.6s ease-out;
+}
+.answer-btn.wrong {
+    background-color: var(--red) !important;
+    animation: shake 0.4s ease-out;
+}
+
+/* Streak */
+.streak-badge {
+    font-size: 13px;
+    font-weight: 800;
+    color: #F39C12;
+    text-shadow: 0 0 8px rgba(243, 156, 18, 0.5);
+    margin-left: 8px;
+    animation: correctPulse 0.6s ease-out;
+}
+
+/* Progress bar */
+.progress-container {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 10px;
+}
+.progress-bar {
+    width: 80px;
+    height: 6px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 3px;
+    overflow: hidden;
+}
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--cyan), var(--green));
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+.progress-text {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--cyan);
+    font-family: 'Courier Prime';
+}
+
 /* === Desktop: hide mobile-only elements === */
 .mobile-only { display: none !important; }
 
@@ -357,10 +416,15 @@ canvas {
         min-height: auto;
     }
 
-    /* Solo compact */
+    /* Solo: touch targets */
     .solo-frame { padding: 2px 6px; }
     .solo-label { font-size: 10px; margin-right: 6px !important; }
-    .solo-btn { padding: 4px 8px; font-size: 10px; }
+    .solo-btn { padding: 4px 8px; font-size: 10px; min-height: 44px; min-width: 44px; }
+
+    /* Progress compact */
+    .progress-bar { width: 60px; }
+    .progress-text { font-size: 9px; }
+    .streak-badge { font-size: 11px; }
 
     /* Insight compact */
     .insight-frame { padding: 2px 6px; }

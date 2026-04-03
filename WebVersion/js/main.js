@@ -1,13 +1,19 @@
 document.addEventListener("DOMContentLoaded", () => {
-    // PWA Start Overlay for Interaction-gated FullScreen trigger
+    // Detect iOS
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    // PWA Start Overlay
     let startOverlay = document.getElementById("start_overlay");
     if(startOverlay) {
         startOverlay.addEventListener("click", (e) => {
             startOverlay.style.display = "none";
-            if (document.documentElement.requestFullscreen) {
-                document.documentElement.requestFullscreen();
-            } else if (document.documentElement.webkitRequestFullscreen) {
-                document.documentElement.webkitRequestFullscreen();
+            // Skip fullscreen on iOS — it doesn't work
+            if (!isIOS) {
+                if (document.documentElement.requestFullscreen) {
+                    document.documentElement.requestFullscreen();
+                } else if (document.documentElement.webkitRequestFullscreen) {
+                    document.documentElement.webkitRequestFullscreen();
+                }
             }
         });
     }
@@ -70,6 +76,86 @@ document.addEventListener("DOMContentLoaded", () => {
     window.currentProgression = null;
     window.correctAnswerText = null;
 
+    // Session tracking
+    let sessionCorrect = 0;
+    let sessionTotal = 0;
+    let sessionSize = 10;
+    let streak = 0;
+
+    // Earcons — simple WebAudio tones
+    function playEarcon(correct) {
+        try {
+            let ctx = window.audioEngine?.ctx;
+            if (!ctx) return;
+            let now = ctx.currentTime;
+            let gain = ctx.createGain();
+            gain.connect(ctx.destination);
+            gain.gain.setValueAtTime(0.15, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + (correct ? 0.3 : 0.25));
+
+            if (correct) {
+                // Pleasant major third
+                [523.25, 659.25].forEach((f, i) => {
+                    let osc = ctx.createOscillator();
+                    osc.type = 'sine';
+                    osc.frequency.value = f;
+                    osc.connect(gain);
+                    osc.start(now + i * 0.05);
+                    osc.stop(now + 0.3);
+                });
+            } else {
+                // Dissonant minor second buzz
+                let osc1 = ctx.createOscillator();
+                osc1.type = 'sawtooth';
+                osc1.frequency.value = 200;
+                osc1.connect(gain);
+                osc1.start(now);
+                osc1.stop(now + 0.25);
+                let osc2 = ctx.createOscillator();
+                osc2.type = 'sawtooth';
+                osc2.frequency.value = 212;
+                osc2.connect(gain);
+                osc2.start(now);
+                osc2.stop(now + 0.25);
+            }
+        } catch(e) {}
+    }
+
+    // Update progress bar
+    function updateProgress() {
+        let fill = document.getElementById('progress_fill');
+        let text = document.getElementById('progress_text');
+        if (fill) fill.style.width = Math.min((sessionTotal / sessionSize) * 100, 100) + '%';
+        if (text) text.textContent = sessionTotal + '/' + sessionSize;
+    }
+
+    // Update streak badge
+    function updateStreak() {
+        let badge = document.getElementById('streak_badge');
+        if (!badge) return;
+        if (streak >= 2) {
+            badge.style.display = 'inline';
+            badge.textContent = '🔥 ' + streak;
+            // Re-trigger animation
+            badge.style.animation = 'none';
+            badge.offsetHeight; // force reflow
+            badge.style.animation = '';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+
+    // Compact score on mobile
+    function updateScore() {
+        let lbl = document.getElementById('score_label');
+        let pct = sessionTotal > 0 ? Math.round(sessionCorrect / sessionTotal * 100) : 0;
+        if (window.innerWidth <= 1024) {
+            lbl.textContent = sessionCorrect + '/' + sessionTotal + ' (' + pct + '%)';
+        } else {
+            lbl.textContent = 'Score Sessione: ' + sessionCorrect + ' / ' + sessionTotal + ' | Win Rate Globale: ' + pct + '%';
+        }
+    }
+
     const levelSelect = document.getElementById("level_select");
     Object.keys(LEVEL_POOLS_SINGLE).forEach(lvl => {
         let opt = document.createElement("option");
@@ -108,18 +194,44 @@ document.addEventListener("DOMContentLoaded", () => {
         opts.forEach(o => {
             let b = document.createElement("button");
             b.className = "btn answer-btn";
-            b.innerText = o; // .replace(/\|/g, " - ")
+            b.innerText = o;
+            b.dataset.answer = o; // Store original answer for matching
             if(o.includes("\n")) b.style.fontSize = "12px";
             
             b.onclick = () => {
-                if(o === window.correctAnswerText) {
-                    b.style.backgroundColor = "var(--green)";
+                // Prevent double-click
+                if (b.dataset.answered) return;
+                answersFrame.querySelectorAll('.answer-btn').forEach(btn => btn.dataset.answered = '1');
+
+                sessionTotal++;
+                let correct = (o === window.correctAnswerText);
+
+                if (correct) {
+                    sessionCorrect++;
+                    streak++;
+                    b.classList.add('correct');
                     b.innerText = "✓ " + o.split("\n")[0];
                     document.getElementById("combo_label").innerText = window.realProgressionLabel || o.split("\n")[0];
                 } else {
-                    b.style.backgroundColor = "var(--red)";
+                    streak = 0;
+                    b.classList.add('wrong');
                     b.innerText = "✗ " + o.split("\n")[0];
+                    // Highlight ONLY the correct answer
+                    answersFrame.querySelectorAll('.answer-btn').forEach(btn => {
+                        if (btn.dataset.answer === window.correctAnswerText) {
+                            btn.classList.add('correct');
+                            btn.innerText = "✓ " + btn.dataset.answer.split("\n")[0];
+                        }
+                    });
                 }
+
+                playEarcon(correct);
+                updateScore();
+                updateProgress();
+                updateStreak();
+
+                // Haptic feedback
+                if (navigator.vibrate) navigator.vibrate(correct ? 10 : [30, 20, 30]);
             };
             answersFrame.appendChild(b);
         });
