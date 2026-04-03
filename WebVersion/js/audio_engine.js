@@ -79,12 +79,11 @@ class AudioEngine {
     }
 
     playChord(notesArray, durationOverride = null, chordIdx = null) {
-        // iOS: ctx may still be suspended after resume() Promise — retry after it resolves
-        if (this.ctx.state !== 'running') {
-            this.ctx.resume().then(() => this.playChord(notesArray, durationOverride, chordIdx));
-            return;
-        }
+        // Always call resume() synchronously — must stay in user gesture call stack on iOS.
+        // Notes scheduled in the future will queue and play once ctx starts.
+        this.ctx.resume();
         const SPREAD_SEC = 0.12;
+        const lead = this.ctx.state === 'running' ? 0.1 : 0.4;
         const now = this.ctx.currentTime;
         const dur = durationOverride !== null ? durationOverride : 1.87;
         const vol = this._getVolume();
@@ -96,7 +95,7 @@ class AudioEngine {
             if (!preset) return;
 
             this.player.queueWaveTable(this.ctx, this.ctx.destination, preset,
-                now + 0.1 + idx * SPREAD_SEC, midi, dur, vol);
+                now + lead + idx * SPREAD_SEC, midi, dur, vol);
 
             if (window.gui?.highlight) {
                 setTimeout(
