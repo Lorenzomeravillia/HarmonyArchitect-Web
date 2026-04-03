@@ -49,9 +49,22 @@ class AudioEngine {
 
         // New ctx — on iOS 17+ always starts 'suspended' even inside a gesture.
         // Must call resume() synchronously within the same gesture call stack.
-        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-        this.ctx.resume();
-        if (window.dlog) window.dlog('new ctx + resume() — state: ' + this.ctx.state);
+        try {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        } catch(e) {
+            if (window.dlog) window.dlog('new ctx ERROR: ' + e);
+            return;
+        }
+        if (window.dlog) window.dlog('new ctx — state: ' + this.ctx.state);
+
+        this.ctx.onstatechange = () => {
+            if (window.dlog) window.dlog('statechange → ' + this.ctx.state);
+        };
+
+        this.ctx.resume()
+            .then(() => { if (window.dlog) window.dlog('resume resolved — state: ' + this.ctx.state); })
+            .catch(e => { if (window.dlog) window.dlog('resume rejected: ' + e); });
+        if (window.dlog) window.dlog('resume() called — state now: ' + this.ctx.state);
 
         // Silent buffer: belt-and-suspenders unlock
         try {
