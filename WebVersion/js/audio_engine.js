@@ -3,7 +3,6 @@ class AudioEngine {
         this.ctx = new (window.AudioContext || window.webkitAudioContext)();
         this.player = new WebAudioFontPlayer();
 
-        // instrumentPrograms kept for gui.js compatibility (builds dropdown list)
         this.instrumentPrograms = {
             "Contrabbasso": 43,
             "Violoncello":  42,
@@ -23,9 +22,8 @@ class AudioEngine {
 
         // 7 voice channels (GM program numbers)
         this.channels = [43, 42, 56, 60, 41, 71, 73];
-        this._loaded = false;
 
-        // Pre-load instrument info using the player's own resolver (correct URLs guaranteed)
+        // Load all instrument scripts once at startup (same as original)
         this.channels.forEach(prog => this._loadProg(prog));
     }
 
@@ -34,13 +32,9 @@ class AudioEngine {
         if (info) this.player.loader.startLoad(this.ctx, info.url, info.variable);
     }
 
-    // Call once on first user gesture.
-    // iOS requires: synchronous silent BufferSource + ctx.resume().
+    // Called on first user gesture — iOS unlock only, no re-downloading scripts.
     unlockAndLoad() {
-        if (this._loaded) return;
-        this._loaded = true;
-
-        // Synchronous silent buffer — iOS canonical audio unlock
+        // Synchronous silent buffer — iOS canonical WebAudio unlock
         try {
             const buf = this.ctx.createBuffer(1, 1, 22050);
             const src = this.ctx.createBufferSource();
@@ -48,11 +42,7 @@ class AudioEngine {
             src.connect(this.ctx.destination);
             src.start(0);
         } catch(e) {}
-
-        this.ctx.resume().then(() => {
-            // Re-trigger loading after context is running (iOS needs this)
-            this.channels.forEach(prog => this._loadProg(prog));
-        });
+        this.ctx.resume();
     }
 
     setChannelInstrument(channelIdx, instrumentName) {
@@ -64,8 +54,7 @@ class AudioEngine {
     }
 
     _getPreset(channelIdx) {
-        const prog = this.channels[channelIdx];
-        const info = this.player.loader.instrumentInfo(prog);
+        const info = this.player.loader.instrumentInfo(this.channels[channelIdx]);
         return info ? (window[info.variable] || null) : null;
     }
 
@@ -90,7 +79,7 @@ class AudioEngine {
     }
 
     playChord(notesArray, durationOverride = null, chordIdx = null) {
-        const SPREAD_SEC = 0.12; // 120ms fixed spread
+        const SPREAD_SEC = 0.12;
         const now = this.ctx.currentTime;
         const dur = durationOverride !== null ? durationOverride : 1.87;
         const vol = this._getVolume();
@@ -98,11 +87,11 @@ class AudioEngine {
         notesArray.forEach((item, idx) => {
             const freq = item.frequency || item.freq;
             const midi = Math.round(69 + 12 * Math.log2(freq / 440));
-            const when = now + 0.1 + idx * SPREAD_SEC;
             const preset = this._getPreset(item.voiceIdx);
             if (!preset) return;
 
-            this.player.queueWaveTable(this.ctx, this.ctx.destination, preset, when, midi, dur, vol);
+            this.player.queueWaveTable(this.ctx, this.ctx.destination, preset,
+                now + 0.1 + idx * SPREAD_SEC, midi, dur, vol);
 
             if (window.gui?.highlight) {
                 setTimeout(
