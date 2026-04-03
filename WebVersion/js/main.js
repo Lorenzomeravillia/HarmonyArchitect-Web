@@ -49,11 +49,14 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // Fallback: unlock AudioContext on any touch (covers edge cases where start overlay is missed)
+    // Fallback: gentle resume attempt on touchstart.
+    // Do NOT call unlockAndLoad() here — touchstart may not count as a valid
+    // user-activation gesture for AudioContext on iOS Safari, and calling it
+    // would set _unlocked=true, preventing the definitive ctx creation in the
+    // click handler below.
     document.addEventListener('touchstart', function() {
-        if (window.audioEngine) {
-            window.audioEngine.unlockAndLoad();
-            if (window.audioEngine.ctx.state === 'suspended') window.audioEngine.ctx.resume();
+        if (window.audioEngine && window.audioEngine.ctx.state === 'suspended') {
+            window.audioEngine.ctx.resume().catch(() => {});
         }
     }, { once: true, passive: true });
 

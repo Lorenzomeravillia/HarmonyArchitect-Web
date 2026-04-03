@@ -49,6 +49,7 @@ class AudioEngine {
 
         // New ctx created synchronously inside user gesture — iOS starts it 'running'
         this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        if (window.dlog) window.dlog('new ctx created — state: ' + this.ctx.state);
 
         // Silent buffer: canonical iOS WebAudio unlock
         try {
@@ -57,7 +58,8 @@ class AudioEngine {
             src.buffer = buf;
             src.connect(this.ctx.destination);
             src.start(0);
-        } catch(e) {}
+            if (window.dlog) window.dlog('silent buf played — state: ' + this.ctx.state);
+        } catch(e) { if (window.dlog) window.dlog('silent buf err: ' + e); }
 
         // Instrument scripts are already injected (done in constructor).
         // Re-associate them with the new ctx so presets resolve correctly.
