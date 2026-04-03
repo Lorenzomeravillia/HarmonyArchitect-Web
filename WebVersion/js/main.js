@@ -169,6 +169,8 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById('next_popup_continue').addEventListener('click', () => {
         hideNextPopup();
         startNewChallenge();
+        // Auto-play the new challenge so user immediately hears it
+        setTimeout(() => document.getElementById('play_btn').click(), 300);
     });
     document.getElementById('next_popup_replay').addEventListener('click', () => {
         hideNextPopup();
