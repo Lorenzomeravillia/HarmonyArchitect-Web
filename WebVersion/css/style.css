@@ -144,6 +144,9 @@ body {
 .btn-danger:hover { background-color: #C0392B; }
 .icon-btn { font-size: 16px; }
 
+/* Mode select - always visible */
+.mode-select { font-size: 12px; padding: 6px 8px; }
+
 /* Solos */
 .solo-btn {
     background-color: var(--bg-panel);
@@ -172,6 +175,13 @@ body {
     box-shadow: 0 8px 15px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.2);
     text-shadow: 0 2px 4px rgba(0,0,0,0.5);
     border-radius: 12px;
+}
+.play-btn-fixed {
+    flex: 1;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 .alt-hardware-btn {
     background: linear-gradient(180deg, var(--hw-arp-top) 0%, var(--hw-arp-bot) 100%);
@@ -259,10 +269,16 @@ canvas {
 
 /* Combos */
 .combo-text {
-    font-size: 32px;
+    font-size: clamp(14px, 3vw, 32px);
     color: #F39C12;
     font-family: 'Courier Prime';
     text-shadow: 0 0 10px rgba(243, 156, 18, 0.5);
+    flex-shrink: 1;
+    min-width: 30px;
+    text-align: center;
+    overflow-wrap: anywhere;
+    word-break: keep-all;
+    line-height: 1.1;
 }
 
 /* Answer Animations */
@@ -297,12 +313,11 @@ canvas {
     animation: correctPulse 0.6s ease-out;
 }
 
-/* Progress bar */
-.progress-container {
+/* Progress unified */
+.progress-unified {
     display: flex;
     align-items: center;
     gap: 6px;
-    margin-left: 10px;
 }
 .progress-bar {
     width: 80px;
@@ -322,6 +337,81 @@ canvas {
     font-weight: 700;
     color: var(--cyan);
     font-family: 'Courier Prime';
+    white-space: nowrap;
+}
+
+/* Next button glow */
+.next-btn { margin-left: 8px; }
+.next-btn.glow {
+    animation: nextGlow 0.8s ease-in-out infinite alternate;
+    box-shadow: 0 0 12px var(--cyan), 0 4px 6px rgba(0,0,0,0.3);
+}
+@keyframes nextGlow {
+    from { filter: brightness(1); box-shadow: 0 0 8px var(--cyan); }
+    to { filter: brightness(1.2); box-shadow: 0 0 20px var(--cyan); }
+}
+
+/* Settings grid layout */
+.settings-grid {
+    display: grid;
+    grid-template-columns: auto 1fr auto 1fr;
+    gap: 6px 10px;
+    align-items: center;
+    padding: 8px 12px;
+}
+.settings-grid .label { font-size: 12px; white-space: nowrap; }
+.settings-grid .dropdown { width: 100%; font-size: 12px; padding: 5px 8px; }
+
+/* Header layout */
+.header-left { gap: 8px; flex-shrink: 0; }
+.header-right { gap: 6px; flex-wrap: nowrap; }
+
+/* Play frame */
+.play-frame {
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Session overlay */
+.session-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(8px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9000;
+}
+.session-card {
+    background: var(--bg-panel);
+    border: 2px solid var(--border-panel);
+    border-radius: 20px;
+    padding: 30px 40px;
+    text-align: center;
+    max-width: 400px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    animation: correctPulse 0.6s ease-out;
+}
+.session-badge {
+    font-size: 60px;
+    margin-bottom: 10px;
+}
+.session-title {
+    color: var(--cyan);
+    font-size: 22px;
+    margin: 8px 0;
+}
+.session-detail {
+    color: var(--text-muted);
+    font-size: 14px;
+    margin-bottom: 20px;
+}
+.session-restart {
+    font-size: 16px;
+    padding: 12px 30px;
+    border-radius: 30px;
 }
 
 /* === Desktop: hide mobile-only elements === */
@@ -353,17 +443,18 @@ canvas {
     .main-scrollable { width: 100%; gap: 2px; overflow-y: auto !important; overflow-x: hidden; }
     .mobile-only { display: inline-flex !important; }
 
-    /* Score label: prevent wrapping */
-    #score_label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+    /* Header: wrap into 2 rows */
+    .top-frame { padding: 4px 6px; flex-wrap: wrap; gap: 4px; }
+    .header-left { gap: 4px; }
+    .header-left .label { font-size: 10px; }
+    .header-left .dropdown { padding: 4px 6px; font-size: 10px; }
+    .header-right { gap: 4px; }
+    .next-btn { padding: 6px 10px; font-size: 11px; margin-left: 4px !important; }
+    .progress-bar { width: 50px; height: 4px; }
+    .progress-text { font-size: 8px; }
+    .streak-badge { font-size: 10px; }
 
-    /* Header compact */
-    .top-frame { padding: 4px 6px; flex-wrap: wrap; }
-    .top-frame .score-status { gap: 6px; }
-    #score_label { font-size: 10px; }
-    #ai_focus_label { font-size: 10px; }
-    #next_btn { padding: 6px 10px; font-size: 12px; margin-left: 6px !important; }
-
-    /* Settings collapsible — MUST use !important to override desktop display:contents */
+    /* Settings collapsible */
     .settings-collapsible {
         display: none !important;
         flex-direction: column;
@@ -372,25 +463,24 @@ canvas {
     .settings-collapsible.open {
         display: flex !important;
     }
-
-    /* Settings compact */
-    .settings-frame { padding: 4px 6px; }
-    .settings-frame .label { font-size: 11px; }
-    .settings-frame .dropdown { padding: 4px 8px; font-size: 12px; }
-    .settings-frame .flex-row.gap-small { margin-left: 6px !important; }
+    .settings-grid {
+        grid-template-columns: auto 1fr;
+        gap: 4px 8px;
+        padding: 6px 8px;
+    }
+    .settings-grid .label { font-size: 10px; }
+    .settings-grid .dropdown { font-size: 10px; padding: 4px 6px; }
 
     /* Orchestra compact */
     .instruments-row { padding: 4px 6px; }
-    .instruments-row .label { font-size: 11px; }
-    #voice_instruments_frame { gap: 6px; }
-    #voice_instruments_frame .dropdown { padding: 2px 4px; font-size: 10px; width: 80px; }
+    .instruments-row .label { font-size: 10px; }
+    #voice_instruments_frame { gap: 4px; }
+    #voice_instruments_frame .dropdown { padding: 2px 4px; font-size: 9px; width: 75px; }
 
-    /* Play frame compact */
-    .play-frame { padding: 3px 6px; }
-    .hardware-btn { font-size: 13px; padding: 5px 0; border-radius: 8px; }
-    .margin-r { margin-right: 6px; }
-    .margin-l { margin-left: 6px; }
-    .combo-text { font-size: 20px; }
+    /* Play frame: PLAY and ARP same height */
+    .play-frame { padding: 3px 6px; gap: 4px; }
+    .play-btn-fixed { height: 36px; font-size: 12px; border-radius: 8px; }
+    .combo-text { font-size: clamp(10px, 3vw, 16px); max-width: 80px; }
 
     /* Middle: stack vertically */
     .middle-frame {
@@ -398,8 +488,6 @@ canvas {
         flex-wrap: nowrap;
         min-height: 0 !important;
     }
-
-    /* Staff takes available space */
     .staff-frame { flex: 1; min-height: 100px; }
 
     /* Answers: stacked column below canvas */
@@ -416,20 +504,20 @@ canvas {
         min-height: auto;
     }
 
-    /* Solo: touch targets */
+    /* Solo: touch targets 44px */
     .solo-frame { padding: 2px 6px; }
-    .solo-label { font-size: 10px; margin-right: 6px !important; }
+    .solo-label { font-size: 10px; margin-right: 4px !important; }
     .solo-btn { padding: 4px 8px; font-size: 10px; min-height: 44px; min-width: 44px; }
-
-    /* Progress compact */
-    .progress-bar { width: 60px; }
-    .progress-text { font-size: 9px; }
-    .streak-badge { font-size: 11px; }
 
     /* Insight compact */
     .insight-frame { padding: 2px 6px; }
     .insight-frame .flex-row { font-size: 9px !important; margin-bottom: 2px !important; padding: 2px !important; }
     #insight_label { font-size: 10px; }
+
+    /* Session overlay mobile */
+    .session-card { padding: 20px 24px; }
+    .session-badge { font-size: 48px; }
+    .session-title { font-size: 18px; }
 }
 
 /* ============================================================
@@ -446,19 +534,19 @@ canvas {
     .main-scrollable { width: 100%; gap: 1px; overflow: visible !important; }
     .mobile-only { display: inline-flex !important; }
 
-    /* Score label compact */
-    #score_label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; font-size: 8px; }
+    /* Header ultra-compact */
+    .top-frame { padding: 1px 4px; gap: 2px; }
+    .header-left { gap: 3px; }
+    .header-left .label { font-size: 9px; }
+    .header-left .dropdown { padding: 2px 4px; font-size: 9px; }
+    .header-right { gap: 3px; }
+    .next-btn { padding: 2px 6px; font-size: 9px; margin-left: 2px !important; }
+    .progress-bar { width: 40px; height: 3px; }
+    .progress-text { font-size: 7px; }
+    .streak-badge { font-size: 9px; margin-left: 4px; }
+    .icon-btn { font-size: 12px; padding: 2px 4px; }
 
-    /* Header ultra-compact — single line */
-    .top-frame { padding: 1px 4px; }
-    .top-frame .score-status { gap: 4px; }
-    #ai_focus_label { font-size: 8px; }
-    #next_btn { padding: 2px 6px; font-size: 10px; margin-left: 4px !important; }
-    .top-frame .label { font-size: 10px; }
-    .top-frame .dropdown { padding: 2px 6px; font-size: 10px; }
-    .icon-btn { font-size: 12px; padding: 2px 6px; }
-
-    /* Settings collapsible — hidden by default, !important to override desktop */
+    /* Settings collapsible */
     .settings-collapsible {
         display: none !important;
         flex-direction: column;
@@ -467,25 +555,23 @@ canvas {
     .settings-collapsible.open {
         display: flex !important;
     }
-    .settings-frame { padding: 2px 4px; }
-    .settings-frame .label { font-size: 9px; }
-    .settings-frame .dropdown { padding: 2px 4px; font-size: 10px; }
+    .settings-grid {
+        grid-template-columns: auto 1fr auto 1fr;
+        gap: 2px 6px;
+        padding: 3px 6px;
+    }
+    .settings-grid .label { font-size: 8px; }
+    .settings-grid .dropdown { font-size: 8px; padding: 2px 4px; }
     .instruments-row { padding: 2px 4px; }
     #voice_instruments_frame { gap: 3px; }
     #voice_instruments_frame .dropdown { padding: 1px 2px; font-size: 8px; width: 60px; }
 
-    /* Play frame compact */
-    .play-frame {
-        padding: 1px 4px;
-        gap: 3px;
-        flex-wrap: nowrap;
-    }
-    .hardware-btn { font-size: 10px; padding: 2px 0; border-radius: 6px; }
-    .margin-r { margin-right: 3px; }
-    .margin-l { margin-left: 3px; }
-    .combo-text { font-size: 14px; min-width: 24px; text-align: center; }
+    /* Play frame compact: same height buttons */
+    .play-frame { padding: 1px 4px; gap: 3px; flex-wrap: nowrap; }
+    .play-btn-fixed { height: 28px; font-size: 9px; border-radius: 6px; }
+    .combo-text { font-size: clamp(9px, 2vw, 14px); max-width: 60px; }
 
-    /* Middle: side-by-side canvas + answers — MUST flex to fill */
+    /* Middle: side-by-side */
     .middle-frame {
         flex-wrap: nowrap;
         min-height: 0 !important;
@@ -494,22 +580,23 @@ canvas {
     }
     .staff-frame { flex: 2; min-height: 0 !important; }
 
-    /* Answers: narrow column on right */
-    .answers-frame {
-        width: 120px;
-        min-width: 100px;
-        flex-shrink: 0;
-    }
+    /* Answers column on right */
+    .answers-frame { width: 120px; min-width: 100px; flex-shrink: 0; }
     .answer-btn { font-size: 11px; padding: 2px 3px; }
 
-    /* Solo frame — compact below canvas */
+    /* Solo compact */
     .solo-frame { padding: 1px 3px; }
     .solo-label { display: none; }
     .solo-btn { padding: 2px 5px; font-size: 8px; }
     .solo-frame .gap-small { gap: 2px; }
 
-    /* Insight — ultra-compact in landscape */
+    /* Insight ultra-compact */
     .insight-frame { padding: 0 4px; }
     .insight-frame .flex-row { font-size: 7px !important; margin-bottom: 0 !important; padding: 1px !important; }
     #insight_label { display: none; }
+
+    /* Session overlay mobile */
+    .session-card { padding: 16px 20px; }
+    .session-badge { font-size: 40px; }
+    .session-title { font-size: 16px; }
 }

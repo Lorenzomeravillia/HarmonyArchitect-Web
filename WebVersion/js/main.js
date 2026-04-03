@@ -79,8 +79,12 @@ document.addEventListener("DOMContentLoaded", () => {
     // Session tracking
     let sessionCorrect = 0;
     let sessionTotal = 0;
-    let sessionSize = 10;
     let streak = 0;
+
+    function getSessionSize() {
+        let sel = document.getElementById('session_size_menu');
+        return sel ? parseInt(sel.value) : 10;
+    }
 
     // Earcons — simple WebAudio tones
     function playEarcon(correct) {
@@ -94,7 +98,6 @@ document.addEventListener("DOMContentLoaded", () => {
             gain.gain.exponentialRampToValueAtTime(0.001, now + (correct ? 0.3 : 0.25));
 
             if (correct) {
-                // Pleasant major third
                 [523.25, 659.25].forEach((f, i) => {
                     let osc = ctx.createOscillator();
                     osc.type = 'sine';
@@ -104,7 +107,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     osc.stop(now + 0.3);
                 });
             } else {
-                // Dissonant minor second buzz
                 let osc1 = ctx.createOscillator();
                 osc1.type = 'sawtooth';
                 osc1.frequency.value = 200;
@@ -121,40 +123,85 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch(e) {}
     }
 
-    // Update progress bar
+    // Unified progress bar + text
     function updateProgress() {
+        let sz = getSessionSize();
         let fill = document.getElementById('progress_fill');
         let text = document.getElementById('progress_text');
-        if (fill) fill.style.width = Math.min((sessionTotal / sessionSize) * 100, 100) + '%';
-        if (text) text.textContent = sessionTotal + '/' + sessionSize;
+        let pct = sessionTotal > 0 ? Math.round(sessionCorrect / sessionTotal * 100) : 0;
+        if (fill) fill.style.width = Math.min((sessionTotal / sz) * 100, 100) + '%';
+        if (text) text.textContent = '✓' + sessionCorrect + '/' + sz + ' (' + pct + '%)';
     }
 
-    // Update streak badge
+    // Streak badge
     function updateStreak() {
         let badge = document.getElementById('streak_badge');
         if (!badge) return;
         if (streak >= 2) {
             badge.style.display = 'inline';
-            badge.textContent = '🔥 ' + streak;
-            // Re-trigger animation
+            badge.textContent = '🔥' + streak;
             badge.style.animation = 'none';
-            badge.offsetHeight; // force reflow
+            badge.offsetHeight;
             badge.style.animation = '';
         } else {
             badge.style.display = 'none';
         }
     }
 
-    // Compact score on mobile
-    function updateScore() {
-        let lbl = document.getElementById('score_label');
-        let pct = sessionTotal > 0 ? Math.round(sessionCorrect / sessionTotal * 100) : 0;
-        if (window.innerWidth <= 1024) {
-            lbl.textContent = sessionCorrect + '/' + sessionTotal + ' (' + pct + '%)';
-        } else {
-            lbl.textContent = 'Score Sessione: ' + sessionCorrect + ' / ' + sessionTotal + ' | Win Rate Globale: ' + pct + '%';
+    // Auto-next: make Nuova Sfida glow after answer
+    function triggerAutoNext() {
+        let btn = document.getElementById('next_btn');
+        if (btn) {
+            btn.classList.add('glow');
+            btn.textContent = '→ Prossima';
         }
     }
+    function clearAutoNext() {
+        let btn = document.getElementById('next_btn');
+        if (btn) {
+            btn.classList.remove('glow');
+            btn.textContent = '↻ Nuova Sfida';
+        }
+    }
+
+    // Session completion overlay
+    function showSessionComplete() {
+        let sz = getSessionSize();
+        let pct = Math.round(sessionCorrect / sz * 100);
+        let badge, title, detail;
+
+        if (pct >= 90) { badge = '🥇'; title = 'Eccellente!'; }
+        else if (pct >= 70) { badge = '🥈'; title = 'Ottimo lavoro!'; }
+        else if (pct >= 50) { badge = '🥉'; title = 'Buon inizio!'; }
+        else { badge = '💪'; title = 'Continua a provare!'; }
+
+        detail = sessionCorrect + '/' + sz + ' corrette (' + pct + '%)';
+        if (streak >= 3) detail += ' | Best streak: 🔥' + streak;
+
+        document.getElementById('session_badge').textContent = badge;
+        document.getElementById('session_title').textContent = title;
+        document.getElementById('session_detail').textContent = detail;
+        document.getElementById('session_overlay').classList.remove('hidden');
+    }
+
+    function resetSession() {
+        sessionCorrect = 0;
+        sessionTotal = 0;
+        streak = 0;
+        updateProgress();
+        updateStreak();
+        document.getElementById('session_overlay').classList.add('hidden');
+        clearAutoNext();
+    }
+
+    // Session restart button
+    document.getElementById('session_restart_btn')?.addEventListener('click', () => {
+        resetSession();
+        startNewChallenge();
+    });
+
+    // Session size change resets session
+    document.getElementById('session_size_menu')?.addEventListener('change', resetSession);
 
     const levelSelect = document.getElementById("level_select");
     Object.keys(LEVEL_POOLS_SINGLE).forEach(lvl => {
@@ -226,18 +273,27 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
 
                 playEarcon(correct);
-                updateScore();
                 updateProgress();
                 updateStreak();
 
                 // Haptic feedback
                 if (navigator.vibrate) navigator.vibrate(correct ? 10 : [30, 20, 30]);
+
+                // Auto-next glow after 1s, or session complete
+                setTimeout(() => {
+                    if (sessionTotal >= getSessionSize()) {
+                        showSessionComplete();
+                    } else {
+                        triggerAutoNext();
+                    }
+                }, 1000);
             };
             answersFrame.appendChild(b);
         });
     }
 
     function startNewChallenge() {
+        clearAutoNext();
         if(window.audioEngine.ctx.state === 'suspended') window.audioEngine.ctx.resume();
         window.gui.drawPitches([]); 
         
