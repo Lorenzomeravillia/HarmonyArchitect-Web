@@ -264,3 +264,170 @@ canvas {
     font-family: 'Courier Prime';
     text-shadow: 0 0 10px rgba(243, 156, 18, 0.5);
 }
+
+/* === Desktop: hide mobile-only elements === */
+.mobile-only { display: none !important; }
+
+/* Settings collapsible wrapper — always visible on desktop */
+.settings-collapsible {
+    display: contents; /* acts as transparent wrapper on desktop */
+}
+
+/* ============================================================
+   MOBILE PORTRAIT
+   ============================================================ */
+@media (max-width: 900px) and (orientation: portrait) {
+    body { padding: 2px; padding-top: env(safe-area-inset-top, 2px); }
+    .main-scrollable { width: 100%; gap: 2px; overflow-y: auto; overflow-x: hidden; }
+    .mobile-only { display: inline-flex !important; }
+
+    /* Score label: prevent wrapping */
+    #score_label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+
+    /* Header compact */
+    .top-frame { padding: 4px 6px; }
+    .top-frame .score-status { gap: 6px; }
+    #score_label { font-size: 10px; }
+    #ai_focus_label { font-size: 10px; }
+    #next_btn { padding: 6px 10px; font-size: 12px; margin-left: 6px !important; }
+
+    /* Settings collapsible — hidden by default on mobile */
+    .settings-collapsible {
+        display: none;
+        flex-direction: column;
+        gap: 2px;
+    }
+    .settings-collapsible.open {
+        display: flex;
+    }
+
+    /* Settings compact */
+    .settings-frame { padding: 4px 6px; }
+    .settings-frame .label { font-size: 11px; }
+    .settings-frame .dropdown { padding: 4px 8px; font-size: 12px; }
+    .settings-frame .flex-row.gap-small { margin-left: 6px !important; }
+
+    /* Orchestra compact */
+    .instruments-row { padding: 4px 6px; }
+    .instruments-row .label { font-size: 11px; }
+    #voice_instruments_frame { gap: 6px; }
+    #voice_instruments_frame .dropdown { padding: 2px 4px; font-size: 10px; width: 80px; }
+
+    /* Play frame compact */
+    .play-frame { padding: 3px 6px; }
+    .hardware-btn { font-size: 13px; padding: 5px 0; border-radius: 8px; }
+    .margin-r { margin-right: 6px; }
+    .margin-l { margin-left: 6px; }
+    .combo-text { font-size: 20px; }
+
+    /* Middle: stack vertically */
+    .middle-frame {
+        flex-direction: column;
+        flex-wrap: nowrap;
+        min-height: 120px;
+    }
+
+    /* Staff takes available space */
+    .staff-frame { flex: 1; min-height: 100px; }
+
+    /* Answers: stacked column below canvas */
+    .answers-frame {
+        width: 100%;
+        flex-direction: column;
+        gap: 3px;
+        flex-shrink: 0;
+    }
+    .answer-btn {
+        flex: 0 0 auto;
+        padding: 10px 8px;
+        font-size: 13px;
+        min-height: auto;
+    }
+
+    /* Solo compact */
+    .solo-frame { padding: 2px 6px; }
+    .solo-label { font-size: 10px; margin-right: 6px !important; }
+    .solo-btn { padding: 4px 8px; font-size: 10px; }
+
+    /* Insight compact */
+    .insight-frame { padding: 2px 6px; }
+    .insight-frame .flex-row { font-size: 9px !important; margin-bottom: 2px !important; padding: 2px !important; }
+    #insight_label { font-size: 10px; }
+}
+
+/* ============================================================
+   MOBILE LANDSCAPE
+   ============================================================ */
+@media (max-width: 900px) and (orientation: landscape) {
+    body { padding: 2px; padding-left: env(safe-area-inset-left, 2px); padding-right: env(safe-area-inset-right, 2px); }
+    .main-scrollable { width: 100%; gap: 1px; }
+    .mobile-only { display: inline-flex !important; }
+
+    /* Score label compact */
+    #score_label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; font-size: 8px; }
+
+    /* Header ultra-compact */
+    .top-frame { padding: 1px 6px; }
+    .top-frame .score-status { gap: 6px; }
+    #score_label { font-size: 9px; }
+    #ai_focus_label { font-size: 9px; }
+    #next_btn { padding: 4px 8px; font-size: 11px; margin-left: 6px !important; }
+    .label { font-size: 11px; }
+
+    /* Settings collapsible — hidden by default */
+    .settings-collapsible {
+        display: none;
+        flex-direction: column;
+        gap: 1px;
+    }
+    .settings-collapsible.open {
+        display: flex;
+    }
+    .settings-frame { padding: 2px 6px; }
+    .settings-frame .label { font-size: 10px; }
+    .settings-frame .dropdown { padding: 3px 6px; font-size: 11px; }
+    .instruments-row { padding: 2px 6px; }
+    #voice_instruments_frame { gap: 4px; }
+    #voice_instruments_frame .dropdown { padding: 2px 3px; font-size: 9px; width: 70px; }
+
+    /* Play frame: MERGED with solo buttons in one row */
+    .play-frame {
+        padding: 1px 4px;
+        gap: 4px;
+        flex-wrap: nowrap;
+    }
+    .hardware-btn { font-size: 11px; padding: 3px 0; border-radius: 8px; }
+    .margin-r { margin-right: 4px; }
+    .margin-l { margin-left: 4px; }
+    .combo-text { font-size: 16px; min-width: 30px; text-align: center; }
+
+    /* Middle: side-by-side canvas + answers */
+    .middle-frame {
+        flex-wrap: nowrap;
+        min-height: 0;
+        flex: 1;
+    }
+    .staff-frame { flex: 2; min-height: 0; }
+
+    /* Answers: narrower column on right */
+    .answers-frame {
+        width: 140px;
+        min-width: 120px;
+        flex-shrink: 0;
+    }
+    .answer-btn { font-size: 12px; padding: 2px 4px; }
+
+    /* Solo frame — merge into play-frame visually */
+    .solo-frame {
+        order: -1; /* Move above middle-frame in DOM order won't work, handled via CSS grid if needed */
+        padding: 1px 4px;
+    }
+    .solo-label { display: none; } /* Hide "ISOLATE:" label */
+    .solo-btn { padding: 3px 6px; font-size: 9px; }
+    .solo-frame .gap-small { gap: 3px; }
+
+    /* Insight one-line */
+    .insight-frame { padding: 1px 4px; }
+    .insight-frame .flex-row { font-size: 8px !important; margin-bottom: 0 !important; padding: 1px !important; }
+    #insight_label { font-size: 9px; }
+}

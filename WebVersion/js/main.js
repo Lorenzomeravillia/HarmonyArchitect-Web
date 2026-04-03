@@ -14,6 +14,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
     window.gui = new GUI();
 
+    // Settings toggle for mobile
+    let settingsToggle = document.getElementById("settings_toggle");
+    let settingsPanel = document.getElementById("settings_collapsible");
+    if (settingsToggle && settingsPanel) {
+        settingsToggle.addEventListener("click", () => {
+            settingsPanel.classList.toggle("open");
+            settingsToggle.innerText = settingsPanel.classList.contains("open") ? "✕" : "⚙";
+        });
+    }
+
     // Sblocca WebAudio su iOS al primissimo tocco (Policy Apple)
     document.addEventListener('touchstart', function() {
         if(window.audioEngine && window.audioEngine.ctx && window.audioEngine.ctx.state === 'suspended') {
