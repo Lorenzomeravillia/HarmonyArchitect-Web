@@ -40,15 +40,36 @@ class MusicEngine {
         return (octave + 1) * 12 + pc;
     }
     
-    getNoteFromMidi(midi) {
+    // Determine if a root key should use sharps or flats
+    // Sharp keys: G, D, A, E, B, F#, C# (and their enharmonics)
+    // Flat keys: F, Bb, Eb, Ab, Db, Gb, Cb
+    getSpellingForRoot(rootStr) {
+        const sharpRoots = ['G', 'D', 'A', 'E', 'B', 'F#', 'C#', 'G#', 'D#', 'A#'];
+        const flatRoots = ['F', 'Bb', 'Eb', 'Ab', 'Db', 'Gb', 'Cb'];
+        if (sharpRoots.includes(rootStr)) return 'sharp';
+        if (flatRoots.includes(rootStr)) return 'flat';
+        return 'flat'; // C defaults to flat notation
+    }
+    
+    getNoteFromMidi(midi, useSharp) {
         let oct = Math.floor(midi / 12) - 1;
         let pc = midi % 12;
         
-        // Semplice interpretazione di bemolli per le note nere 
-        // In una vera app si userebbe il circolo delle quinte, qui per l'UI basta questo
-        let name = this.notesStr[pc];
-        let acc = name.length > 1 ? name[1] : "";
-        let step = oct * 7 + this.stepMap[name[0]];
+        // Choose spelling based on context
+        let noteNames;
+        if (useSharp) {
+            noteNames = this.notesStrSharp; // C C# D D# E F F# G G# A A# B
+        } else {
+            noteNames = this.notesStr;      // C Db D Eb E F Gb G Ab A Bb B
+        }
+        
+        let name = noteNames[pc];
+        let baseLetter = name[0];
+        let acc = '';
+        if (name.length > 1) {
+            acc = name.substring(1); // 'b' or '#'
+        }
+        let step = oct * 7 + this.stepMap[baseLetter];
         
         return { 
             name: name, 
@@ -61,11 +82,14 @@ class MusicEngine {
     }
     
     generateVoicing(symbol, baseOctave="C4", drop2=true, prevVoicing=null) {
-        // Estrai root e qualità. Es "D-9" -> root D, type "-9"
         let match = symbol.match(/^([A-G][b#]?)(.*)/);
         if(!match) return [];
         let rootStr = match[1];
         let typeStr = match[2];
+        
+        // Determine enharmonic spelling from root
+        let spelling = this.getSpellingForRoot(rootStr);
+        let useSharp = (spelling === 'sharp');
         
         // Gestisci notazione jazz "-"
         if (typeStr.startsWith("-")) typeStr = typeStr.replace("-", "m");
@@ -83,28 +107,24 @@ class MusicEngine {
         notesMidi = notesMidi.filter(m => (m % 12) !== rootPc);
         
         if (drop2 && prevVoicing) {
-            // Ottimizzazione Voice Leading con l'accordo precedente
             let prevTreble = prevVoicing.filter(n => n.voiceIdx > 0).map(n => Math.round(69 + 12 * Math.log2(n.frequency/440)));
             if (prevTreble.length > 0) {
                 let avgPrev = prevTreble.reduce((a,b)=>a+b)/prevTreble.length;
                 let bestCand = null;
                 let minDist = 9999;
                 
-                // Cerca 3 ottave * n inversioni
                 for (let octOffset of [-12, 0, 12]) {
                     for (let rot = 0; rot < notesMidi.length; rot++) {
                         let cand = notesMidi.slice();
-                        for(let i=0; i<rot; i++) cand[i] += 12; // Inverti note base
+                        for(let i=0; i<rot; i++) cand[i] += 12;
                         cand.sort((a,b)=>a-b);
                         cand = cand.map(m => m + octOffset);
                         
                         let avgCand = cand.reduce((a,b)=>a+b)/cand.length;
                         let dist = Math.abs(avgCand - avgPrev);
                         
-                        // Penalizza estremi di registro vocali rigorosi: Mai sotto D3 (50) e mai sopra G5 (79)
                         if (cand[cand.length-1] > 79 || cand[0] < 50) dist += 200;
                         
-                        // Penalizza salti grossi nella top voice (Lead)
                         let topCand = cand[cand.length-1];
                         let topPrev = prevTreble[prevTreble.length-1];
                         dist += Math.abs(topCand - topPrev) * 0.5;
@@ -115,36 +135,31 @@ class MusicEngine {
                 if (bestCand) notesMidi = bestCand;
             }
         } else if (drop2 && notesMidi.length >= 4) {
-            // Semplice Drop 2 sul primo accordo per dare spaziosità
             let dropped = notesMidi.splice(notesMidi.length - 2, 1)[0];
-            dropped -= 12; // scendi di 1 ottava (12 semitoni)
+            dropped -= 12;
             notesMidi.unshift(dropped);
         }
         
-        // Force clamp sotto G5 (79)
         while(notesMidi[notesMidi.length-1] > 79) { 
             for(let i=0; i<notesMidi.length; i++) notesMidi[i] -= 12; 
         }
         
-        // Aggiungi la linea di Basso alla fine (inizio array, in fondo al pitch)
         let bassMidi = this.getMidi(rootStr, baseOctInt === 4 ? 3 : 2);
         
-        // Il basso assoluto non può MAI scendere sotto F2 (41) e resta sotto F3 (53)
         if (bassMidi < 41) bassMidi += 12;
         if (bassMidi > 53) bassMidi -= 12;
         
         notesMidi.unshift(bassMidi);
         
         let result = notesMidi.map((midi, idx) => {
-            let noteObj = this.getNoteFromMidi(midi);
+            let noteObj = this.getNoteFromMidi(midi, useSharp);
             let ival = (noteObj.chroma - rootPc + 12) % 12;
             
-            // Colori standard di Harmony Architect UI
-            let color = "#e74c3c"; // rosso (Estensioni / Alterazioni)
-            if (ival === 0) color = "#3498db"; // blu (Fondamentale)
-            else if (ival === 3 || ival === 4) color = "#2ecc71"; // verde (Terza)
-            else if (ival === 7) color = "#f1c40f"; // giallo (Quinta)
-            else if (ival === 10 || ival === 11) color = "#C26A23"; // arancio (Settima)
+            let color = "#e74c3c";
+            if (ival === 0) color = "#3498db";
+            else if (ival === 3 || ival === 4) color = "#2ecc71";
+            else if (ival === 7) color = "#f1c40f";
+            else if (ival === 10 || ival === 11) color = "#C26A23";
 
             return {
                 name: noteObj.name,
