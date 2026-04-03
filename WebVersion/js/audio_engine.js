@@ -33,40 +33,18 @@ class AudioEngine {
     }
 
     _loadProg(prog) {
-        const info = this.player.loader.instrumentInfo(prog);
-        if (info) this.player.loader.startLoad(this.ctx, info.url, info.variable);
+        // Use FluidR3_GM presets (higher quality). URL format: prog*10 zero-padded to 4 digits.
+        const num = String(prog * 10).padStart(4, '0');
+        const varName = `_tone_${num}_FluidR3_GM_sf2_file`;
+        const url = `https://surikov.github.io/webaudiofont/npm/dist/${num}_FluidR3_GM_sf2_file.js`;
+        this.player.loader.startLoad(this.ctx, url, varName);
     }
 
-    // Called on first user gesture (start overlay tap).
+    // Called on first user gesture (start overlay tap) — unlocks AudioContext on iOS.
     unlockAndLoad() {
         if (this._unlocked) return;
         this._unlocked = true;
-
-        if (window.dlog) window.dlog('unlockAndLoad — ctx state: ' + this.ctx.state);
-
-        this.ctx.onstatechange = () => {
-            if (window.dlog) window.dlog('statechange → ' + this.ctx.state);
-        };
-
-        // resume() must be called synchronously within the gesture call stack
-        this.ctx.resume()
-            .then(() => { if (window.dlog) window.dlog('resume OK — state: ' + this.ctx.state); })
-            .catch(e => { if (window.dlog) window.dlog('resume ERR: ' + e); });
-
-        // Oscillator beep test — simplest possible WebAudio, no presets needed
-        try {
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-            gain.gain.value = 0.5;
-            osc.connect(gain);
-            gain.connect(this.ctx.destination);
-            osc.start();
-            osc.stop(this.ctx.currentTime + 0.4);
-            if (window.dlog) window.dlog('osc beep scheduled — ctx: ' + this.ctx.state);
-        } catch(e) {
-            if (window.dlog) window.dlog('osc err: ' + e);
-        }
-
+        this.ctx.resume().catch(() => {});
         this.channels.forEach(prog => this._loadProg(prog));
     }
 
@@ -79,7 +57,12 @@ class AudioEngine {
     }
 
     _getPreset(channelIdx) {
-        const info = this.player.loader.instrumentInfo(this.channels[channelIdx]);
+        const prog = this.channels[channelIdx];
+        const num = String(prog * 10).padStart(4, '0');
+        const varName = `_tone_${num}_FluidR3_GM_sf2_file`;
+        if (window[varName]) return window[varName];
+        // Fallback to default preset if FluidR3 not yet loaded
+        const info = this.player.loader.instrumentInfo(prog);
         return info ? (window[info.variable] || null) : null;
     }
 
