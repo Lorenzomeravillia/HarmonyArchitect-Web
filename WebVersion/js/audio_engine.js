@@ -1,7 +1,10 @@
 class AudioEngine {
     constructor() {
+        // Placeholder ctx — may be permanently suspended on iOS (created outside gesture).
+        // Will be replaced with a fresh one inside unlockAndLoad().
         this.ctx = new (window.AudioContext || window.webkitAudioContext)();
         this.player = new WebAudioFontPlayer();
+        this._unlocked = false;
 
         this.instrumentPrograms = {
             "Contrabbasso": 43,
@@ -23,7 +26,9 @@ class AudioEngine {
         // 7 voice channels (GM program numbers)
         this.channels = [43, 42, 56, 60, 41, 71, 73];
 
-        // Load all instrument scripts once at startup (same as original)
+        // Pre-inject instrument scripts so they are ready when ctx is created.
+        // On desktop the placeholder ctx is usable; on iOS a new ctx will be
+        // created inside the user gesture and these already-loaded presets reused.
         this.channels.forEach(prog => this._loadProg(prog));
     }
 
@@ -32,9 +37,20 @@ class AudioEngine {
         if (info) this.player.loader.startLoad(this.ctx, info.url, info.variable);
     }
 
-    // Called on first user gesture — iOS unlock only, no re-downloading scripts.
+    // Called on first user gesture (start overlay tap).
+    // Creates a FRESH AudioContext inside the gesture so iOS starts it as 'running'.
+    // The placeholder ctx created at page load may be permanently suspended on iOS.
     unlockAndLoad() {
-        // Synchronous silent buffer — iOS canonical WebAudio unlock
+        if (this._unlocked) return;
+        this._unlocked = true;
+
+        // Close the possibly-suspended placeholder ctx
+        try { this.ctx.close(); } catch(e) {}
+
+        // New ctx created synchronously inside user gesture — iOS starts it 'running'
+        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+        // Silent buffer: canonical iOS WebAudio unlock
         try {
             const buf = this.ctx.createBuffer(1, 1, 22050);
             const src = this.ctx.createBufferSource();
@@ -42,7 +58,10 @@ class AudioEngine {
             src.connect(this.ctx.destination);
             src.start(0);
         } catch(e) {}
-        this.ctx.resume();
+
+        // Instrument scripts are already injected (done in constructor).
+        // Re-associate them with the new ctx so presets resolve correctly.
+        this.channels.forEach(prog => this._loadProg(prog));
     }
 
     setChannelInstrument(channelIdx, instrumentName) {
