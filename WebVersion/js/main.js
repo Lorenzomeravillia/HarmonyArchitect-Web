@@ -2,13 +2,30 @@ document.addEventListener("DOMContentLoaded", () => {
     // Detect iOS
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
+    // On-screen debug panel — visible only on iOS, auto-removes after 30s
+    const dbg = document.createElement('div');
+    dbg.id = 'ios_debug';
+    dbg.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.85);color:#0f0;font:11px monospace;padding:6px;z-index:99999;max-height:35vh;overflow-y:auto;display:' + (isIOS ? 'block' : 'none');
+    document.body.appendChild(dbg);
+    function dlog(msg) {
+        if (!isIOS) return;
+        const line = document.createElement('div');
+        line.textContent = new Date().toISOString().slice(11,19) + ' ' + msg;
+        dbg.appendChild(line);
+        dbg.scrollTop = dbg.scrollHeight;
+        console.log('[CV]', msg);
+    }
+    setTimeout(() => { if(dbg.parentNode) dbg.parentNode.removeChild(dbg); }, 30000);
+    window.dlog = dlog;
+
     // PWA Start Overlay — also the first user gesture, used to unlock AudioContext on iOS
     let startOverlay = document.getElementById("start_overlay");
     if(startOverlay) {
         startOverlay.addEventListener("click", (e) => {
             startOverlay.style.display = "none";
-            // Unlock AudioContext and load instruments NOW (requires user gesture on iOS)
+            dlog('tap — ctx state: ' + window.audioEngine.ctx.state);
             window.audioEngine.unlockAndLoad();
+            dlog('unlockAndLoad called — ctx: ' + window.audioEngine.ctx.state);
             // Skip fullscreen on iOS — it doesn't work
             if (!isIOS) {
                 if (document.documentElement.requestFullscreen) {
@@ -383,6 +400,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("next_btn").addEventListener("click", startNewChallenge);
 
     document.getElementById("play_btn").addEventListener("click", () => {
+        dlog('PLAY — ctx:' + window.audioEngine.ctx.state + ' ch0preset:' + (window.audioEngine._getPreset(0) ? 'OK' : 'NULL'));
         if(window.audioEngine.ctx.state === 'suspended') window.audioEngine.ctx.resume();
         if(!window.currentSymbol && !window.currentProgression) startNewChallenge();
         
