@@ -86,6 +86,11 @@ document.addEventListener("DOMContentLoaded", () => {
         return sel ? parseInt(sel.value) : 5;
     }
 
+    function getStaggerMs() {
+        let sel = document.getElementById('spread_menu');
+        return sel ? parseInt(sel.value) : 40;
+    }
+
     // Earcons — simple WebAudio tones
     function playEarcon(correct) {
         try {
@@ -406,8 +411,9 @@ document.addEventListener("DOMContentLoaded", () => {
             window.currentVoicings = voicings;
             window.gui.drawPitches(voicings);
             
+            let stagger = getStaggerMs();
             voicings.forEach((v, i) => {
-                setTimeout(() => window.audioEngine.playChord(v, cutDuration, i), i * tempoMs); 
+                setTimeout(() => window.audioEngine.playChord(v, cutDuration, i, stagger), i * tempoMs);
             });
             window.gui.setInsight("Progression (" + tempoMs + "ms). Drop-2: " + (isOptimized ? "ON" : "OFF"));
         } else {
@@ -416,7 +422,7 @@ document.addEventListener("DOMContentLoaded", () => {
             window.currentVoicings = [targetVoicing];
             window.gui.drawPitches([targetVoicing]); 
             // In modalità accordo singolo indichiamo chordIdx 0
-            window.audioEngine.playChord(targetVoicing, cutDuration, 0);
+            window.audioEngine.playChord(targetVoicing, cutDuration, 0, getStaggerMs());
             
             let insight = `Base: C3 | Voicing: ${isOptimized ? "Opt. (Drop-2)" : "Root"}`;
             window.gui.setInsight(insight);

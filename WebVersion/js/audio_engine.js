@@ -1,88 +1,97 @@
 class AudioEngine {
     constructor() {
         this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-        this.player = new WebAudioFontPlayer();
-        
-        // GM Instruments map
-        this.instrumentPrograms = {
-            "Contrabbasso": 43,
-            "Violoncello": 42,
-            "Fagotto": 70,
-            "Corno": 60,
-            "Viola": 41,
-            "Clarinetto": 71,
-            "Flauto": 73,
-            "Piano": 0,
-            "Chitarra": 24,
-            "Violino": 40,
-            "Tromba": 56,
-            "Sassofono": 65,
-            "Organo": 19,
-            "Arpa": 46
+
+        // Italian display name → MusyngKite soundfont name
+        this.instrumentMap = {
+            "Contrabbasso": "contrabass",
+            "Violoncello":  "cello",
+            "Fagotto":      "bassoon",
+            "Corno":        "french_horn",
+            "Viola":        "viola",
+            "Clarinetto":   "clarinet",
+            "Flauto":       "flute",
+            "Piano":        "acoustic_grand_piano",
+            "Chitarra":     "acoustic_guitar_nylon",
+            "Violino":      "violin",
+            "Tromba":       "trumpet",
+            "Sassofono":    "tenor_sax",
+            "Organo":       "church_organ",
+            "Arpa":         "orchestral_harp"
         };
 
-        this.channels = [43, 42, 56, 60, 41, 71, 73]; // default GM voices: Basso, Cello, Tromba(56), Corno, Viola...
-        
-        // Load initial
-        this.channels.forEach((prog) => this.loadInstrument(prog));
+        // Kept for gui.js compatibility (Object.keys used to build dropdowns)
+        this.instrumentPrograms = Object.fromEntries(
+            Object.keys(this.instrumentMap).map((k, i) => [k, i])
+        );
+
+        // 7 voice channels — names and loaded instrument objects
+        this.channelNames = ["Contrabbasso", "Violoncello", "Tromba", "Corno", "Viola", "Clarinetto", "Flauto"];
+        this.instruments  = new Array(7).fill(null);
+
+        this._loadAll();
     }
 
-    async loadInstrument(progId, cb) {
-        let info = this.player.loader.instrumentInfo(progId);
-        if(!info) return;
-        this.player.loader.startLoad(this.ctx, info.url, info.variable);
-        this.player.loader.waitLoad(function () {
-            if(cb) cb();
-        });
+    _sfName(displayName) {
+        return this.instrumentMap[displayName] || 'acoustic_grand_piano';
     }
 
-    setChannelInstrument(channelIdx, instrumentName) {
-        if(channelIdx >= 0 && channelIdx < this.channels.length) {
-            let prog = this.instrumentPrograms[instrumentName] || 0;
-            this.channels[channelIdx] = prog;
-            this.loadInstrument(prog);
+    async _loadOne(idx, displayName) {
+        try {
+            this.instruments[idx] = await Soundfont.instrument(this.ctx, this._sfName(displayName), {
+                format:    'mp3',
+                soundfont: 'MusyngKite'
+            });
+        } catch(e) {
+            console.warn('ClearVoicing: failed to load', displayName, e);
         }
     }
 
-    playPitch(channelIdx, freq, duration=1.8, chordIdx=null) {
-        // Frequency to MIDI Note
-        let pitch = Math.round(69 + 12 * Math.log2(freq / 440));
-        this.playNote(channelIdx, pitch, 100, duration, chordIdx);
+    _loadAll() {
+        this.channelNames.forEach((name, i) => this._loadOne(i, name));
     }
 
-    playNote(channelIdx, midiPitch, velocity=100, duration=1.5, chordIdx=null) {
+    async setChannelInstrument(channelIdx, displayName) {
+        if (channelIdx < 0 || channelIdx >= this.channelNames.length) return;
+        this.channelNames[channelIdx] = displayName;
+        this.instruments[channelIdx] = null;
+        await this._loadOne(channelIdx, displayName);
+    }
+
+    playPitch(channelIdx, freq, duration = 1.8, chordIdx = null) {
+        const midi = Math.round(69 + 12 * Math.log2(freq / 440));
+        this.playNote(channelIdx, midi, 100, duration, chordIdx);
+    }
+
+    playNote(channelIdx, midiPitch, velocity = 100, duration = 1.5, chordIdx = null) {
         if (this.ctx.state === 'suspended') this.ctx.resume();
-        let prog = this.channels[channelIdx];
-        let info = this.player.loader.instrumentInfo(prog);
-        if(!info) return;
-        
-        let preset = window[info.variable]; 
-        if (preset) {
-            this.player.queueWaveTable(this.ctx, this.ctx.destination, preset, this.ctx.currentTime, midiPitch, duration, velocity/127);
-            
-            let freq = 440 * Math.pow(2, (midiPitch-69)/12);
-            if(window.gui && window.gui.highlight) window.gui.highlight(channelIdx, freq, duration * 1000, chordIdx);
-        }
+        const inst = this.instruments[channelIdx];
+        if (!inst) return;
+        inst.play(midiPitch, this.ctx.currentTime, { duration, gain: velocity / 127 });
+        const freq = 440 * Math.pow(2, (midiPitch - 69) / 12);
+        if (window.gui?.highlight) window.gui.highlight(channelIdx, freq, duration * 1000, chordIdx);
     }
 
-    playChord(notesArray, durationOverride=null, chordIdx=null) {
-        let time = this.ctx.currentTime;
+    playChord(notesArray, durationOverride = null, chordIdx = null, staggerMs = 40) {
+        const staggerSec = staggerMs / 1000;
+        const now = this.ctx.currentTime;
+        const dur = durationOverride !== null ? durationOverride : 1.87;
+
         notesArray.forEach((item, idx) => {
-            let freq = item.frequency || item.freq;
-            let pitch = Math.round(69 + 12 * Math.log2(freq / 440));
-            let st = time + 0.1 + (idx * 0.04); // Stagger by 40ms to avoid audio overload/clip
-            
-            let prog = this.channels[item.voiceIdx];
-            let info = this.player.loader.instrumentInfo(prog);
-            let preset = window[info.variable]; 
-            if(preset) {
-                let dur = durationOverride !== null ? durationOverride : 1.87; // ~1.56 * 1.2 for 20% slower
-                this.player.queueWaveTable(this.ctx, this.ctx.destination, preset, st, pitch, dur, 0.35); // V=0.35
-                
-                // Overlay CSS Highlighter async
-                if(window.gui && window.gui.highlight) {
-                    setTimeout(() => window.gui.highlight(item.voiceIdx, freq, dur * 800, chordIdx), (0.1 + (idx * 0.04)) * 1000);
-                }
+            const freq = item.frequency || item.freq;
+            const midi = Math.round(69 + 12 * Math.log2(freq / 440));
+            const when = now + 0.1 + idx * staggerSec;
+
+            const inst = this.instruments[item.voiceIdx];
+            if (!inst) return;
+
+            inst.play(midi, when, { duration: dur, gain: 0.35 });
+
+            if (window.gui?.highlight) {
+                setTimeout(
+                    () => window.gui.highlight(item.voiceIdx, freq, dur * 800, chordIdx),
+                    (0.1 + idx * staggerSec) * 1000
+                );
             }
         });
     }

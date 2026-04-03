@@ -6,10 +6,10 @@
     <title>ClearVoicing</title>
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Courier+Prime:wght@700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=13">
+    <link rel="stylesheet" href="css/style.css?v=14">
 
-    <!-- WebAudioFontPlayer -->
-    <script src="https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js"></script>
+    <!-- Soundfont Player (MusyngKite high-quality samples) -->
+    <script src="https://cdn.jsdelivr.net/npm/soundfont-player/dist/soundfont-player.min.js"></script>
 </head>
 <body>
     <div id="app" class="main-scrollable">
@@ -53,9 +53,11 @@
                     <option value="1560" selected>Medium</option>
                     <option value="960">Fast</option>
                 </select>
-                <span class="label">Training:</span>
-                <select id="training_menu" class="dropdown orange-btn">
-                    <option selected>Standard</option>
+                <span class="label">Spread:</span>
+                <select id="spread_menu" class="dropdown orange-btn">
+                    <option value="40">Together</option>
+                    <option value="200">Spread</option>
+                    <option value="450">Wide</option>
                 </select>
                 <span class="label">Session:</span>
                 <select id="session_size_menu" class="dropdown">
@@ -146,9 +148,9 @@
         <span>Tap to start</span>
     </div>
 
-    <script src="js/audio_engine.js?v=13"></script>
-    <script src="js/music_engine.js?v=13"></script>
-    <script src="js/gui.js?v=13"></script>
-    <script src="js/main.js?v=13"></script>
+    <script src="js/audio_engine.js?v=14"></script>
+    <script src="js/music_engine.js?v=14"></script>
+    <script src="js/gui.js?v=14"></script>
+    <script src="js/main.js?v=14"></script>
 </body>
 </html>
