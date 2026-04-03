@@ -6,7 +6,7 @@
     <title>ClearVoicing</title>
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Courier+Prime:wght@700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=14">
+    <link rel="stylesheet" href="css/style.css?v=15">
 
     <!-- Soundfont Player (MusyngKite high-quality samples) -->
     <script src="https://cdn.jsdelivr.net/npm/soundfont-player/dist/soundfont-player.min.js"></script>
@@ -53,11 +53,11 @@
                     <option value="1560" selected>Medium</option>
                     <option value="960">Fast</option>
                 </select>
-                <span class="label">Spread:</span>
-                <select id="spread_menu" class="dropdown orange-btn">
-                    <option value="40">Together</option>
-                    <option value="200">Spread</option>
-                    <option value="450">Wide</option>
+                <span class="label">Volume:</span>
+                <select id="volume_menu" class="dropdown orange-btn">
+                    <option value="0.45">Low</option>
+                    <option value="0.70" selected>Medium</option>
+                    <option value="1.00">High</option>
                 </select>
                 <span class="label">Session:</span>
                 <select id="session_size_menu" class="dropdown">
@@ -148,9 +148,9 @@
         <span>Tap to start</span>
     </div>
 
-    <script src="js/audio_engine.js?v=14"></script>
-    <script src="js/music_engine.js?v=14"></script>
-    <script src="js/gui.js?v=14"></script>
-    <script src="js/main.js?v=14"></script>
+    <script src="js/audio_engine.js?v=15"></script>
+    <script src="js/music_engine.js?v=15"></script>
+    <script src="js/gui.js?v=15"></script>
+    <script src="js/main.js?v=15"></script>
 </body>
 </html>

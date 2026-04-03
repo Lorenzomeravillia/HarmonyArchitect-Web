@@ -20,16 +20,24 @@ class AudioEngine {
             "Arpa":         "orchestral_harp"
         };
 
-        // Kept for gui.js compatibility (Object.keys used to build dropdowns)
+        // Kept for gui.js compatibility (Object.keys builds the instrument dropdowns)
         this.instrumentPrograms = Object.fromEntries(
             Object.keys(this.instrumentMap).map((k, i) => [k, i])
         );
 
-        // 7 voice channels — names and loaded instrument objects
+        // 7 voice channels
         this.channelNames = ["Contrabbasso", "Violoncello", "Tromba", "Corno", "Viola", "Clarinetto", "Flauto"];
         this.instruments  = new Array(7).fill(null);
+        this._loaded      = false;
+    }
 
-        this._loadAll();
+    // Call this once on first user gesture (iOS requires AudioContext to be running before loading)
+    unlockAndLoad() {
+        if (this._loaded) return;
+        this._loaded = true;
+        this.ctx.resume().then(() => {
+            this.channelNames.forEach((name, i) => this._loadOne(i, name));
+        });
     }
 
     _sfName(displayName) {
@@ -47,15 +55,16 @@ class AudioEngine {
         }
     }
 
-    _loadAll() {
-        this.channelNames.forEach((name, i) => this._loadOne(i, name));
-    }
-
     async setChannelInstrument(channelIdx, displayName) {
         if (channelIdx < 0 || channelIdx >= this.channelNames.length) return;
         this.channelNames[channelIdx] = displayName;
         this.instruments[channelIdx] = null;
         await this._loadOne(channelIdx, displayName);
+    }
+
+    _getVolume() {
+        const sel = document.getElementById('volume_menu');
+        return sel ? parseFloat(sel.value) : 0.70;
     }
 
     playPitch(channelIdx, freq, duration = 1.8, chordIdx = null) {
@@ -67,30 +76,32 @@ class AudioEngine {
         if (this.ctx.state === 'suspended') this.ctx.resume();
         const inst = this.instruments[channelIdx];
         if (!inst) return;
-        inst.play(midiPitch, this.ctx.currentTime, { duration, gain: velocity / 127 });
+        const gain = (velocity / 127) * this._getVolume();
+        inst.play(midiPitch, this.ctx.currentTime, { duration, gain });
         const freq = 440 * Math.pow(2, (midiPitch - 69) / 12);
         if (window.gui?.highlight) window.gui.highlight(channelIdx, freq, duration * 1000, chordIdx);
     }
 
-    playChord(notesArray, durationOverride = null, chordIdx = null, staggerMs = 40) {
-        const staggerSec = staggerMs / 1000;
+    playChord(notesArray, durationOverride = null, chordIdx = null) {
+        const SPREAD_SEC = 0.12; // 120ms fixed spread — voices enter sequentially then sustain together
         const now = this.ctx.currentTime;
         const dur = durationOverride !== null ? durationOverride : 1.87;
+        const vol = this._getVolume();
 
         notesArray.forEach((item, idx) => {
             const freq = item.frequency || item.freq;
             const midi = Math.round(69 + 12 * Math.log2(freq / 440));
-            const when = now + 0.1 + idx * staggerSec;
+            const when = now + 0.1 + idx * SPREAD_SEC;
 
             const inst = this.instruments[item.voiceIdx];
             if (!inst) return;
 
-            inst.play(midi, when, { duration: dur, gain: 0.35 });
+            inst.play(midi, when, { duration: dur, gain: vol });
 
             if (window.gui?.highlight) {
                 setTimeout(
                     () => window.gui.highlight(item.voiceIdx, freq, dur * 800, chordIdx),
-                    (0.1 + idx * staggerSec) * 1000
+                    (0.1 + idx * SPREAD_SEC) * 1000
                 );
             }
         });

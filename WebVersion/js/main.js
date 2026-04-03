@@ -2,11 +2,13 @@ document.addEventListener("DOMContentLoaded", () => {
     // Detect iOS
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-    // PWA Start Overlay
+    // PWA Start Overlay — also the first user gesture, used to unlock AudioContext on iOS
     let startOverlay = document.getElementById("start_overlay");
     if(startOverlay) {
         startOverlay.addEventListener("click", (e) => {
             startOverlay.style.display = "none";
+            // Unlock AudioContext and load instruments NOW (requires user gesture on iOS)
+            window.audioEngine.unlockAndLoad();
             // Skip fullscreen on iOS — it doesn't work
             if (!isIOS) {
                 if (document.documentElement.requestFullscreen) {
@@ -30,12 +32,13 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // Sblocca WebAudio su iOS al primissimo tocco (Policy Apple)
+    // Fallback: unlock AudioContext on any touch (covers edge cases where start overlay is missed)
     document.addEventListener('touchstart', function() {
-        if(window.audioEngine && window.audioEngine.ctx && window.audioEngine.ctx.state === 'suspended') {
-            window.audioEngine.ctx.resume();
+        if (window.audioEngine) {
+            window.audioEngine.unlockAndLoad();
+            if (window.audioEngine.ctx.state === 'suspended') window.audioEngine.ctx.resume();
         }
-    }, { passive: true });
+    }, { once: true, passive: true });
 
     const ROOTS = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
     
@@ -84,11 +87,6 @@ document.addEventListener("DOMContentLoaded", () => {
     function getSessionSize() {
         let sel = document.getElementById('session_size_menu');
         return sel ? parseInt(sel.value) : 5;
-    }
-
-    function getStaggerMs() {
-        let sel = document.getElementById('spread_menu');
-        return sel ? parseInt(sel.value) : 40;
     }
 
     // Earcons — simple WebAudio tones
@@ -411,9 +409,8 @@ document.addEventListener("DOMContentLoaded", () => {
             window.currentVoicings = voicings;
             window.gui.drawPitches(voicings);
             
-            let stagger = getStaggerMs();
             voicings.forEach((v, i) => {
-                setTimeout(() => window.audioEngine.playChord(v, cutDuration, i, stagger), i * tempoMs);
+                setTimeout(() => window.audioEngine.playChord(v, cutDuration, i), i * tempoMs);
             });
             window.gui.setInsight("Progression (" + tempoMs + "ms). Drop-2: " + (isOptimized ? "ON" : "OFF"));
         } else {
@@ -422,7 +419,7 @@ document.addEventListener("DOMContentLoaded", () => {
             window.currentVoicings = [targetVoicing];
             window.gui.drawPitches([targetVoicing]); 
             // In modalità accordo singolo indichiamo chordIdx 0
-            window.audioEngine.playChord(targetVoicing, cutDuration, 0, getStaggerMs());
+            window.audioEngine.playChord(targetVoicing, cutDuration, 0);
             
             let insight = `Base: C3 | Voicing: ${isOptimized ? "Opt. (Drop-2)" : "Root"}`;
             window.gui.setInsight(insight);
