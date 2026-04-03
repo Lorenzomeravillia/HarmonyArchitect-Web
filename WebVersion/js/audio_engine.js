@@ -33,11 +33,8 @@ class AudioEngine {
     }
 
     _loadProg(prog) {
-        // Use FluidR3_GM presets (higher quality). URL format: prog*10 zero-padded to 4 digits.
-        const num = String(prog * 10).padStart(4, '0');
-        const varName = `_tone_${num}_FluidR3_GM_sf2_file`;
-        const url = `https://surikov.github.io/webaudiofont/npm/dist/${num}_FluidR3_GM_sf2_file.js`;
-        this.player.loader.startLoad(this.ctx, url, varName);
+        const info = this.player.loader.instrumentInfo(prog);
+        if (info) this.player.loader.startLoad(this.ctx, info.url, info.variable);
     }
 
     // Called on first user gesture (start overlay tap) — unlocks AudioContext on iOS.
@@ -57,12 +54,7 @@ class AudioEngine {
     }
 
     _getPreset(channelIdx) {
-        const prog = this.channels[channelIdx];
-        const num = String(prog * 10).padStart(4, '0');
-        const varName = `_tone_${num}_FluidR3_GM_sf2_file`;
-        if (window[varName]) return window[varName];
-        // Fallback to default preset if FluidR3 not yet loaded
-        const info = this.player.loader.instrumentInfo(prog);
+        const info = this.player.loader.instrumentInfo(this.channels[channelIdx]);
         return info ? (window[info.variable] || null) : null;
     }
 
