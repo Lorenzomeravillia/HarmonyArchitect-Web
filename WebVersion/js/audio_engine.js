@@ -41,8 +41,12 @@ class AudioEngine {
     unlockAndLoad() {
         if (this._unlocked) return;
         this._unlocked = true;
-        this.ctx.resume().catch(() => {});
-        this.channels.forEach(prog => this._loadProg(prog));
+        // resume() must be synchronous in the gesture call stack.
+        // Re-load presets inside .then() so decodeAudioData runs on a running ctx —
+        // on iOS Safari, decodeAudioData called on a suspended ctx never resolves.
+        this.ctx.resume()
+            .then(() => { this.channels.forEach(prog => this._loadProg(prog)); })
+            .catch(() => {});
     }
 
     setChannelInstrument(channelIdx, instrumentName) {
