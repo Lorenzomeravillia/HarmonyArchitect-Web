@@ -6,7 +6,7 @@
     <title>Harmony Architect PWA</title>
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Courier+Prime:wght@700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=11">
+    <link rel="stylesheet" href="css/style.css?v=12">
     
     <!-- Motore Custom Zero Dependency (Sostituisce Tonal.js) -->
     <!-- WebAudioFontPlayer -->
@@ -50,9 +50,9 @@
                 </select>
                 <span class="label">Tempo:</span>
                 <select id="tempo_menu" class="dropdown small-btn">
-                    <option value="1800">Lento</option>
-                    <option value="1300" selected>Medio</option>
-                    <option value="800">Veloce</option>
+                    <option value="2160">Lento</option>
+                    <option value="1560" selected>Medio</option>
+                    <option value="960">Veloce</option>
                 </select>
                 <span class="label">Training:</span>
                 <select id="training_menu" class="dropdown orange-btn">
@@ -115,6 +115,19 @@
         </div>
     </div>
 
+    <!-- Post-Answer Popup -->
+    <div id="next_popup" class="next-popup hidden">
+        <div class="next-popup-card">
+            <div id="next_popup_icon" class="next-popup-icon"></div>
+            <div id="next_popup_msg" class="next-popup-msg"></div>
+            <div class="next-popup-actions">
+                <button id="next_popup_continue" class="btn btn-primary next-popup-btn">▶ Continua</button>
+                <button id="next_popup_replay" class="btn next-popup-btn-sec">🔁 Riascolta</button>
+                <button id="next_popup_stop" class="btn next-popup-btn-ghost">✕ Interrompi</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Session Complete Overlay -->
     <div id="session_overlay" class="session-overlay hidden">
         <div class="session-card">
@@ -136,9 +149,9 @@
         <span>Tocca per iniziare</span>
     </div>
 
-    <script src="js/audio_engine.js?v=11"></script>
-    <script src="js/music_engine.js?v=11"></script>
-    <script src="js/gui.js?v=11"></script>
-    <script src="js/main.js?v=11"></script>
+    <script src="js/audio_engine.js?v=12"></script>
+    <script src="js/music_engine.js?v=12"></script>
+    <script src="js/gui.js?v=12"></script>
+    <script src="js/main.js?v=12"></script>
 </body>
 </html>

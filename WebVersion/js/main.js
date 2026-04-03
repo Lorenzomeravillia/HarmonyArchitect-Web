@@ -148,21 +148,33 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // Auto-next: make Nuova Sfida glow after answer
-    function triggerAutoNext() {
-        let btn = document.getElementById('next_btn');
-        if (btn) {
-            btn.classList.add('glow');
-            btn.textContent = '→ Prossima';
-        }
+    // Post-answer popup
+    const CORRECT_MSGS = ['🎯 Perfetto!', '⚡ Esatto!', '🔥 Ottimo!', '✨ Bravo!', '🚀 Eccellente!'];
+    const WRONG_MSGS = ['💡 Quasi!', '🎓 Riprova!', '🧠 Studia!', '🔄 Ancora!'];
+
+    function showNextPopup(correct) {
+        let icon = correct ? '✅' : '❌';
+        let msgs = correct ? CORRECT_MSGS : WRONG_MSGS;
+        let msg = msgs[Math.floor(Math.random() * msgs.length)];
+        if (streak >= 3) msg = '🔥 Streak x' + streak + '!';
+        document.getElementById('next_popup_icon').textContent = icon;
+        document.getElementById('next_popup_msg').textContent = msg;
+        document.getElementById('next_popup').classList.remove('hidden');
     }
-    function clearAutoNext() {
-        let btn = document.getElementById('next_btn');
-        if (btn) {
-            btn.classList.remove('glow');
-            btn.textContent = '↻ Nuova Sfida';
-        }
+    function hideNextPopup() {
+        document.getElementById('next_popup').classList.add('hidden');
     }
+
+    // Popup buttons
+    document.getElementById('next_popup_continue').addEventListener('click', () => {
+        hideNextPopup();
+        startNewChallenge();
+    });
+    document.getElementById('next_popup_replay').addEventListener('click', () => {
+        hideNextPopup();
+        document.getElementById('play_btn').click();
+    });
+    document.getElementById('next_popup_stop').addEventListener('click', hideNextPopup);
 
     // Session completion overlay
     function showSessionComplete() {
@@ -191,7 +203,7 @@ document.addEventListener("DOMContentLoaded", () => {
         updateProgress();
         updateStreak();
         document.getElementById('session_overlay').classList.add('hidden');
-        clearAutoNext();
+        hideNextPopup();
     }
 
     // Session restart button
@@ -279,12 +291,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 // Haptic feedback
                 if (navigator.vibrate) navigator.vibrate(correct ? 10 : [30, 20, 30]);
 
-                // Auto-next glow after 1s, or session complete
+                // Show popup after 1s, or session complete if done
                 setTimeout(() => {
                     if (sessionTotal >= getSessionSize()) {
                         showSessionComplete();
                     } else {
-                        triggerAutoNext();
+                        showNextPopup(correct);
                     }
                 }, 1000);
             };
@@ -293,7 +305,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function startNewChallenge() {
-        clearAutoNext();
+        hideNextPopup();
         if(window.audioEngine.ctx.state === 'suspended') window.audioEngine.ctx.resume();
         window.gui.drawPitches([]); 
         
