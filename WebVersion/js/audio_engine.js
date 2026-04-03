@@ -3,44 +3,39 @@ class AudioEngine {
         this.ctx = new (window.AudioContext || window.webkitAudioContext)();
         this.player = new WebAudioFontPlayer();
 
-        // FluidR3_GM presets — significantly better quality than default WebAudioFont presets.
-        // Scripts are loaded via <script> injection (not XHR), which is iOS Safari compatible.
-        // URL format: https://surikov.github.io/webaudiofontdata/sound/{var}.js
-        // Variable format: _tone_{NNNN}_FluidR3_GM_sf2_file (NNNN = zero-padded GM program)
-        this.instrumentDefs = {
-            "Contrabbasso": { prog: 43, sfVar: "_tone_0043_FluidR3_GM_sf2_file" },
-            "Violoncello":  { prog: 42, sfVar: "_tone_0042_FluidR3_GM_sf2_file" },
-            "Fagotto":      { prog: 70, sfVar: "_tone_0070_FluidR3_GM_sf2_file" },
-            "Corno":        { prog: 60, sfVar: "_tone_0060_FluidR3_GM_sf2_file" },
-            "Viola":        { prog: 41, sfVar: "_tone_0041_FluidR3_GM_sf2_file" },
-            "Clarinetto":   { prog: 71, sfVar: "_tone_0071_FluidR3_GM_sf2_file" },
-            "Flauto":       { prog: 73, sfVar: "_tone_0073_FluidR3_GM_sf2_file" },
-            "Piano":        { prog:  0, sfVar: "_tone_0000_FluidR3_GM_sf2_file" },
-            "Chitarra":     { prog: 24, sfVar: "_tone_0024_FluidR3_GM_sf2_file" },
-            "Violino":      { prog: 40, sfVar: "_tone_0040_FluidR3_GM_sf2_file" },
-            "Tromba":       { prog: 56, sfVar: "_tone_0056_FluidR3_GM_sf2_file" },
-            "Sassofono":    { prog: 65, sfVar: "_tone_0065_FluidR3_GM_sf2_file" },
-            "Organo":       { prog: 19, sfVar: "_tone_0019_FluidR3_GM_sf2_file" },
-            "Arpa":         { prog: 46, sfVar: "_tone_0046_FluidR3_GM_sf2_file" }
+        // instrumentPrograms kept for gui.js compatibility (builds dropdown list)
+        this.instrumentPrograms = {
+            "Contrabbasso": 43,
+            "Violoncello":  42,
+            "Fagotto":      70,
+            "Corno":        60,
+            "Viola":        41,
+            "Clarinetto":   71,
+            "Flauto":       73,
+            "Piano":         0,
+            "Chitarra":     24,
+            "Violino":      40,
+            "Tromba":       56,
+            "Sassofono":    65,
+            "Organo":       19,
+            "Arpa":         46
         };
 
-        // Kept for gui.js compatibility — Object.keys() builds the instrument dropdowns
-        this.instrumentPrograms = Object.fromEntries(
-            Object.keys(this.instrumentDefs).map(k => [k, this.instrumentDefs[k].prog])
-        );
-
-        // 7 voice channels
-        this.channelNames = ["Contrabbasso", "Violoncello", "Tromba", "Corno", "Viola", "Clarinetto", "Flauto"];
+        // 7 voice channels (GM program numbers)
+        this.channels = [43, 42, 56, 60, 41, 71, 73];
         this._loaded = false;
+
+        // Pre-load instrument info using the player's own resolver (correct URLs guaranteed)
+        this.channels.forEach(prog => this._loadProg(prog));
     }
 
-    _loadDef(def) {
-        const url = "https://surikov.github.io/webaudiofontdata/sound/" + def.sfVar + ".js";
-        this.player.loader.startLoad(this.ctx, url, def.sfVar);
+    _loadProg(prog) {
+        const info = this.player.loader.instrumentInfo(prog);
+        if (info) this.player.loader.startLoad(this.ctx, info.url, info.variable);
     }
 
     // Call once on first user gesture.
-    // iOS requires: (1) a real BufferSource played synchronously + (2) ctx.resume().
+    // iOS requires: synchronous silent BufferSource + ctx.resume().
     unlockAndLoad() {
         if (this._loaded) return;
         this._loaded = true;
@@ -55,23 +50,23 @@ class AudioEngine {
         } catch(e) {}
 
         this.ctx.resume().then(() => {
-            this.channelNames.forEach(name => {
-                const def = this.instrumentDefs[name];
-                if (def) this._loadDef(def);
-            });
+            // Re-trigger loading after context is running (iOS needs this)
+            this.channels.forEach(prog => this._loadProg(prog));
         });
     }
 
     setChannelInstrument(channelIdx, instrumentName) {
-        if (channelIdx < 0 || channelIdx >= this.channelNames.length) return;
-        this.channelNames[channelIdx] = instrumentName;
-        const def = this.instrumentDefs[instrumentName];
-        if (def) this._loadDef(def);
+        if (channelIdx < 0 || channelIdx >= this.channels.length) return;
+        const prog = this.instrumentPrograms[instrumentName];
+        if (prog === undefined) return;
+        this.channels[channelIdx] = prog;
+        this._loadProg(prog);
     }
 
     _getPreset(channelIdx) {
-        const def = this.instrumentDefs[this.channelNames[channelIdx]];
-        return def ? (window[def.sfVar] || null) : null;
+        const prog = this.channels[channelIdx];
+        const info = this.player.loader.instrumentInfo(prog);
+        return info ? (window[info.variable] || null) : null;
     }
 
     _getVolume() {
@@ -95,7 +90,7 @@ class AudioEngine {
     }
 
     playChord(notesArray, durationOverride = null, chordIdx = null) {
-        const SPREAD_SEC = 0.12; // 120ms fixed spread — voices enter sequentially, sustain together
+        const SPREAD_SEC = 0.12; // 120ms fixed spread
         const now = this.ctx.currentTime;
         const dur = durationOverride !== null ? durationOverride : 1.87;
         const vol = this._getVolume();
