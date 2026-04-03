@@ -4,7 +4,7 @@ class AudioEngine {
         // Will be replaced with a fresh one inside unlockAndLoad().
         this.ctx = new (window.AudioContext || window.webkitAudioContext)();
         this.player = new WebAudioFontPlayer();
-        this._unlocked = false;
+        this._unlocked = false; // prevents double-unlock
 
         this.instrumentPrograms = {
             "Contrabbasso": 43,
@@ -38,46 +38,35 @@ class AudioEngine {
     }
 
     // Called on first user gesture (start overlay tap).
-    // Creates a FRESH AudioContext inside the gesture so iOS starts it as 'running'.
-    // The placeholder ctx created at page load may be permanently suspended on iOS.
     unlockAndLoad() {
         if (this._unlocked) return;
         this._unlocked = true;
 
-        // Close the possibly-suspended placeholder ctx
-        try { this.ctx.close(); } catch(e) {}
-
-        // New ctx — on iOS 17+ always starts 'suspended' even inside a gesture.
-        // Must call resume() synchronously within the same gesture call stack.
-        try {
-            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-        } catch(e) {
-            if (window.dlog) window.dlog('new ctx ERROR: ' + e);
-            return;
-        }
-        if (window.dlog) window.dlog('new ctx — state: ' + this.ctx.state);
+        if (window.dlog) window.dlog('unlockAndLoad — ctx state: ' + this.ctx.state);
 
         this.ctx.onstatechange = () => {
             if (window.dlog) window.dlog('statechange → ' + this.ctx.state);
         };
 
+        // resume() must be called synchronously within the gesture call stack
         this.ctx.resume()
-            .then(() => { if (window.dlog) window.dlog('resume resolved — state: ' + this.ctx.state); })
-            .catch(e => { if (window.dlog) window.dlog('resume rejected: ' + e); });
-        if (window.dlog) window.dlog('resume() called — state now: ' + this.ctx.state);
+            .then(() => { if (window.dlog) window.dlog('resume OK — state: ' + this.ctx.state); })
+            .catch(e => { if (window.dlog) window.dlog('resume ERR: ' + e); });
 
-        // Silent buffer: belt-and-suspenders unlock
+        // Oscillator beep test — simplest possible WebAudio, no presets needed
         try {
-            const buf = this.ctx.createBuffer(1, 1, 22050);
-            const src = this.ctx.createBufferSource();
-            src.buffer = buf;
-            src.connect(this.ctx.destination);
-            src.start(0);
-            if (window.dlog) window.dlog('silent buf played — state: ' + this.ctx.state);
-        } catch(e) { if (window.dlog) window.dlog('silent buf err: ' + e); }
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            gain.gain.value = 0.05;
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start();
+            osc.stop(this.ctx.currentTime + 0.4);
+            if (window.dlog) window.dlog('osc beep scheduled — ctx: ' + this.ctx.state);
+        } catch(e) {
+            if (window.dlog) window.dlog('osc err: ' + e);
+        }
 
-        // Instrument scripts are already injected (done in constructor).
-        // Re-associate them with the new ctx so presets resolve correctly.
         this.channels.forEach(prog => this._loadProg(prog));
     }
 
