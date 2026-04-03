@@ -20,7 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (settingsToggle && settingsPanel) {
         settingsToggle.addEventListener("click", () => {
             settingsPanel.classList.toggle("open");
-            settingsToggle.innerText = settingsPanel.classList.contains("open") ? "✕" : "⚙";
+            settingsToggle.textContent = settingsPanel.classList.contains("open") ? "CHIUDI ▴" : "MENU ▾";
         });
     }
 

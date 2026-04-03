@@ -273,11 +273,24 @@ canvas {
     display: contents; /* acts as transparent wrapper on desktop */
 }
 
+/* Settings toggle button — prominent on mobile */
+#settings_toggle {
+    background: linear-gradient(180deg, #6C5CE7 0%, #4834A8 100%);
+    color: white;
+    font-size: 11px;
+    font-weight: 800;
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.2);
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 8px rgba(108, 92, 231, 0.4);
+}
+
 /* ============================================================
    MOBILE PORTRAIT
    ============================================================ */
 @media (max-width: 1024px) and (orientation: portrait) {
-    body { padding: 2px; padding-top: env(safe-area-inset-top, 2px); overflow-y: auto !important; }
+    body { padding: 2px; padding-top: env(safe-area-inset-top, 2px); overflow-y: auto !important; height: 100svh; }
     .main-scrollable { width: 100%; gap: 2px; overflow-y: auto !important; overflow-x: hidden; }
     .mobile-only { display: inline-flex !important; }
 
@@ -364,6 +377,7 @@ canvas {
         padding-left: env(safe-area-inset-left, 1px);
         padding-right: env(safe-area-inset-right, 1px);
         overflow-y: auto !important;
+        height: 100svh;
     }
     .main-scrollable { width: 100%; gap: 1px; overflow: visible !important; }
     .mobile-only { display: inline-flex !important; }
@@ -430,6 +444,8 @@ canvas {
     .solo-btn { padding: 2px 5px; font-size: 8px; }
     .solo-frame .gap-small { gap: 2px; }
 
-    /* Insight — hide in landscape to save space */
-    .insight-frame { display: none; }
+    /* Insight — ultra-compact in landscape */
+    .insight-frame { padding: 0 4px; }
+    .insight-frame .flex-row { font-size: 7px !important; margin-bottom: 0 !important; padding: 1px !important; }
+    #insight_label { display: none; }
 }
