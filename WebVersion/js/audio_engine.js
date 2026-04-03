@@ -79,6 +79,11 @@ class AudioEngine {
     }
 
     playChord(notesArray, durationOverride = null, chordIdx = null) {
+        // iOS: ctx may still be suspended after resume() Promise — retry after it resolves
+        if (this.ctx.state !== 'running') {
+            this.ctx.resume().then(() => this.playChord(notesArray, durationOverride, chordIdx));
+            return;
+        }
         const SPREAD_SEC = 0.12;
         const now = this.ctx.currentTime;
         const dur = durationOverride !== null ? durationOverride : 1.87;
