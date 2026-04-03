@@ -57,7 +57,7 @@ class AudioEngine {
         try {
             const osc = this.ctx.createOscillator();
             const gain = this.ctx.createGain();
-            gain.gain.value = 0.05;
+            gain.gain.value = 0.5;
             osc.connect(gain);
             gain.connect(this.ctx.destination);
             osc.start();
