@@ -1,14 +1,13 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Harmony Architect PWA</title>
+    <title>ClearVoicing</title>
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Courier+Prime:wght@700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=12">
-    
-    <!-- Motore Custom Zero Dependency (Sostituisce Tonal.js) -->
+    <link rel="stylesheet" href="css/style.css?v=13">
+
     <!-- WebAudioFontPlayer -->
     <script src="https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js"></script>
 </head>
@@ -17,12 +16,12 @@
         <!-- 1. Header & Level Selection -->
         <header class="panel flex-row justify-between top-frame">
             <div class="flex-row gap-small header-left">
-                <span class="label text-bold">Livello:</span>
+                <span class="label text-bold">Level:</span>
                 <select id="level_select" class="dropdown"></select>
-                <!-- Modalità ALWAYS visible (extracted from collapsible) -->
+                <!-- Mode ALWAYS visible (extracted from collapsible) -->
                 <select id="play_mode_menu" class="dropdown purple-btn mode-select">
-                    <option>Accordo Singolo</option>
-                    <option>Progressione</option>
+                    <option>Single Chord</option>
+                    <option>Progression</option>
                 </select>
             </div>
             
@@ -30,12 +29,12 @@
                 <!-- Unified progress: ✓3/10 (75%) 🔥2 -->
                 <div class="progress-unified" id="progress_unified">
                     <div class="progress-bar"><div id="progress_fill" class="progress-fill" style="width: 0%;"></div></div>
-                    <span id="progress_text" class="progress-text">0/10</span>
+                    <span id="progress_text" class="progress-text">0/5</span>
                     <span id="streak_badge" class="streak-badge" style="display:none;"></span>
                 </div>
-                <button id="reset_btn" class="btn icon-btn btn-danger" title="Azzera History">🗑️</button>
+                <button id="reset_btn" class="btn icon-btn btn-danger" title="Reset History">🗑️</button>
                 <button id="settings_toggle" class="btn mobile-only" title="Settings">MENU ▾</button>
-                <button id="next_btn" class="btn btn-primary next-btn">↻ Nuova Sfida</button>
+                <button id="next_btn" class="btn btn-primary next-btn">↻ New Challenge</button>
             </div>
         </header>
 
@@ -46,31 +45,29 @@
                 <span class="label">Voice Leading:</span>
                 <select id="voice_leading_menu" class="dropdown">
                     <option>Root Position</option>
-                    <option selected>Ottimizzata (Drop-2)</option>
+                    <option selected>Optimized (Drop-2)</option>
                 </select>
                 <span class="label">Tempo:</span>
                 <select id="tempo_menu" class="dropdown small-btn">
-                    <option value="2160">Lento</option>
-                    <option value="1560" selected>Medio</option>
-                    <option value="960">Veloce</option>
+                    <option value="2160">Slow</option>
+                    <option value="1560" selected>Medium</option>
+                    <option value="960">Fast</option>
                 </select>
                 <span class="label">Training:</span>
                 <select id="training_menu" class="dropdown orange-btn">
                     <option selected>Standard</option>
-                    <option>Adaptive</option>
                 </select>
-                <span class="label">Sessione:</span>
+                <span class="label">Session:</span>
                 <select id="session_size_menu" class="dropdown">
-                    <option value="5">5 sfide</option>
-                    <option value="10" selected>10 sfide</option>
-                    <option value="20">20 sfide</option>
-                    <option value="50">50 sfide</option>
+                    <option value="3">3 challenges</option>
+                    <option value="5" selected>5 challenges</option>
+                    <option value="10">10 challenges</option>
                 </select>
             </div>
 
             <!-- Orchestra Row -->
             <div class="panel flex-row flex-wrap instruments-row">
-                <span class="label text-cyan" style="margin-right: 15px;">Orchestra:</span>
+                <span class="label text-cyan" style="margin-right: 15px;">Timbre:</span>
                 <div id="voice_instruments_frame" class="flex-row expand j-around">
                     <!-- Dropdowns will be populated by JS -->
                 </div>
@@ -96,7 +93,7 @@
 
         <!-- Voice Isolation (Solo) -->
         <div class="panel flex-row flex-wrap solo-frame">
-            <span class="label text-muted margin-r solo-label">ISOLATE:</span>
+            <span class="label text-muted margin-r solo-label">SOLO:</span>
             <div id="solo_buttons_frame" class="flex-row expanded gap-small">
                 <!-- Filled by JS -->
             </div>
@@ -106,10 +103,10 @@
         <div class="panel insight-frame flex-col">
             <div class="flex-row j-around" style="margin-bottom: 8px; font-size: 11px; font-weight: bold; background: rgba(0,0,0,0.2); padding: 4px; border-radius: 6px;">
                 <span style="color:#3498db">● Root (1)</span>
-                <span style="color:#2ecc71">● Terza (3)</span>
-                <span style="color:#f1c40f">● Quinta (5)</span>
-                <span style="color:#C26A23">● Settima (7)</span>
-                <span style="color:#e74c3c">● Estensioni (9,11,13)</span>
+                <span style="color:#2ecc71">● Third (3)</span>
+                <span style="color:#f1c40f">● Fifth (5)</span>
+                <span style="color:#C26A23">● Seventh (7)</span>
+                <span style="color:#e74c3c">● Extensions (9,11,13)</span>
             </div>
             <p id="insight_label" class="font-courier text-muted text-center"></p>
         </div>
@@ -121,9 +118,9 @@
             <div id="next_popup_icon" class="next-popup-icon"></div>
             <div id="next_popup_msg" class="next-popup-msg"></div>
             <div class="next-popup-actions">
-                <button id="next_popup_continue" class="btn btn-primary next-popup-btn">▶ Suona il prossimo</button>
-                <button id="next_popup_replay" class="btn next-popup-btn-sec">🔁 Riascolta</button>
-                <button id="next_popup_stop" class="btn next-popup-btn-ghost">✕ Interrompi</button>
+                <button id="next_popup_continue" class="btn btn-primary next-popup-btn">▶ Play Next</button>
+                <button id="next_popup_replay" class="btn next-popup-btn-sec">🔁 Replay</button>
+                <button id="next_popup_stop" class="btn next-popup-btn-ghost">✕ Stop</button>
             </div>
         </div>
     </div>
@@ -134,7 +131,7 @@
             <div id="session_badge" class="session-badge"></div>
             <h2 id="session_title" class="session-title"></h2>
             <p id="session_detail" class="session-detail"></p>
-            <button id="session_restart_btn" class="btn btn-primary session-restart">🔄 Nuova Sessione</button>
+            <button id="session_restart_btn" class="btn btn-primary session-restart">🔄 New Session</button>
         </div>
     </div>
 
@@ -146,12 +143,12 @@
     <!-- PWA Fullscreen Start Overlay -->
     <div id="start_overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg-main);z-index:9999;display:flex;align-items:center;justify-content:center;color:white;font-size:24px;cursor:pointer;flex-direction:column;gap:20px;">
         <span style="font-size: 40px;">🎹</span>
-        <span>Tocca per iniziare</span>
+        <span>Tap to start</span>
     </div>
 
-    <script src="js/audio_engine.js?v=12"></script>
-    <script src="js/music_engine.js?v=12"></script>
-    <script src="js/gui.js?v=12"></script>
-    <script src="js/main.js?v=12"></script>
+    <script src="js/audio_engine.js?v=13"></script>
+    <script src="js/music_engine.js?v=13"></script>
+    <script src="js/gui.js?v=13"></script>
+    <script src="js/main.js?v=13"></script>
 </body>
 </html>

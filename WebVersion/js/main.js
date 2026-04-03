@@ -26,7 +26,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (settingsToggle && settingsPanel) {
         settingsToggle.addEventListener("click", () => {
             settingsPanel.classList.toggle("open");
-            settingsToggle.textContent = settingsPanel.classList.contains("open") ? "CHIUDI ▴" : "MENU ▾";
+            settingsToggle.textContent = settingsPanel.classList.contains("open") ? "CLOSE ▴" : "MENU ▾";
         });
     }
 
@@ -40,24 +40,24 @@ document.addEventListener("DOMContentLoaded", () => {
     const ROOTS = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
     
     const LEVEL_POOLS_SINGLE = {
-        "1: Triadi Base":     ["C", "Cm", "Cdim", "Caug", "F", "Fm", "G", "Gm", "Bb", "D", "Am"],
-        "2: Settime (Drop 2)":["Cmaj7", "Cm7", "C7", "Cm7b5", "Fmaj7", "G7", "Bbmaj7", "Ddim7"],
+        "1: Basic Triads":    ["C", "Cm", "Cdim", "Caug", "F", "Fm", "G", "Gm", "Bb", "D", "Am"],
+        "2: Seventh Chords":  ["Cmaj7", "Cm7", "C7", "Cm7b5", "Fmaj7", "G7", "Bbmaj7", "Ddim7"],
         "3: Jazz Extensions": ["Cmaj9", "C9", "C13", "G7alt", "G7b9", "Bb7#11", "D-9", "Fm9"],
-        "4: Advanced (Subs/Alt)": ["A7alt", "Db7", "E7#9", "B13b9", "F#7b9"]
+        "4: Advanced":        ["A7alt", "Db7", "E7#9", "B13b9", "F#7b9"]
     };
-    
+
     const LEVEL_POOLS_PROG = {
-        "1: Triadi Base": [
+        "1: Basic Triads": [
             "I - IV - V - I|C|F|G|C", 
             "I - vi - IV - V|C|Am|F|G", 
             "i - iv - V - i|Cm|Fm|G|Cm", 
             "i - VI - VII - i|Cm|Ab|Bb|Cm", 
             "I - ii - V - I|C|Dm|G|C"
         ],
-        "2: Settime (Drop 2)": [
-            "ii7 - V7 - Imaj7|Dm7|G7|Cmaj7", 
-            "iiø7 - V7 - im7|Dm7b5|G7|Cm7", 
-            "Imaj7 - vi7 - ii7 - V7|Cmaj7|Am7|Dm7|G7", 
+        "2: Seventh Chords": [
+            "ii7 - V7 - Imaj7|Dm7|G7|Cmaj7",
+            "iiø7 - V7 - im7|Dm7b5|G7|Cm7",
+            "Imaj7 - vi7 - ii7 - V7|Cmaj7|Am7|Dm7|G7",
             "iim7 - v7 - Imaj7|Fm7|Bb7|Ebmaj7"
         ],
         "3: Jazz Extensions": [
@@ -65,9 +65,9 @@ document.addEventListener("DOMContentLoaded", () => {
             "iiø7 - V7alt - im9|Dm7b5|G7alt|Cm9", 
             "Imaj9 - VI7alt - ii9 - V13|Cmaj9|A7alt|Dm9|G13"
         ],
-        "4: Advanced (Subs/Alt)": [
-            "ii7 - subV7 - Imaj7|Dm7|Db7|Cmaj7", 
-            "V7/ii - ii7 - V7 - Imaj7|A7|Dm7|G7|Cmaj7", 
+        "4: Advanced": [
+            "ii7 - subV7 - Imaj7|Dm7|Db7|Cmaj7",
+            "V7/ii - ii7 - V7 - Imaj7|A7|Dm7|G7|Cmaj7",
             "iim7 - subV7 - Imaj7|Fm7|E7|Ebmaj7"
         ]
     };
@@ -83,7 +83,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function getSessionSize() {
         let sel = document.getElementById('session_size_menu');
-        return sel ? parseInt(sel.value) : 10;
+        return sel ? parseInt(sel.value) : 5;
     }
 
     // Earcons — simple WebAudio tones
@@ -149,8 +149,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Post-answer popup
-    const CORRECT_MSGS = ['🎯 Perfetto!', '⚡ Esatto!', '🔥 Ottimo!', '✨ Bravo!', '🚀 Eccellente!'];
-    const WRONG_MSGS = ['💡 Quasi!', '🎓 Riprova!', '🧠 Studia!', '🔄 Ancora!'];
+    const CORRECT_MSGS = ['🎯 Perfect!', '⚡ Correct!', '🔥 Great!', '✨ Brilliant!', '🚀 Excellent!'];
+    const WRONG_MSGS = ['💡 Almost!', '🎓 Try again!', '🧠 Keep listening!', '🔄 Once more!'];
 
     function showNextPopup(correct) {
         let icon = correct ? '✅' : '❌';
@@ -184,12 +184,12 @@ document.addEventListener("DOMContentLoaded", () => {
         let pct = Math.round(sessionCorrect / sz * 100);
         let badge, title, detail;
 
-        if (pct >= 90) { badge = '🥇'; title = 'Eccellente!'; }
-        else if (pct >= 70) { badge = '🥈'; title = 'Ottimo lavoro!'; }
-        else if (pct >= 50) { badge = '🥉'; title = 'Buon inizio!'; }
-        else { badge = '💪'; title = 'Continua a provare!'; }
+        if (pct >= 90) { badge = '🥇'; title = 'Excellent!'; }
+        else if (pct >= 70) { badge = '🥈'; title = 'Great work!'; }
+        else if (pct >= 50) { badge = '🥉'; title = 'Good start!'; }
+        else { badge = '💪'; title = 'Keep practicing!'; }
 
-        detail = sessionCorrect + '/' + sz + ' corrette (' + pct + '%)';
+        detail = sessionCorrect + '/' + sz + ' correct (' + pct + '%)';
         if (streak >= 3) detail += ' | Best streak: 🔥' + streak;
 
         document.getElementById('session_badge').textContent = badge;
@@ -311,12 +311,12 @@ document.addEventListener("DOMContentLoaded", () => {
         if(window.audioEngine.ctx.state === 'suspended') window.audioEngine.ctx.resume();
         window.gui.drawPitches([]); 
         
-        let isProgression = document.getElementById("play_mode_menu").value.includes("Progressione");
+        let isProgression = document.getElementById("play_mode_menu").value.includes("Progression");
         let level = document.getElementById("level_select").value;
         let root = ROOTS[Math.floor(Math.random() * ROOTS.length)];
         
         if (isProgression) {
-            let pool = LEVEL_POOLS_PROG[level] || LEVEL_POOLS_PROG["1: Triadi Base"];
+            let pool = LEVEL_POOLS_PROG[level] || LEVEL_POOLS_PROG["1: Basic Triads"];
             let item = pool[Math.floor(Math.random() * pool.length)]; 
             
             let parts = item.split("|");
@@ -354,7 +354,7 @@ document.addEventListener("DOMContentLoaded", () => {
             createAnswers(name, wrongOpts);
         } else {
             window.currentProgression = null;
-            let pool = LEVEL_POOLS_SINGLE[level] || LEVEL_POOLS_SINGLE["1: Triadi Base"];
+            let pool = LEVEL_POOLS_SINGLE[level] || LEVEL_POOLS_SINGLE["1: Basic Triads"];
             let sym = pool[Math.floor(Math.random() * pool.length)];
             
             let match = sym.match(/^([A-G][b#]?)(.*)/);
@@ -390,7 +390,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         
         let baseOctave = "C3";
-        let isOptimized = document.getElementById("voice_leading_menu").value.includes("Ottimizzata");
+        let isOptimized = document.getElementById("voice_leading_menu").value.includes("Optimized");
         
         let tempoMenu = document.getElementById("tempo_menu");
         let tempoMs = tempoMenu ? parseInt(tempoMenu.value) : 1560;
@@ -409,7 +409,7 @@ document.addEventListener("DOMContentLoaded", () => {
             voicings.forEach((v, i) => {
                 setTimeout(() => window.audioEngine.playChord(v, cutDuration, i), i * tempoMs); 
             });
-            window.gui.setInsight("Progressione (" + tempoMs + "ms). Drop-2: " + (isOptimized ? "ON" : "OFF"));
+            window.gui.setInsight("Progression (" + tempoMs + "ms). Drop-2: " + (isOptimized ? "ON" : "OFF"));
         } else {
             let sym = window.currentSymbol;
             let targetVoicing = window.musicEngine.generateVoicing(sym, baseOctave, isOptimized);
@@ -418,7 +418,7 @@ document.addEventListener("DOMContentLoaded", () => {
             // In modalità accordo singolo indichiamo chordIdx 0
             window.audioEngine.playChord(targetVoicing, cutDuration, 0);
             
-            let insight = `Base: C3 | Inversioni: ${isOptimized ? "Ott. (Drop-2)" : "Root"}`;
+            let insight = `Base: C3 | Voicing: ${isOptimized ? "Opt. (Drop-2)" : "Root"}`;
             window.gui.setInsight(insight);
         }
     });
@@ -448,7 +448,7 @@ document.addEventListener("DOMContentLoaded", () => {
             let note = chord[pIdx];
             window.audioEngine.playPitch(note.voiceIdx, note.frequency, 0.6, cIdx);
             pIdx++;
-            setTimeout(arpNext, tempoMs * 0.18); 
+            setTimeout(arpNext, tempoMs * 0.30); 
         }
         arpNext();
     });
