@@ -184,11 +184,12 @@ class MusicEngine {
             let noteObj = this.getNoteFromMidi(midi, useSharp);
             let ival = (noteObj.chroma - rootPc + 12) % 12;
             
-            let color = "#e74c3c";
-            if (ival === 0) color = "#3498db";
-            else if (ival === 3 || ival === 4) color = "#2ecc71";
-            else if (ival === 7) color = "#f1c40f";
-            else if (ival === 10 || ival === 11) color = "#C26A23";
+            // Functional palette — distinct from semantic feedback colors
+            let color = "#D946A8"; // Extensions (9, 11, 13) — magenta
+            if (ival === 0)                  color = "#4A90D9"; // Root    — blue
+            else if (ival === 3 || ival === 4) color = "#2EC4B6"; // Third   — teal
+            else if (ival === 7)              color = "#F0B429"; // Fifth   — amber
+            else if (ival === 10 || ival === 11) color = "#E8873D"; // Seventh — orange
 
             return {
                 name: noteObj.name,

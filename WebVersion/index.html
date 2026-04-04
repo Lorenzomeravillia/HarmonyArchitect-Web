@@ -6,41 +6,50 @@
     <title>ClearVoicing</title>
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Courier+Prime:wght@700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=18">
+    <link rel="stylesheet" href="css/style.css?v=19">
 
     <!-- WebAudioFontPlayer (cross-browser, iOS-compatible) -->
     <script src="https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js"></script>
 </head>
 <body>
+    <!-- Full-width session progress (fixed, 4px, always visible) -->
+    <div id="top_progress_outer">
+        <div id="top_progress_fill"></div>
+    </div>
+
     <div id="app" class="main-scrollable">
-        <!-- 1. Header & Level Selection -->
+        <!-- Header -->
         <header class="panel flex-row justify-between top-frame">
             <div class="flex-row gap-small header-left">
                 <span class="label text-bold">Level:</span>
                 <select id="level_select" class="dropdown"></select>
-                <!-- Mode ALWAYS visible (extracted from collapsible) -->
                 <select id="play_mode_menu" class="dropdown purple-btn mode-select">
                     <option>Single Chord</option>
                     <option>Progression</option>
                 </select>
             </div>
-            
             <div class="flex-row gap-small header-right">
-                <!-- Unified progress: ✓3/10 (75%) 🔥2 -->
+                <!-- Progress -->
                 <div class="progress-unified" id="progress_unified">
-                    <div class="progress-bar"><div id="progress_fill" class="progress-fill" style="width: 0%;"></div></div>
+                    <div class="progress-bar"><div id="progress_fill" class="progress-fill" style="width:0%;"></div></div>
                     <span id="progress_text" class="progress-text">0/5</span>
                     <span id="streak_badge" class="streak-badge" style="display:none;"></span>
                 </div>
-                <button id="reset_btn" class="btn icon-btn btn-danger" title="Reset History">🗑️</button>
-                <button id="settings_toggle" class="btn mobile-only" title="Settings">MENU ▾</button>
-                <button id="next_btn" class="btn btn-primary next-btn">↻ New Challenge</button>
+                <button id="reset_btn" class="btn icon-btn btn-danger" title="Reset Session">🗑️</button>
+                <button id="coach_btn" class="btn icon-btn coach-btn" title="Help tour">?</button>
+                <button id="settings_toggle" class="btn settings-toggle-btn">⚙ Settings</button>
+                <button id="next_btn" class="btn btn-primary next-btn">↻ New</button>
             </div>
         </header>
 
-        <!-- Collapsible Settings (wraps settings + orchestra for mobile) -->
+        <!-- Timbre presets: always visible, outside collapsible -->
+        <div class="panel flex-row flex-wrap instruments-row">
+            <span class="label text-cyan timbre-label">Timbre:</span>
+            <div id="voice_instruments_frame" class="flex-row flex-wrap timbre-presets"></div>
+        </div>
+
+        <!-- Settings: starts closed on all viewports -->
         <div id="settings_collapsible" class="settings-collapsible">
-            <!-- Settings Panel -->
             <div class="panel settings-frame settings-grid">
                 <span class="label">Voice Leading:</span>
                 <select id="voice_leading_menu" class="dropdown">
@@ -66,21 +75,26 @@
                     <option value="10">10 challenges</option>
                 </select>
             </div>
-
-            <!-- Orchestra Row -->
-            <div class="panel flex-row flex-wrap instruments-row">
-                <span class="label text-cyan" style="margin-right: 15px;">Timbre:</span>
-                <div id="voice_instruments_frame" class="flex-row expand j-around">
-                    <!-- Dropdowns will be populated by JS -->
-                </div>
-            </div>
         </div>
 
         <!-- Play commands -->
         <div class="panel flex-row play-frame">
             <button id="play_btn" class="btn hardware-btn play-btn-fixed">▶ PLAY</button>
             <div id="combo_label" class="combo-text"></div>
+            <button id="reveal_btn" class="btn reveal-btn">REVEAL</button>
             <button id="arpeggio_btn" class="btn hardware-btn alt-hardware-btn play-btn-fixed">ARPEGGIATOR</button>
+        </div>
+
+        <!-- Interval Legend (above staff — visible before looking at notes) -->
+        <div class="panel legend-frame">
+            <div class="interval-legend">
+                <span class="legend-item"><span class="legend-dot" style="background:#4A90D9;"></span>Root (1)</span>
+                <span class="legend-item"><span class="legend-dot" style="background:#2EC4B6;"></span>Third (3)</span>
+                <span class="legend-item"><span class="legend-dot" style="background:#F0B429;"></span>Fifth (5)</span>
+                <span class="legend-item"><span class="legend-dot" style="background:#E8873D;"></span>Seventh (7)</span>
+                <span class="legend-item"><span class="legend-dot" style="background:#D946A8;"></span>Ext (9,11,13)</span>
+            </div>
+            <p id="insight_label" class="font-courier text-muted text-center"></p>
         </div>
 
         <!-- Staff and Answers -->
@@ -89,7 +103,7 @@
                 <canvas id="staff_canvas" width="600" height="440" style="display: block;"></canvas>
             </div>
             <div class="answers-frame flex-col">
-                <!-- Buttons populated by JS -->
+                <!-- Populated by JS -->
             </div>
         </div>
 
@@ -99,18 +113,6 @@
             <div id="solo_buttons_frame" class="flex-row expanded gap-small">
                 <!-- Filled by JS -->
             </div>
-        </div>
-
-        <!-- Theory Insight Panel -->
-        <div class="panel insight-frame flex-col">
-            <div class="flex-row j-around" style="margin-bottom: 8px; font-size: 11px; font-weight: bold; background: rgba(0,0,0,0.2); padding: 4px; border-radius: 6px;">
-                <span style="color:#3498db">● Root (1)</span>
-                <span style="color:#2ecc71">● Third (3)</span>
-                <span style="color:#f1c40f">● Fifth (5)</span>
-                <span style="color:#C26A23">● Seventh (7)</span>
-                <span style="color:#e74c3c">● Extensions (9,11,13)</span>
-            </div>
-            <p id="insight_label" class="font-courier text-muted text-center"></p>
         </div>
     </div>
 
@@ -142,15 +144,22 @@
         <!-- Modals will be injected here -->
     </div>
 
+    <!-- Coach Mark Tooltip -->
+    <div id="coach_mark" class="coach-mark hidden">
+        <div class="coach-arrow coach-arrow-up"></div>
+        <p class="coach-text"></p>
+    </div>
+
     <!-- PWA Fullscreen Start Overlay -->
     <div id="start_overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg-main);z-index:9999;display:flex;align-items:center;justify-content:center;color:white;font-size:24px;cursor:pointer;flex-direction:column;gap:20px;">
-        <span style="font-size: 40px;">🎹</span>
+        <span style="font-size:40px;">🎹</span>
         <span>Tap to start</span>
     </div>
 
-    <script src="js/audio_engine.js?v=28"></script>
-    <script src="js/music_engine.js?v=28"></script>
-    <script src="js/gui.js?v=28"></script>
-    <script src="js/main.js?v=28"></script>
+    <script src="js/audio_engine.js?v=29"></script>
+    <script src="js/music_engine.js?v=29"></script>
+    <script src="js/gui.js?v=29"></script>
+    <script src="js/coach.js?v=29"></script>
+    <script src="js/main.js?v=29"></script>
 </body>
 </html>

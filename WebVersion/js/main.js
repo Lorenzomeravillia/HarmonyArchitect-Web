@@ -1,11 +1,13 @@
+// iOS detection (must precede start overlay handler)
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
 document.addEventListener("DOMContentLoaded", () => {
-    // PWA Start Overlay — first user gesture, used to unlock AudioContext on iOS
+    // ── PWA Start Overlay ──────────────────────────────────
     let startOverlay = document.getElementById("start_overlay");
-    if(startOverlay) {
-        startOverlay.addEventListener("click", (e) => {
+    if (startOverlay) {
+        startOverlay.addEventListener("click", () => {
             startOverlay.style.display = "none";
             window.audioEngine.unlockAndLoad();
-            // Skip fullscreen on iOS — it doesn't work
             if (!isIOS) {
                 if (document.documentElement.requestFullscreen) {
                     document.documentElement.requestFullscreen();
@@ -18,29 +20,37 @@ document.addEventListener("DOMContentLoaded", () => {
 
     window.gui = new GUI();
 
-    // Settings toggle for mobile
-    let settingsToggle = document.getElementById("settings_toggle");
-    let settingsPanel = document.getElementById("settings_collapsible");
-    if (settingsToggle && settingsPanel) {
-        settingsToggle.addEventListener("click", () => {
-            settingsPanel.classList.toggle("open");
-            settingsToggle.textContent = settingsPanel.classList.contains("open") ? "CLOSE ▴" : "MENU ▾";
-        });
+    // ── Settings toggle (all viewports, starts closed) ─────
+    const settingsToggle = document.getElementById("settings_toggle");
+    const settingsPanel  = document.getElementById("settings_collapsible");
+
+    function openSettings()  {
+        settingsPanel?.classList.add("open");
+        if (settingsToggle) settingsToggle.textContent = "⚙ Settings ▴";
+    }
+    function closeSettings() {
+        settingsPanel?.classList.remove("open");
+        if (settingsToggle) settingsToggle.textContent = "⚙ Settings";
     }
 
-    // Fallback: gentle resume attempt on touchstart.
-    // Do NOT call unlockAndLoad() here — touchstart may not count as a valid
-    // user-activation gesture for AudioContext on iOS Safari, and calling it
-    // would set _unlocked=true, preventing the definitive ctx creation in the
-    // click handler below.
-    document.addEventListener('touchstart', function() {
+    settingsToggle?.addEventListener("click", () => {
+        if (settingsPanel?.classList.contains("open")) closeSettings();
+        else openSettings();
+    });
+
+    // ── Gentle resume on first touchstart (iOS fallback) ───
+    document.addEventListener('touchstart', function () {
         if (window.audioEngine && window.audioEngine.ctx.state === 'suspended') {
             window.audioEngine.ctx.resume().catch(() => {});
         }
     }, { once: true, passive: true });
 
+    // ── Reset button ────────────────────────────────────────
+    document.getElementById('reset_btn')?.addEventListener('click', resetSession);
+
+    // ── Level pool data ─────────────────────────────────────
     const ROOTS = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
-    
+
     const LEVEL_POOLS_SINGLE = {
         "1: Basic Triads":    ["C", "Cm", "Cdim", "Caug", "F", "Fm", "G", "Gm", "Bb", "D", "Am"],
         "2: Seventh Chords":  ["Cmaj7", "Cm7", "C7", "Cm7b5", "Fmaj7", "G7", "Bbmaj7", "Ddim7"],
@@ -50,10 +60,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const LEVEL_POOLS_PROG = {
         "1: Basic Triads": [
-            "I - IV - V - I|C|F|G|C", 
-            "I - vi - IV - V|C|Am|F|G", 
-            "i - iv - V - i|Cm|Fm|G|Cm", 
-            "i - VI - VII - i|Cm|Ab|Bb|Cm", 
+            "I - IV - V - I|C|F|G|C",
+            "I - vi - IV - V|C|Am|F|G",
+            "i - iv - V - i|Cm|Fm|G|Cm",
+            "i - VI - VII - i|Cm|Ab|Bb|Cm",
             "I - ii - V - I|C|Dm|G|C"
         ],
         "2: Seventh Chords": [
@@ -63,8 +73,8 @@ document.addEventListener("DOMContentLoaded", () => {
             "iim7 - v7 - Imaj7|Fm7|Bb7|Ebmaj7"
         ],
         "3: Jazz Extensions": [
-            "ii9 - V13 - Imaj9|Dm9|G13|Cmaj9", 
-            "iiø7 - V7alt - im9|Dm7b5|G7alt|Cm9", 
+            "ii9 - V13 - Imaj9|Dm9|G13|Cmaj9",
+            "iiø7 - V7alt - im9|Dm7b5|G7alt|Cm9",
             "Imaj9 - VI7alt - ii9 - V13|Cmaj9|A7alt|Dm9|G13"
         ],
         "4: Advanced": [
@@ -73,22 +83,22 @@ document.addEventListener("DOMContentLoaded", () => {
             "iim7 - subV7 - Imaj7|Fm7|E7|Ebmaj7"
         ]
     };
-    
+
     window.currentSymbol = null;
     window.currentProgression = null;
     window.correctAnswerText = null;
 
-    // Session tracking
+    // ── Session tracking ────────────────────────────────────
     let sessionCorrect = 0;
-    let sessionTotal = 0;
-    let streak = 0;
+    let sessionTotal   = 0;
+    let streak         = 0;
 
     function getSessionSize() {
-        let sel = document.getElementById('session_size_menu');
+        const sel = document.getElementById('session_size_menu');
         return sel ? parseInt(sel.value) : 5;
     }
 
-    // Earcons — simple WebAudio tones
+    // ── Earcons ─────────────────────────────────────────────
     function playEarcon(correct) {
         try {
             let ctx = window.audioEngine?.ctx;
@@ -98,7 +108,6 @@ document.addEventListener("DOMContentLoaded", () => {
             gain.connect(ctx.destination);
             gain.gain.setValueAtTime(0.15, now);
             gain.gain.exponentialRampToValueAtTime(0.001, now + (correct ? 0.3 : 0.25));
-
             if (correct) {
                 [523.25, 659.25].forEach((f, i) => {
                     let osc = ctx.createOscillator();
@@ -109,69 +118,64 @@ document.addEventListener("DOMContentLoaded", () => {
                     osc.stop(now + 0.3);
                 });
             } else {
-                let osc1 = ctx.createOscillator();
-                osc1.type = 'sawtooth';
-                osc1.frequency.value = 200;
-                osc1.connect(gain);
-                osc1.start(now);
-                osc1.stop(now + 0.25);
-                let osc2 = ctx.createOscillator();
-                osc2.type = 'sawtooth';
-                osc2.frequency.value = 212;
-                osc2.connect(gain);
-                osc2.start(now);
-                osc2.stop(now + 0.25);
+                [200, 212].forEach(f => {
+                    let osc = ctx.createOscillator();
+                    osc.type = 'sawtooth';
+                    osc.frequency.value = f;
+                    osc.connect(gain);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                });
             }
-        } catch(e) {}
+        } catch (e) {}
     }
 
-    // Unified progress bar + text
+    // ── Progress updates ────────────────────────────────────
     function updateProgress() {
-        let sz = getSessionSize();
-        let fill = document.getElementById('progress_fill');
-        let text = document.getElementById('progress_text');
-        let pct = sessionTotal > 0 ? Math.round(sessionCorrect / sessionTotal * 100) : 0;
-        if (fill) fill.style.width = Math.min((sessionTotal / sz) * 100, 100) + '%';
-        if (text) text.textContent = '✓' + sessionCorrect + '/' + sz + ' (' + pct + '%)';
+        const sz   = getSessionSize();
+        const fill = document.getElementById('progress_fill');
+        const text = document.getElementById('progress_text');
+        const topFill = document.getElementById('top_progress_fill');
+        const pct  = sessionTotal > 0 ? Math.round(sessionCorrect / sessionTotal * 100) : 0;
+        const prog = Math.min((sessionTotal / sz) * 100, 100);
+        if (fill)    fill.style.width = prog + '%';
+        if (topFill) topFill.style.width = prog + '%';
+        if (text)    text.textContent = '✓' + sessionCorrect + '/' + sz + ' (' + pct + '%)';
     }
 
-    // Streak badge
     function updateStreak() {
-        let badge = document.getElementById('streak_badge');
+        const badge = document.getElementById('streak_badge');
         if (!badge) return;
         if (streak >= 2) {
             badge.style.display = 'inline';
             badge.textContent = '🔥' + streak;
             badge.style.animation = 'none';
-            badge.offsetHeight;
+            badge.offsetHeight; // reflow
             badge.style.animation = '';
         } else {
             badge.style.display = 'none';
         }
     }
 
-    // Post-answer popup
+    // ── Post-answer popup ───────────────────────────────────
     const CORRECT_MSGS = ['🎯 Perfect!', '⚡ Correct!', '🔥 Great!', '✨ Brilliant!', '🚀 Excellent!'];
-    const WRONG_MSGS = ['💡 Almost!', '🎓 Try again!', '🧠 Keep listening!', '🔄 Once more!'];
+    const WRONG_MSGS   = ['💡 Almost!', '🎓 Try again!', '🧠 Keep listening!', '🔄 Once more!'];
 
     function showNextPopup(correct) {
-        let icon = correct ? '✅' : '❌';
         let msgs = correct ? CORRECT_MSGS : WRONG_MSGS;
-        let msg = msgs[Math.floor(Math.random() * msgs.length)];
+        let msg  = msgs[Math.floor(Math.random() * msgs.length)];
         if (streak >= 3) msg = '🔥 Streak x' + streak + '!';
-        document.getElementById('next_popup_icon').textContent = icon;
-        document.getElementById('next_popup_msg').textContent = msg;
+        document.getElementById('next_popup_icon').textContent = correct ? '✅' : '❌';
+        document.getElementById('next_popup_msg').textContent  = msg;
         document.getElementById('next_popup').classList.remove('hidden');
     }
     function hideNextPopup() {
         document.getElementById('next_popup').classList.add('hidden');
     }
 
-    // Popup buttons
     document.getElementById('next_popup_continue').addEventListener('click', () => {
         hideNextPopup();
         startNewChallenge();
-        // Auto-play the new challenge so user immediately hears it
         setTimeout(() => document.getElementById('play_btn').click(), 300);
     });
     document.getElementById('next_popup_replay').addEventListener('click', () => {
@@ -180,45 +184,41 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     document.getElementById('next_popup_stop').addEventListener('click', hideNextPopup);
 
-    // Session completion overlay
+    // ── Session complete ────────────────────────────────────
     function showSessionComplete() {
-        let sz = getSessionSize();
-        let pct = Math.round(sessionCorrect / sz * 100);
-        let badge, title, detail;
-
+        const sz  = getSessionSize();
+        const pct = Math.round(sessionCorrect / sz * 100);
+        let badge, title;
         if (pct >= 90) { badge = '🥇'; title = 'Excellent!'; }
         else if (pct >= 70) { badge = '🥈'; title = 'Great work!'; }
         else if (pct >= 50) { badge = '🥉'; title = 'Good start!'; }
         else { badge = '💪'; title = 'Keep practicing!'; }
-
-        detail = sessionCorrect + '/' + sz + ' correct (' + pct + '%)';
+        let detail = sessionCorrect + '/' + sz + ' correct (' + pct + '%)';
         if (streak >= 3) detail += ' | Best streak: 🔥' + streak;
-
-        document.getElementById('session_badge').textContent = badge;
-        document.getElementById('session_title').textContent = title;
+        document.getElementById('session_badge').textContent  = badge;
+        document.getElementById('session_title').textContent  = title;
         document.getElementById('session_detail').textContent = detail;
         document.getElementById('session_overlay').classList.remove('hidden');
     }
 
     function resetSession() {
         sessionCorrect = 0;
-        sessionTotal = 0;
-        streak = 0;
+        sessionTotal   = 0;
+        streak         = 0;
         updateProgress();
         updateStreak();
         document.getElementById('session_overlay').classList.add('hidden');
         hideNextPopup();
     }
 
-    // Session restart button
     document.getElementById('session_restart_btn')?.addEventListener('click', () => {
         resetSession();
         startNewChallenge();
     });
 
-    // Session size change resets session
     document.getElementById('session_size_menu')?.addEventListener('change', resetSession);
 
+    // ── Level select ────────────────────────────────────────
     const levelSelect = document.getElementById("level_select");
     Object.keys(LEVEL_POOLS_SINGLE).forEach(lvl => {
         let opt = document.createElement("option");
@@ -226,48 +226,62 @@ document.addEventListener("DOMContentLoaded", () => {
         levelSelect.appendChild(opt);
     });
 
-    // Custom Transposer (dalla tonalità implicita di default al target Root)
+    // ── Chord transposer ────────────────────────────────────
     function transposeChord(chordStr, targetRoot) {
-        let chromatic = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
-        let match = chordStr.match(/^([A-G][b#]?)(.*)/);
-        if(!match) return chordStr;
-        
-        let pcStr = match[1];
-        let idxOrig = chromatic.indexOf(pcStr);
-        if(idxOrig === -1) idxOrig = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'].indexOf(pcStr);
-        
+        const chromatic = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+        const match = chordStr.match(/^([A-G][b#]?)(.*)/);
+        if (!match) return chordStr;
+        const pcStr   = match[1];
+        let idxOrig   = chromatic.indexOf(pcStr);
+        if (idxOrig === -1) idxOrig = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'].indexOf(pcStr);
         let targetIdx = chromatic.indexOf(targetRoot);
-        if(targetIdx === -1) targetIdx = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'].indexOf(targetRoot);
-        
-        // Assumption: our generic prog pools are written implicitly in C or related relative
-        let diff = targetIdx - chromatic.indexOf('C'); 
-        
-        let newIdx = (idxOrig + diff + 12) % 12;
+        if (targetIdx === -1) targetIdx = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'].indexOf(targetRoot);
+        const diff    = targetIdx - chromatic.indexOf('C');
+        const newIdx  = (idxOrig + diff + 12) % 12;
         return chromatic[newIdx] + match[2];
     }
 
+    // ── REVEAL button ───────────────────────────────────────
+    document.getElementById('reveal_btn')?.addEventListener('click', () => {
+        if (!window.correctAnswerText) return;
+        // Show chord name in combo label
+        const comboLbl = document.getElementById('combo_label');
+        if (comboLbl) comboLbl.textContent = window.correctAnswerText.split('\n')[0];
+        // Highlight correct answer button and lock all (no scoring)
+        const answersFrame = document.querySelector('.answers-frame');
+        if (answersFrame) {
+            answersFrame.querySelectorAll('.answer-btn').forEach(btn => {
+                btn.dataset.answered = '1';
+                if (btn.dataset.answer === window.correctAnswerText) {
+                    btn.classList.add('correct');
+                    btn.textContent = '✓ ' + btn.dataset.answer.split('\n')[0];
+                }
+            });
+        }
+    });
+
+    // ── Answer buttons ──────────────────────────────────────
     function createAnswers(targetBtnText, wrongOptsTexts) {
         const answersFrame = document.querySelector(".answers-frame");
         answersFrame.innerHTML = "";
         window.correctAnswerText = targetBtnText;
-        
+
         let opts = [targetBtnText, ...wrongOptsTexts].slice(0, 4);
         opts.sort(() => Math.random() - 0.5);
-        
+
         opts.forEach(o => {
             let b = document.createElement("button");
             b.className = "btn answer-btn";
             b.innerText = o;
-            b.dataset.answer = o; // Store original answer for matching
-            if(o.includes("\n")) b.style.fontSize = "12px";
-            
+            b.dataset.answer = o;
+            if (o.includes("\n")) b.style.fontSize = "14px";
+
             b.onclick = () => {
-                // Prevent double-click
                 if (b.dataset.answered) return;
                 answersFrame.querySelectorAll('.answer-btn').forEach(btn => btn.dataset.answered = '1');
 
                 sessionTotal++;
-                let correct = (o === window.correctAnswerText);
+                const correct = (o === window.correctAnswerText);
 
                 if (correct) {
                     sessionCorrect++;
@@ -279,7 +293,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     streak = 0;
                     b.classList.add('wrong');
                     b.innerText = "✗ " + o.split("\n")[0];
-                    // Highlight ONLY the correct answer
                     answersFrame.querySelectorAll('.answer-btn').forEach(btn => {
                         if (btn.dataset.answer === window.correctAnswerText) {
                             btn.classList.add('correct');
@@ -291,56 +304,47 @@ document.addEventListener("DOMContentLoaded", () => {
                 playEarcon(correct);
                 updateProgress();
                 updateStreak();
-
-                // Haptic feedback
                 if (navigator.vibrate) navigator.vibrate(correct ? 10 : [30, 20, 30]);
 
-                // Show popup after 1s, or session complete if done
                 setTimeout(() => {
-                    if (sessionTotal >= getSessionSize()) {
-                        showSessionComplete();
-                    } else {
-                        showNextPopup(correct);
-                    }
+                    if (sessionTotal >= getSessionSize()) showSessionComplete();
+                    else showNextPopup(correct);
                 }, 1000);
             };
             answersFrame.appendChild(b);
         });
     }
 
+    // ── Start new challenge ─────────────────────────────────
     function startNewChallenge() {
         hideNextPopup();
-        if(window.audioEngine.ctx.state === 'suspended') window.audioEngine.ctx.resume();
-        window.gui.drawPitches([]); 
-        
-        let isProgression = document.getElementById("play_mode_menu").value.includes("Progression");
-        let level = document.getElementById("level_select").value;
-        let root = ROOTS[Math.floor(Math.random() * ROOTS.length)];
-        
+        closeSettings();
+        if (window.audioEngine.ctx.state === 'suspended') window.audioEngine.ctx.resume();
+        window.gui.drawPitches([]);
+        window.gui.resetSoloButtons();
+
+        const isProgression = document.getElementById("play_mode_menu").value.includes("Progression");
+        const level = document.getElementById("level_select").value;
+        const root  = ROOTS[Math.floor(Math.random() * ROOTS.length)];
+
         if (isProgression) {
             let pool = LEVEL_POOLS_PROG[level] || LEVEL_POOLS_PROG["1: Basic Triads"];
-            let item = pool[Math.floor(Math.random() * pool.length)]; 
-            
+            let item = pool[Math.floor(Math.random() * pool.length)];
             let parts = item.split("|");
             let name = parts[0] + "\n(" + parts.slice(1).map(c => transposeChord(c, root)).join(" - ") + ")";
             window.currentProgression = parts.slice(1).map(c => transposeChord(c, root));
-            
-            document.getElementById("combo_label").innerText = "???";
+            document.getElementById("combo_label").innerText = "";
             window.realProgressionLabel = parts[0].split("\n")[0] + " in " + root;
-            
-            // Generate valid distractors 
+
             let wrongOpts = [];
-            let safePool = pool.filter(p => p !== item);
+            let safePool  = pool.filter(p => p !== item);
             safePool.forEach(p => {
                 let pparts = p.split("|");
                 wrongOpts.push(pparts[0] + "\n(" + pparts.slice(1).map(c => transposeChord(c, root)).join(" - ") + ")");
             });
-            
-            // Borrow from other levels if not enough distractors
             if (wrongOpts.length < 3) {
                 let usedNames = new Set([parts[0], ...safePool.map(p => p.split("|")[0])]);
-                let allLevels = Object.values(LEVEL_POOLS_PROG);
-                for (let lvlPool of allLevels) {
+                for (let lvlPool of Object.values(LEVEL_POOLS_PROG)) {
                     for (let p of lvlPool) {
                         if (wrongOpts.length >= 3) break;
                         let pparts = p.split("|");
@@ -352,52 +356,39 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (wrongOpts.length >= 3) break;
                 }
             }
-            
             createAnswers(name, wrongOpts);
         } else {
             window.currentProgression = null;
             let pool = LEVEL_POOLS_SINGLE[level] || LEVEL_POOLS_SINGLE["1: Basic Triads"];
-            let sym = pool[Math.floor(Math.random() * pool.length)];
-            
+            let sym  = pool[Math.floor(Math.random() * pool.length)];
             let match = sym.match(/^([A-G][b#]?)(.*)/);
-            let qual = match ? match[2] : "";
+            let qual  = match ? match[2] : "";
             let targetChord = root + qual;
             window.currentSymbol = targetChord;
-            document.getElementById("combo_label").innerText = "???";
+            document.getElementById("combo_label").innerText = "";
             window.realProgressionLabel = targetChord;
-            
+
             let wrongQuals = [];
             pool.forEach(p => {
                 let pm = p.match(/^([A-G][b#]?)(.*)/);
-                if(pm && pm[2] !== qual && !wrongQuals.includes(pm[2])) {
-                    wrongQuals.push(pm[2]);
-                }
+                if (pm && pm[2] !== qual && !wrongQuals.includes(pm[2])) wrongQuals.push(pm[2]);
             });
-            // If less than 3, borrow from other pools occasionally, but typically we have enough
-            let wrongOpts = wrongQuals.map(q => root + q);
-            createAnswers(targetChord, wrongOpts);
+            createAnswers(targetChord, wrongQuals.map(q => root + q));
         }
     }
 
     document.getElementById("next_btn").addEventListener("click", startNewChallenge);
 
+    // ── PLAY button ─────────────────────────────────────────
     document.getElementById("play_btn").addEventListener("click", () => {
-        if(window.audioEngine.ctx.state === 'suspended') window.audioEngine.ctx.resume();
-        if(!window.currentSymbol && !window.currentProgression) startNewChallenge();
-        
-        let comboLbl = document.getElementById("combo_label");
-        if(comboLbl.innerText === "???") {
-            comboLbl.style.transform = "scale(1.2)";
-            setTimeout(() => comboLbl.style.transform = "scale(1)", 200);
-        }
-        
-        let baseOctave = "C3";
-        let isOptimized = document.getElementById("voice_leading_menu").value.includes("Optimized");
-        
-        let tempoMenu = document.getElementById("tempo_menu");
-        let tempoMs = tempoMenu ? parseInt(tempoMenu.value) : 1560;
-        let cutDuration = (tempoMs / 1000) * 0.82; // L'accordo muore all'82% dello span temporale!
-        
+        if (window.audioEngine.ctx.state === 'suspended') window.audioEngine.ctx.resume();
+        if (!window.currentSymbol && !window.currentProgression) startNewChallenge();
+
+        const baseOctave  = "C3";
+        const isOptimized = document.getElementById("voice_leading_menu").value.includes("Optimized");
+        const tempoMs     = parseInt((document.getElementById("tempo_menu") || {}).value) || 1560;
+        const cutDuration = (tempoMs / 1000) * 0.82;
+
         if (window.currentProgression) {
             let prevV = null;
             let voicings = window.currentProgression.map(s => {
@@ -407,50 +398,38 @@ document.addEventListener("DOMContentLoaded", () => {
             });
             window.currentVoicings = voicings;
             window.gui.drawPitches(voicings);
-            
-            voicings.forEach((v, i) => {
-                setTimeout(() => window.audioEngine.playChord(v, cutDuration, i), i * tempoMs);
-            });
+            window.gui.updateSoloButtons(voicings[0]);
+            voicings.forEach((v, i) => setTimeout(() => window.audioEngine.playChord(v, cutDuration, i), i * tempoMs));
             window.gui.setInsight("Progression (" + tempoMs + "ms). Drop-2: " + (isOptimized ? "ON" : "OFF"));
         } else {
             let sym = window.currentSymbol;
             let targetVoicing = window.musicEngine.generateVoicing(sym, baseOctave, isOptimized);
             window.currentVoicings = [targetVoicing];
-            window.gui.drawPitches([targetVoicing]); 
-            // In modalità accordo singolo indichiamo chordIdx 0
+            window.gui.drawPitches([targetVoicing]);
+            window.gui.updateSoloButtons(targetVoicing);
             window.audioEngine.playChord(targetVoicing, cutDuration, 0);
-            
-            let insight = `Base: C3 | Voicing: ${isOptimized ? "Opt. (Drop-2)" : "Root"}`;
-            window.gui.setInsight(insight);
+            window.gui.setInsight(`Base: C3 | Voicing: ${isOptimized ? "Opt. (Drop-2)" : "Root"}`);
         }
     });
 
+    // ── ARPEGGIATOR ─────────────────────────────────────────
     document.getElementById("arpeggio_btn").addEventListener("click", () => {
-        if(window.audioEngine.ctx.state === 'suspended') window.audioEngine.ctx.resume();
-        if(!window.currentVoicings) return; 
-        
-        let tempoMenu = document.getElementById("tempo_menu");
-        let tempoMs = tempoMenu ? parseInt(tempoMenu.value) : 1560;
-        
-        let cIdx = 0;
-        let pIdx = 0;
-        
+        if (window.audioEngine.ctx.state === 'suspended') window.audioEngine.ctx.resume();
+        if (!window.currentVoicings) return;
+        const tempoMs = parseInt((document.getElementById("tempo_menu") || {}).value) || 1560;
+        let cIdx = 0, pIdx = 0;
         function arpNext() {
-            if(cIdx >= window.currentVoicings.length) return;
+            if (cIdx >= window.currentVoicings.length) return;
             let chord = window.currentVoicings[cIdx];
-            
-            if(pIdx >= chord.length) {
-                pIdx = 0;
-                cIdx++;
-                let isoTempo = parseInt((document.getElementById('tempo_menu') || {}).value) || 1560;
-                if(cIdx < window.currentVoicings.length) setTimeout(arpNext, isoTempo);
+            if (pIdx >= chord.length) {
+                pIdx = 0; cIdx++;
+                if (cIdx < window.currentVoicings.length) setTimeout(arpNext, tempoMs);
                 return;
             }
-            
             let note = chord[pIdx];
             window.audioEngine.playPitch(note.voiceIdx, note.frequency, 0.6, cIdx);
             pIdx++;
-            setTimeout(arpNext, tempoMs * 0.30); 
+            setTimeout(arpNext, tempoMs * 0.30);
         }
         arpNext();
     });
