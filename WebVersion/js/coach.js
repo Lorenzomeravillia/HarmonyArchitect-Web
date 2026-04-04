@@ -1,6 +1,7 @@
 // Coach Marks — first-use contextual tooltips
 (function () {
     const STORAGE_KEY = 'coachMarksShown_v1';
+    const DURATION_MS = 3000; // visible time before auto-dismiss
 
     const MARKS = [
         {
@@ -66,21 +67,89 @@
     function getShown() {
         try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch (e) { return {}; }
     }
-
     function markShown(id) {
         const shown = getShown();
         shown[id] = true;
         try { localStorage.setItem(STORAGE_KEY, JSON.stringify(shown)); } catch (e) {}
     }
-
     function getEl() { return document.getElementById('coach_mark'); }
 
+    // ── Core positioning ──────────────────────────────────────────────────────────
+    // rect = getBoundingClientRect() of the target → already in viewport coordinates.
+    // el   = position:fixed → top/left are viewport coordinates, NO scrollY needed.
+    function positionTooltip(el, rect, preferredPos) {
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const MARGIN  = 6;   // min gap from viewport edge
+        const SPACING = 8;   // gap between target and tooltip box
+        const ARROW_H = 9;   // arrow triangle height (matches CSS border)
+
+        // Adaptive width: fit the screen, never overflow
+        const TIP_W = Math.min(260, vw - MARGIN * 2);
+        el.style.width = TIP_W + 'px';
+        el.style.maxWidth = TIP_W + 'px';
+
+        // Measure real tooltip height with current text
+        el.style.visibility = 'hidden';
+        el.classList.remove('hidden');
+        el.style.opacity = '0';
+        const tipH = el.offsetHeight || 80;
+        el.style.visibility = '';
+
+        // Horizontal: center tooltip over target, clamp to viewport
+        const targetCX = rect.left + rect.width / 2;
+        let left = targetCX - TIP_W / 2;
+        left = Math.max(MARGIN, Math.min(left, vw - TIP_W - MARGIN));
+        el.style.left = left + 'px';
+
+        // Decide above vs below based on available space
+        const spaceAbove = rect.top - MARGIN;
+        const spaceBelow = vh - rect.bottom - MARGIN;
+        const needsV = tipH + SPACING + ARROW_H;
+
+        let useAbove;
+        if (preferredPos === 'above') {
+            // prefer above, fall back to below only if truly no room
+            useAbove = spaceAbove >= needsV || spaceAbove >= spaceBelow;
+        } else {
+            // prefer below, fall back to above if no room
+            useAbove = spaceBelow < needsV && spaceAbove >= spaceBelow;
+        }
+
+        // Vertical placement (position:fixed → pure viewport coords, no scrollY)
+        const arrowEl = el.querySelector('.coach-arrow');
+        if (useAbove) {
+            let top = rect.top - needsV;
+            top = Math.max(MARGIN, top);
+            el.style.top    = top + 'px';
+            el.style.bottom = '';
+            if (arrowEl) arrowEl.className = 'coach-arrow coach-arrow-down';
+        } else {
+            let top = rect.bottom + SPACING + ARROW_H;
+            // Push up if tooltip would overflow bottom
+            if (top + tipH > vh - MARGIN) top = Math.max(MARGIN, vh - MARGIN - tipH);
+            el.style.top    = top + 'px';
+            el.style.bottom = '';
+            if (arrowEl) arrowEl.className = 'coach-arrow coach-arrow-up';
+        }
+
+        // Arrow: point at horizontal center of the target element
+        // arrow has no real width (0×0 box), so left = pixel offset from tooltip left edge
+        if (arrowEl) {
+            const arrowPx = Math.round(targetCX - left);
+            arrowEl.style.left      = Math.max(14, Math.min(arrowPx, TIP_W - 14)) + 'px';
+            arrowEl.style.transform = 'none'; // override CSS translateX(-50%)
+        }
+    }
+
+    // ── Show / hide ───────────────────────────────────────────────────────────────
     function hideCoachMark(cb) {
         const el = getEl();
         if (!el) return cb && cb();
-        if (currentTimeout) { clearTimeout(currentTimeout); currentTimeout = null; }
-        if (dismissHandler) {
-            document.removeEventListener('click', dismissHandler, true);
+        if (currentTimeout)  { clearTimeout(currentTimeout); currentTimeout = null; }
+        if (dismissHandler)  {
+            document.removeEventListener('click',      dismissHandler, true);
+            document.removeEventListener('touchstart', dismissHandler, true);
             dismissHandler = null;
         }
         el.style.opacity = '0';
@@ -88,45 +157,25 @@
     }
 
     function showCoachMark(mark, onDone) {
-        const el = getEl();
+        const el     = getEl();
         const target = document.querySelector(mark.target);
         if (!el || !target) { onDone && onDone(); return; }
 
-        // Skip if target not visible
         const rect = target.getBoundingClientRect();
-        if (rect.width === 0 && rect.height === 0) { onDone && onDone(); return; }
+        // Skip if element has no size (hidden / collapsed panel)
+        if (rect.width === 0 || rect.height === 0) { onDone && onDone(); return; }
 
         const textEl = el.querySelector('.coach-text');
         if (textEl) textEl.textContent = mark.text;
 
-        el.classList.remove('hidden');
-        el.style.opacity = '0';
-
-        // Positioning
-        const TIP_W = 280;
-        let left = rect.left + rect.width / 2 - TIP_W / 2;
-        left = Math.max(8, Math.min(left, window.innerWidth - TIP_W - 8));
-        el.style.width = TIP_W + 'px';
-        el.style.left = left + 'px';
-
-        const arrowEl = el.querySelector('.coach-arrow');
-
-        // Prefer requested position, fallback if too close to viewport edge
-        const preferAbove = mark.pos === 'above' || rect.top > window.innerHeight * 0.55;
-        if (preferAbove && rect.top > 80) {
-            el.style.top = '';
-            el.style.bottom = (window.innerHeight - rect.top + 10) + 'px';
-            if (arrowEl) arrowEl.className = 'coach-arrow coach-arrow-down';
-        } else {
-            el.style.bottom = '';
-            el.style.top = (rect.bottom + window.scrollY + 10) + 'px';
-            if (arrowEl) arrowEl.className = 'coach-arrow coach-arrow-up';
-        }
+        // Position before revealing (prevents flash of wrong position)
+        positionTooltip(el, rect, mark.pos);
 
         // Fade in
+        el.style.opacity = '0';
         requestAnimationFrame(() => {
-            el.style.transition = 'opacity 0.3s';
-            el.style.opacity = '1';
+            el.style.transition = 'opacity 0.25s';
+            el.style.opacity    = '1';
         });
 
         markShown(mark.id);
@@ -135,22 +184,23 @@
             hideCoachMark(() => setTimeout(() => onDone && onDone(), 200));
         }
 
-        currentTimeout = setTimeout(done, 5000);
+        currentTimeout = setTimeout(done, DURATION_MS);
 
+        // Dismiss on any tap/click outside the tooltip itself
         dismissHandler = function (e) {
-            // Don't dismiss if clicking on the coach mark itself
             if (el.contains(e.target)) return;
             done();
         };
         setTimeout(() => {
-            document.addEventListener('click', dismissHandler, true);
+            document.addEventListener('click',      dismissHandler, true);
+            document.addEventListener('touchstart', dismissHandler, { capture: true, passive: true });
         }, 150);
     }
 
+    // ── Queue ─────────────────────────────────────────────────────────────────────
     function runQueue() {
         if (queue.length === 0) return;
-        const mark = queue.shift();
-        showCoachMark(mark, runQueue);
+        showCoachMark(queue.shift(), runQueue);
     }
 
     function startTour(resetAll) {
@@ -159,21 +209,23 @@
             queue = MARKS.filter(m => {
                 if (shown[m.id]) return false;
                 const t = document.querySelector(m.target);
-                // Show if element exists in DOM (even if slightly off-screen)
-                return !!t;
+                if (!t) return false;
+                // Skip elements with no visible size (e.g. settings panel closed)
+                const r = t.getBoundingClientRect();
+                return r.width > 0 && r.height > 0;
             });
             if (queue.length > 0) setTimeout(runQueue, 400);
         });
     }
 
-    // Auto-start on first load (after a short delay so layout settles)
+    // Auto-start on first load
     window.addEventListener('load', () => {
-        const shown = getShown();
+        const shown  = getShown();
         const anyNew = MARKS.some(m => !shown[m.id]);
         if (anyNew) setTimeout(() => startTour(false), 2000);
     });
 
-    // ? button resets and restarts tour
+    // ? button: reset and replay all
     document.addEventListener('DOMContentLoaded', () => {
         const btn = document.getElementById('coach_btn');
         if (btn) {
