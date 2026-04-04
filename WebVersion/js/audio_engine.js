@@ -23,18 +23,55 @@ class AudioEngine {
             "Arpa":         46
         };
 
-        // 7 voice channels (GM program numbers)
-        this.channels = [43, 42, 56, 60, 41, 71, 73];
+        // 7 voice channels (GM program numbers) — Orchestra default
+        this.channels = [43, 42, 70, 60, 41, 71, 73];
+
+        // Per-voice volume balance: bass full, inner voices softer, top voice slightly prominent
+        this.voiceBalance = [1.0, 0.80, 0.76, 0.74, 0.76, 0.80, 0.90];
+
+        // Curated timbral presets for 7 voices [Bass, V2, V3, V4, V5, V6, Top]
+        this.PRESETS = {
+            'Orchestra':    [43, 42, 70, 60, 41, 71, 73],  // CB, Cello, Bassoon, Horn, Viola, Clarinet, Flute
+            'Jazz Combo':   [43, 42, 65, 60, 71, 56,  0],  // CB, Cello, Sax, Horn, Clarinet, Trumpet, Piano
+            'High Contrast':[43, 19, 56, 46, 70, 73, 40],  // CB, Organ, Trumpet, Harp, Bassoon, Flute, Violin
+        };
+
+        // Audio routing: instruments → masterBus → [direct + reverbSend → reverb] → destination
+        this.masterBus = this.ctx.createGain();
+        this.masterBus.gain.value = 1.0;
+        this.masterBus.connect(this.ctx.destination);
+        this._setupReverb();
 
         // Pre-inject instrument scripts so they are ready when ctx is created.
-        // On desktop the placeholder ctx is usable; on iOS a new ctx will be
-        // created inside the user gesture and these already-loaded presets reused.
         this.channels.forEach(prog => this._loadProg(prog));
     }
 
+    _setupReverb() {
+        // Synthetic room reverb — exponential-decay noise convolution, no external files needed.
+        const sr = this.ctx.sampleRate;
+        const len = Math.floor(sr * 1.4); // 1.4 s room tail
+        const ir = this.ctx.createBuffer(2, len, sr);
+        for (let c = 0; c < 2; c++) {
+            const d = ir.getChannelData(c);
+            for (let i = 0; i < len; i++) {
+                d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.2);
+            }
+        }
+        this.reverb = this.ctx.createConvolver();
+        this.reverb.buffer = ir;
+        this.reverb.connect(this.ctx.destination);
+
+        this.reverbSend = this.ctx.createGain();
+        this.reverbSend.gain.value = 0.18; // subtle wet mix
+        this.masterBus.connect(this.reverbSend);
+        this.reverbSend.connect(this.reverb);
+    }
+
     _loadProg(prog) {
-        const info = this.player.loader.instrumentInfo(prog);
-        if (info) this.player.loader.startLoad(this.ctx, info.url, info.variable);
+        const num = String(prog * 10).padStart(4, '0');
+        const varName = `_tone_${num}_FluidR3_GM_sf2_file`;
+        const url = `https://surikov.github.io/webaudiofontdata/sound/${num}_FluidR3_GM_sf2_file.js`;
+        this.player.loader.startLoad(this.ctx, url, varName);
     }
 
     // Called on first user gesture (start overlay tap) — unlocks AudioContext on iOS.
@@ -49,6 +86,15 @@ class AudioEngine {
             .catch(() => {});
     }
 
+    applyPreset(name) {
+        const progs = this.PRESETS[name];
+        if (!progs) return;
+        progs.forEach((prog, i) => {
+            this.channels[i] = prog;
+            this._loadProg(prog);
+        });
+    }
+
     setChannelInstrument(channelIdx, instrumentName) {
         if (channelIdx < 0 || channelIdx >= this.channels.length) return;
         const prog = this.instrumentPrograms[instrumentName];
@@ -58,8 +104,8 @@ class AudioEngine {
     }
 
     _getPreset(channelIdx) {
-        const info = this.player.loader.instrumentInfo(this.channels[channelIdx]);
-        return info ? (window[info.variable] || null) : null;
+        const num = String(this.channels[channelIdx] * 10).padStart(4, '0');
+        return window[`_tone_${num}_FluidR3_GM_sf2_file`] || null;
     }
 
     _getVolume() {
@@ -76,15 +122,15 @@ class AudioEngine {
         if (this.ctx.state === 'suspended') this.ctx.resume();
         const preset = this._getPreset(channelIdx);
         if (!preset) return;
-        const gain = (velocity / 127) * this._getVolume();
-        this.player.queueWaveTable(this.ctx, this.ctx.destination, preset, this.ctx.currentTime, midiPitch, duration, gain);
+        const balance = this.voiceBalance[channelIdx] ?? 1.0;
+        const gain = (velocity / 127) * this._getVolume() * balance;
+        this.player.queueWaveTable(this.ctx, this.masterBus, preset, this.ctx.currentTime, midiPitch, duration, gain);
         const freq = 440 * Math.pow(2, (midiPitch - 69) / 12);
         if (window.gui?.highlight) window.gui.highlight(channelIdx, freq, duration * 1000, chordIdx);
     }
 
     playChord(notesArray, durationOverride = null, chordIdx = null) {
         // Always call resume() synchronously — must stay in user gesture call stack on iOS.
-        // Notes scheduled in the future will queue and play once ctx starts.
         this.ctx.resume();
         const SPREAD_SEC = 0.12;
         const lead = this.ctx.state === 'running' ? 0.1 : 0.4;
@@ -97,9 +143,10 @@ class AudioEngine {
             const midi = Math.round(69 + 12 * Math.log2(freq / 440));
             const preset = this._getPreset(item.voiceIdx);
             if (!preset) return;
+            const balance = this.voiceBalance[item.voiceIdx] ?? 1.0;
 
-            this.player.queueWaveTable(this.ctx, this.ctx.destination, preset,
-                now + lead + idx * SPREAD_SEC, midi, dur, vol);
+            this.player.queueWaveTable(this.ctx, this.masterBus, preset,
+                now + lead + idx * SPREAD_SEC, midi, dur, vol * balance);
 
             if (window.gui?.highlight) {
                 setTimeout(

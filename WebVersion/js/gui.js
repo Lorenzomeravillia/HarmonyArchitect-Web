@@ -3,30 +3,23 @@ class GUI {
         this.canvas = document.getElementById("staff_canvas");
         this.ctx = this.canvas.getContext("2d");
         
-        // Populate instruments
+        // Timbre preset buttons (replaces 7 individual dropdowns)
         const selectContainer = document.getElementById("voice_instruments_frame");
-        const voices = ["Basso", "V2", "V3", "V4", "V5", "V6", "Alto"];
-        const defaults = ["Contrabbasso", "Violoncello", "Tromba", "Corno", "Viola", "Clarinetto", "Flauto"];
-        const avail = Object.keys(window.audioEngine.instrumentPrograms);
-        
-        voices.forEach((v, i) => {
-            let div = document.createElement("div");
-            div.className = "flex-col align-center";
-            div.innerHTML = `<span class="label text-muted" style="font-size: 11px;">${v}</span>`;
-            
-            let sel = document.createElement("select");
-            sel.className = "dropdown small-btn";
-            sel.onchange = (e) => window.audioEngine.setChannelInstrument(i, e.target.value);
-            
-            avail.forEach(inst => {
-                let opt = document.createElement("option");
-                opt.value = inst;
-                opt.text = inst;
-                if(inst === defaults[i]) opt.selected = true;
-                sel.appendChild(opt);
-            });
-            div.appendChild(sel);
-            selectContainer.appendChild(div);
+        const presetDefs = [
+            { name: 'Orchestra',     icon: '🎻' },
+            { name: 'Jazz Combo',    icon: '🎷' },
+            { name: 'High Contrast', icon: '⚡' },
+        ];
+        presetDefs.forEach((p, i) => {
+            const btn = document.createElement('button');
+            btn.className = 'btn preset-btn' + (i === 0 ? ' active' : '');
+            btn.textContent = `${p.icon} ${p.name}`;
+            btn.onclick = () => {
+                document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                window.audioEngine.applyPreset(p.name);
+            };
+            selectContainer.appendChild(btn);
         });
 
         // Populate Solo
