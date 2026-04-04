@@ -588,23 +588,26 @@ canvas {
 .session-restart { font-size: 16px; padding: 12px 30px; border-radius: 30px; }
 
 /* ── Coach Mark Tooltip ────────────────────────────────── */
+/*   Light card on dark background: pops clearly, no camouflage.
+ *   #EEF3FA (bg) / #0D1B3E (text): 15.2:1 internal AAA
+ *   #EEF3FA vs app-bg #0A1128:    16.8:1 — tooltip unmissable       */
 .coach-mark {
     position: fixed;
     z-index: 99000;
-    background: rgba(10, 15, 40, 0.97);
-    border: 1px solid rgba(255,255,255,0.22);
-    border-radius: 10px;
-    padding: 12px 16px;
+    background: #EEF3FA;
+    border: 1.5px solid #6B9EC8;          /* medium blue — echoes app accent */
+    border-radius: 12px;
+    padding: 14px 18px;
     max-width: 300px;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+    box-shadow: 0 6px 28px rgba(0,0,0,0.45), 0 0 0 1px rgba(107,158,200,0.25);
     pointer-events: none;
     transition: opacity 0.3s;
 }
 .coach-text {
     font-size: 14px;
-    font-weight: 500;
-    color: #fff;
-    line-height: 1.5;
+    font-weight: 600;
+    color: #0D1B3E;                        /* very dark navy — 15:1 on light bg */
+    line-height: 1.55;
     margin: 0;
 }
 .coach-arrow {
@@ -612,16 +615,16 @@ canvas {
     left: 50%;
     transform: translateX(-50%);
     width: 0; height: 0;
-    border-left: 8px solid transparent;
-    border-right: 8px solid transparent;
+    border-left: 9px solid transparent;
+    border-right: 9px solid transparent;
 }
 .coach-arrow-up {
-    top: -8px;
-    border-bottom: 8px solid rgba(10, 15, 40, 0.97);
+    top: -9px;
+    border-bottom: 9px solid #EEF3FA;
 }
 .coach-arrow-down {
-    bottom: -8px;
-    border-top: 8px solid rgba(10, 15, 40, 0.97);
+    bottom: -9px;
+    border-top: 9px solid #EEF3FA;
 }
 
 /* ============================================================
