@@ -27,12 +27,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const energyBadge = document.getElementById('energy_badge');
 
     async function updateEnergyUI() {
-        let e = await window.supaGetEnergy();
+        let e = await window.getDbEnergy();
         if (energyBadge) energyBadge.textContent = e === '∞' ? '∞' : e;
     }
 
-    if (window.supaInitAuth) {
-        window.supaInitAuth(async (event, session) => {
+    if (window.initDbAuth) {
+        window.initDbAuth(async (event, session) => {
             if (session) {
                 authModal.classList.add('hidden');
                 document.getElementById('auth_msg').textContent = "Logged in as " + session.user.email;
@@ -64,7 +64,7 @@ document.addEventListener("DOMContentLoaded", () => {
         btn.textContent = "Sending...";
         
         try {
-            const { error } = await window.supaClient.auth.signInWithOtp({ email: email });
+            const { error } = await window.dbClient.auth.signInWithOtp({ email: email });
             if (error) {
                 alert("Error: " + error.message);
                 btn.textContent = "Send Magic Link ✉️";
@@ -282,7 +282,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     document.getElementById('session_restart_btn')?.addEventListener('click', async () => {
-        const hasEnergy = await window.supaConsumeEnergy();
+        const hasEnergy = await window.consumeDbEnergy();
         updateEnergyUI();
         
         if (!hasEnergy) {
@@ -397,7 +397,7 @@ document.addEventListener("DOMContentLoaded", () => {
     async function startNewChallenge() {
         if (sessionTotal === 0 && sessionCorrect === 0) {
             // Check energy ONLY at the very beginning of a completely new session
-            let energyStr = await window.supaGetEnergy();
+            let energyStr = await window.getDbEnergy();
             if (energyStr !== '∞' && parseInt(energyStr) <= 0) {
                 document.getElementById('paywall_modal').classList.remove('hidden');
                 return; // Stop here, don't start the challenge

@@ -6,7 +6,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 let supabase = null;
 try {
     supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    window.supaClient = supabase;
+    window.dbClient = supabase;
 } catch (e) {
     console.error("Critical: Failed to initialize Supabase client on load", e);
     alert("Supabase Failed to Init: " + e.message);
@@ -86,6 +86,6 @@ async function initAuth(onStateChange) {
 }
 
 // Expose to window for main.js 
-window.supaInitAuth = initAuth;
-window.supaConsumeEnergy = consumeEnergy;
-window.supaGetEnergy = getEnergy;
+window.initDbAuth = initAuth;
+window.consumeDbEnergy = consumeEnergy;
+window.getDbEnergy = getEnergy;

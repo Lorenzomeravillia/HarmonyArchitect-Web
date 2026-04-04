@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const SUPABASE_URL = 'https://rcgnwbayinwjmejjofez.supabase.co';
+            const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJjZ253YmF5aW53am1lampvZmV6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMjM0NjEsImV4cCI6MjA5MDg5OTQ2MX0.2Nv2haVtMuz_SiX-bLJjUTVeg83bXSv-rJuUSYWOKZQ';
+            console.log("Supabase library object:", window.supabase);
+            try {
+                const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                console.log("Client created successfully.");
+                console.log("Client keys:", Object.keys(client));
+                console.log("Client auth object:", client.auth);
+                console.log("Is auth undefined?:", client.auth === undefined);
+            } catch(e) {
+                console.error("Init Error", e);
+            }
+        });
+    </script>
+</head>
+<body>
+    <h1>Supabase Object Inspector</h1>
+</body>
+</html>
