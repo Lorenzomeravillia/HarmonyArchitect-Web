@@ -60,15 +60,22 @@ document.addEventListener("DOMContentLoaded", () => {
         const email = document.getElementById('auth_email').value;
         if (!email || !email.includes('@')) return alert("Enter a valid email");
         
-        document.getElementById('auth_magic_link_btn').textContent = "Sending...";
-        const { error } = await window.supaClient.auth.signInWithOtp({ email: email });
+        const btn = document.getElementById('auth_magic_link_btn');
+        btn.textContent = "Sending...";
         
-        if (error) {
-            alert(error.message);
-            document.getElementById('auth_magic_link_btn').textContent = "Send Magic Link ✉️";
-        } else {
-            document.getElementById('auth_msg').textContent = "Check your email for the login link!";
-            document.getElementById('auth_magic_link_btn').style.display = 'none';
+        try {
+            const { error } = await window.supaClient.auth.signInWithOtp({ email: email });
+            if (error) {
+                alert("Error: " + error.message);
+                btn.textContent = "Send Magic Link ✉️";
+            } else {
+                document.getElementById('auth_msg').textContent = "Check your email for the login link!";
+                btn.style.display = 'none';
+            }
+        } catch (err) {
+            console.error("Auth Exception:", err);
+            alert("Network error. Please check your connection or ad-blocker.");
+            btn.textContent = "Send Magic Link ✉️";
         }
     });
 
