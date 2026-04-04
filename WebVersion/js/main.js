@@ -20,6 +20,68 @@ document.addEventListener("DOMContentLoaded", () => {
 
     window.gui = new GUI();
 
+    // ── Supabase & Auth Initialization ─────────────────────
+    const profileBtn = document.getElementById('user_profile_btn');
+    const authModal = document.getElementById('auth_modal');
+    const paywallModal = document.getElementById('paywall_modal');
+    const energyBadge = document.getElementById('energy_badge');
+
+    async function updateEnergyUI() {
+        let e = await window.supaGetEnergy();
+        if (energyBadge) energyBadge.textContent = e === '∞' ? '∞' : e;
+    }
+
+    if (window.supaInitAuth) {
+        window.supaInitAuth(async (event, session) => {
+            if (session) {
+                authModal.classList.add('hidden');
+                document.getElementById('auth_msg').textContent = "Logged in as " + session.user.email;
+            } else {
+                document.getElementById('auth_msg').textContent = "Save your stats and unlock more energy.";
+            }
+            await updateEnergyUI();
+        });
+    }
+
+    profileBtn?.addEventListener('click', () => {
+        if (window.currentUser) {
+            // Already logged in, maybe show logout option in future, for now show alert
+            alert("Logged in as: " + window.currentUser.email + "\nTier: " + (window.currentProfile?.tier || 'free'));
+        } else {
+            authModal.classList.remove('hidden');
+        }
+    });
+
+    document.getElementById('auth_close_btn')?.addEventListener('click', () => {
+        authModal.classList.add('hidden');
+    });
+
+    document.getElementById('auth_magic_link_btn')?.addEventListener('click', async () => {
+        const email = document.getElementById('auth_email').value;
+        if (!email || !email.includes('@')) return alert("Enter a valid email");
+        
+        document.getElementById('auth_magic_link_btn').textContent = "Sending...";
+        const { error } = await window.supaClient.auth.signInWithOtp({ email: email });
+        
+        if (error) {
+            alert(error.message);
+            document.getElementById('auth_magic_link_btn').textContent = "Send Magic Link ✉️";
+        } else {
+            document.getElementById('auth_msg').textContent = "Check your email for the login link!";
+            document.getElementById('auth_magic_link_btn').style.display = 'none';
+        }
+    });
+
+    // Paywall buttons
+    document.getElementById('paywall_login_btn')?.addEventListener('click', () => {
+        paywallModal.classList.add('hidden');
+        authModal.classList.remove('hidden');
+    });
+    
+    document.getElementById('paywall_upgrade_btn')?.addEventListener('click', () => {
+        alert("Redirecting to LemonSqueezy Checkout... (To be implemented)");
+    });
+
     // ── Settings toggle (all viewports, starts closed) ─────
     const settingsToggle = document.getElementById("settings_toggle");
     const settingsPanel  = document.getElementById("settings_collapsible");
@@ -212,7 +274,15 @@ document.addEventListener("DOMContentLoaded", () => {
         hideNextPopup();
     }
 
-    document.getElementById('session_restart_btn')?.addEventListener('click', () => {
+    document.getElementById('session_restart_btn')?.addEventListener('click', async () => {
+        const hasEnergy = await window.supaConsumeEnergy();
+        updateEnergyUI();
+        
+        if (!hasEnergy) {
+            document.getElementById('paywall_modal').classList.remove('hidden');
+            return;
+        }
+
         resetSession();
         startNewChallenge();
     });
@@ -317,7 +387,16 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // ── Start new challenge ─────────────────────────────────
-    function startNewChallenge() {
+    async function startNewChallenge() {
+        if (sessionTotal === 0 && sessionCorrect === 0) {
+            // Check energy ONLY at the very beginning of a completely new session
+            let energyStr = await window.supaGetEnergy();
+            if (energyStr !== '∞' && parseInt(energyStr) <= 0) {
+                document.getElementById('paywall_modal').classList.remove('hidden');
+                return; // Stop here, don't start the challenge
+            }
+        }
+
         hideNextPopup();
         closeSettings();
         if (window.audioEngine.ctx.state === 'suspended') window.audioEngine.ctx.resume();

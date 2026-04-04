@@ -10,6 +10,9 @@
 
     <!-- WebAudioFontPlayer (cross-browser, iOS-compatible) -->
     <script src="https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js"></script>
+    
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <!-- Full-width session progress (fixed, 4px, always visible) -->
@@ -37,6 +40,7 @@
                 </div>
                 <button id="reset_btn" class="btn icon-btn btn-danger" title="Reset Session">🗑️</button>
                 <button id="coach_btn" class="btn icon-btn coach-btn" title="Help tour">?</button>
+                <div id="user_profile_btn" class="btn icon-btn" title="Account / Energy">👤<span id="energy_badge" style="font-size: 10px; vertical-align: top; color: gold; font-weight: bold; margin-left: 2px;">⚡</span></div>
                 <button id="settings_toggle" class="btn settings-toggle-btn">⚙ Settings</button>
                 <button id="next_btn" class="btn btn-primary next-btn">↻ New</button>
             </div>
@@ -144,6 +148,28 @@
         <!-- Modals will be injected here -->
     </div>
 
+    <!-- Auth Modal -->
+    <div id="auth_modal" class="modal-overlay hidden" style="z-index: 9999;">
+        <div class="next-popup-card" style="position: relative; width: 90%; max-width: 400px; margin: auto; transform: translateY(50vh); margin-top: -150px; background: #050814; border: 2px solid #4A65A5;">
+            <h2 style="margin-top: 0;">Sign in to ClearVoicing</h2>
+            <p id="auth_msg" class="text-muted text-center" style="margin-bottom: 20px;">Save your stats and unlock more energy.</p>
+            <input type="email" id="auth_email" placeholder="Your email address" style="width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #4A65A5; background: #010205; color: white; display: block; box-sizing: border-box; font-size: 16px;">
+            <button id="auth_magic_link_btn" class="btn btn-primary" style="width: 100%; margin-bottom: 10px;">Send Magic Link ✉️</button>
+            <button id="auth_close_btn" class="btn next-popup-btn-ghost" style="width: 100%;">Close</button>
+        </div>
+    </div>
+    
+    <!-- Paywall / Out of Energy Modal -->
+    <div id="paywall_modal" class="modal-overlay hidden" style="z-index: 9999;">
+        <div class="next-popup-card text-center" style="position: relative; width: 90%; max-width: 400px; margin: auto; transform: translateY(50vh); margin-top: -150px; background: #050814; border: 2px solid #E8873D;">
+            <h2 style="color: #E8873D; margin-top: 0;">Out of Energy ⚡</h2>
+            <p class="text-muted" style="margin: 15px 0;">You've used all your free sessions for today!</p>
+            <button id="paywall_login_btn" class="btn btn-primary" style="width: 100%; margin-bottom: 12px;">Login to Save Progress</button>
+            <button id="paywall_upgrade_btn" class="btn" style="width: 100%; margin-bottom: 12px; background: #F0B429; color: black; font-weight: bold;">Unlock PRO (Unlimited)</button>
+            <!-- <button id="paywall_ad_btn" class="btn next-popup-btn-sec" style="width: 100%;">Watch Ad (+1 Session)</button> -->
+        </div>
+    </div>
+
     <!-- Coach Mark Tooltip -->
     <div id="coach_mark" class="coach-mark hidden">
         <div class="coach-arrow coach-arrow-up"></div>
@@ -160,6 +186,7 @@
     <script src="js/music_engine.js?v=30"></script>
     <script src="js/gui.js?v=30"></script>
     <script src="js/coach.js?v=30"></script>
+    <script src="js/supabase_client.js"></script>
     <script src="js/main.js?v=30"></script>
 </body>
 </html>
