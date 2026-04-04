@@ -2,14 +2,19 @@
 const SUPABASE_URL = 'https://rcgnwbayinwjmejjofez.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJjZ253YmF5aW53am1lampvZmV6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMjM0NjEsImV4cCI6MjA5MDg5OTQ2MX0.2Nv2haVtMuz_SiX-bLJjUTVeg83bXSv-rJuUSYWOKZQ';
 
-// Initialize Supabase Client safely
-let supabase = null;
-try {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    window.dbClient = supabase;
-} catch (e) {
-    console.error("Critical: Failed to initialize Supabase client on load", e);
-    alert("Supabase Failed to Init: " + e.message);
+// Global reference
+window.dbClient = null;
+
+function ensureClient() {
+    if (window.dbClient) return window.dbClient;
+    try {
+        window.dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        console.log("DB Client successfully initialized on demand.");
+    } catch (e) {
+        console.error("Critical: Failed to initialize Supabase client", e);
+        alert("Supabase Failed to Init: " + e.message);
+    }
+    return window.dbClient;
 }
 
 // Auth State & Profile
@@ -18,7 +23,9 @@ window.currentProfile = null;
 
 async function fetchProfile() {
     if (!window.currentUser) return null;
-    const { data, error } = await supabase
+    const client = ensureClient();
+    if (!client) return null;
+    const { data, error } = await client
         .from('profiles')
         .select('*')
         .eq('id', window.currentUser.id)
@@ -46,7 +53,9 @@ async function consumeEnergy() {
     }
 
     // If logged in, call secure backend RPC
-    const { data, error } = await supabase.rpc('consume_energy');
+    const client = ensureClient();
+    if (!client) return false;
+    const { data, error } = await client.rpc('consume_energy');
     if (error) {
         console.error("Error consuming energy", error);
         return false;
@@ -67,14 +76,16 @@ async function getEnergy() {
 
 // Initial Auth Check
 async function initAuth(onStateChange) {
-    const { data: { session } } = await supabase.auth.getSession();
+    const client = ensureClient();
+    if (!client) return;
+    const { data: { session } } = await client.auth.getSession();
     window.currentUser = session ? session.user : null;
     
     if (window.currentUser) {
         await fetchProfile();
     }
     
-    supabase.auth.onAuthStateChange(async (event, session) => {
+    client.auth.onAuthStateChange(async (event, session) => {
         window.currentUser = session ? session.user : null;
         if (window.currentUser) {
             await fetchProfile();
@@ -86,6 +97,7 @@ async function initAuth(onStateChange) {
 }
 
 // Expose to window for main.js 
+window.getDbClient = ensureClient;
 window.initDbAuth = initAuth;
 window.consumeDbEnergy = consumeEnergy;
 window.getDbEnergy = getEnergy;

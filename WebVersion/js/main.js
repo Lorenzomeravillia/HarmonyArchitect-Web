@@ -20,6 +20,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     window.gui = new GUI();
 
+    console.log("=== MAIN JS: INIT ===");
+    console.log("window.dbClient =", window.dbClient);
+
     // ── Supabase & Auth Initialization ─────────────────────
     const profileBtn = document.getElementById('user_profile_btn');
     const authModal = document.getElementById('auth_modal');
@@ -64,7 +67,12 @@ document.addEventListener("DOMContentLoaded", () => {
         btn.textContent = "Sending...";
         
         try {
-            const { error } = await window.dbClient.auth.signInWithOtp({ email: email });
+            const client = window.getDbClient();
+            if (!client) {
+                btn.textContent = "Send Magic Link ✉️";
+                return alert("Fatal error: cannot initialize Auth service. Are you offline?");
+            }
+            const { error } = await client.auth.signInWithOtp({ email: email });
             if (error) {
                 alert("Error: " + error.message);
                 btn.textContent = "Send Magic Link ✉️";
