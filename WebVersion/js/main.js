@@ -39,8 +39,9 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // ── Gentle resume on first touchstart (iOS fallback) ───
+    // ctx may be null if unlockAndLoad() hasn't fired yet — use optional chaining.
     document.addEventListener('touchstart', function () {
-        if (window.audioEngine && window.audioEngine.ctx.state === 'suspended') {
+        if (window.audioEngine?.ctx?.state === 'suspended') {
             window.audioEngine.ctx.resume().catch(() => {});
         }
     }, { once: true, passive: true });

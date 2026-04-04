@@ -39,7 +39,7 @@ class GUI {
             b.className = "btn solo-btn";
             b.innerText = s;
             b.onclick = () => {
-                if (window.audioEngine.ctx.state === 'suspended') window.audioEngine.ctx.resume();
+                if (window.audioEngine.ctx?.state === 'suspended') window.audioEngine.ctx.resume();
                 if (!window.currentVoicings) return;
 
                 let cIdx = 0;
@@ -72,7 +72,7 @@ class GUI {
             for (let i = window.noteHitboxes.length - 1; i >= 0; i--) {
                 let hb = window.noteHitboxes[i];
                 if (Math.hypot(px - hb.x, py - hb.y) <= 11) {
-                    if (window.audioEngine.ctx.state === 'suspended') window.audioEngine.ctx.resume();
+                    if (window.audioEngine.ctx?.state === 'suspended') window.audioEngine.ctx.resume();
                     window.audioEngine.playPitch(hb.voiceIdx, hb.freq, 1.0, hb.chordIdx);
                     break;
                 }

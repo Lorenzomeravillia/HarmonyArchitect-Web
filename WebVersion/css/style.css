@@ -31,6 +31,21 @@
     --hw-arp-bot:  #66340B;
 }
 
+/*
+ * ── WCAG Contrast Ratios (verified 2025-04) ──────────────────────────
+ * Formula: (L1+0.05)/(L2+0.05), L = relative luminance per WCAG 2.1
+ *
+ *  Combination                              Ratio   Grade
+ *  #fff  on answer-btn  #3A4A5C             9.1:1   AAA  ✓
+ *  #0a1128 on correct   #84CC16             9.5:1   AAA  ✓
+ *  #0a1128 on wrong     #EF4444             5.0:1   AA (AAA large-text ≥18px bold) ✓
+ *  text-primary #E8EDF4 on bg-panel #1C2541 12.8:1  AAA  ✓
+ *  text-muted   #B0BEC5 on bg-panel #1C2541  7.9:1  AAA  ✓
+ *  text-primary on solo-btn #2A3A55          9.7:1  AAA  ✓
+ *  #fff  on preset-active  (≈ #214576)       9.6:1  AAA  ✓
+ * ─────────────────────────────────────────────────────────────────────
+ */
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
@@ -312,6 +327,7 @@ body {
 }
 .answer-btn.wrong {
     background-color: var(--color-wrong) !important;
+    color: #0a1128 !important; /* dark on red = 5.0:1 (AA / AAA large-text) vs white = 3.8:1 (fail) */
     animation: shake 0.4s ease-out;
 }
 
