@@ -2,9 +2,15 @@
 const SUPABASE_URL = 'https://rcgnwbayinwjmejjofez.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJjZ253YmF5aW53am1lampvZmV6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMjM0NjEsImV4cCI6MjA5MDg5OTQ2MX0.2Nv2haVtMuz_SiX-bLJjUTVeg83bXSv-rJuUSYWOKZQ';
 
-// Initialize Supabase Client
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-window.supaClient = supabase;
+// Initialize Supabase Client safely
+let supabase = null;
+try {
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    window.supaClient = supabase;
+} catch (e) {
+    console.error("Critical: Failed to initialize Supabase client on load", e);
+    alert("Supabase Failed to Init: " + e.message);
+}
 
 // Auth State & Profile
 window.currentUser = null;
