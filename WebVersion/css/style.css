@@ -788,9 +788,10 @@ canvas {
     .coach-btn     { width: 24px; height: 24px; font-size: 11px; }
     .settings-toggle-btn { font-size: 9px; padding: 3px 8px; }
 
-    /* Settings */
+    /* Settings — 2 rows × 2 columns in landscape to save vertical space */
     .settings-grid {
         grid-template-columns: auto 1fr auto 1fr;
+        grid-template-rows: auto auto;
         gap: 2px 6px;
         padding: 3px 6px;
     }
@@ -801,6 +802,8 @@ canvas {
     .instruments-row { padding: 2px 5px; }
     .timbre-label { font-size: 10px; }
     .preset-btn   { font-size: 11px; padding: 3px 8px; }
+    /* Raise inactive dot opacity for dark-bg legibility */
+    .preset-btn span[style*="opacity"] { opacity: 0.35 !important; }
 
     /* Play frame compact */
     .play-frame     { padding: 1px 4px; gap: 3px; flex-wrap: nowrap; }
@@ -813,13 +816,13 @@ canvas {
     .legend-item { font-size: 10px; gap: 4px; }
     .legend-dot  { width: 9px; height: 9px; }
 
-    /* Middle: side-by-side */
-    .middle-frame { flex-wrap: nowrap; min-height: 0 !important; flex: 1; overflow: visible !important; }
-    .staff-frame  { flex: 2; min-height: 0 !important; }
+    /* Middle: side-by-side, canvas takes all remaining vertical space */
+    .middle-frame { flex-wrap: nowrap; min-height: 0 !important; flex: 1; overflow: visible !important; align-items: stretch; }
+    .staff-frame  { flex: 2; min-height: 0 !important; overflow: hidden; padding: 0; }
 
     /* Answers column on right */
-    .answers-frame { width: 120px; min-width: 100px; flex-shrink: 0; }
-    .answer-btn    { font-size: 13px; padding: 2px 3px; }
+    .answers-frame { width: 130px; min-width: 100px; flex-shrink: 0; grid-template-columns: 1fr; }
+    .answer-btn    { font-size: 13px; padding: 2px 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     /* Solo compact */
     .solo-frame { padding: 1px 3px; }

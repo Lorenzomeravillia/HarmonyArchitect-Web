@@ -394,7 +394,6 @@ document.addEventListener("DOMContentLoaded", () => {
             b.className = "btn answer-btn";
             b.innerText = o;
             b.dataset.answer = o;
-            if (o.includes("\n")) b.style.fontSize = "14px";
 
             b.onclick = () => {
                 if (b.dataset.answered) return;
@@ -433,6 +432,14 @@ document.addEventListener("DOMContentLoaded", () => {
             };
             answersFrame.appendChild(b);
         });
+
+        // Auto-scale font for long answer texts (Progression mode)
+        const maxLen = Math.max(...opts.map(o => o.split('\n')[0].length));
+        if (maxLen > 35) {
+            answersFrame.querySelectorAll('.answer-btn').forEach(b => b.style.fontSize = '11px');
+        } else if (maxLen > 25) {
+            answersFrame.querySelectorAll('.answer-btn').forEach(b => b.style.fontSize = '13px');
+        }
     }
 
     // ── Start new challenge ─────────────────────────────────
