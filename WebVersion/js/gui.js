@@ -147,8 +147,21 @@ class GUI {
     _sizeCanvas() {
         const container = this.canvas.closest('.staff-frame');
         if (!container) return;
-        const containerW = container.clientWidth - 8;
-        const containerH = container.clientHeight - 8;
+        let containerW = container.clientWidth - 8;
+        let containerH = container.clientHeight - 8;
+
+        // In landscape, the flex chain often fails to propagate height.
+        // Compute available height directly from the viewport.
+        const isLandscape = window.innerWidth > window.innerHeight;
+        if (isLandscape && containerH < 100) {
+            const middleFrame = container.closest('.middle-frame');
+            if (middleFrame) {
+                const rect = middleFrame.getBoundingClientRect();
+                containerH = rect.height - 8;
+                containerW = rect.width - 140 - 8; // subtract answers-frame width
+            }
+        }
+
         const targetRatio = this.logicW / this.logicH;
         let displayW, displayH;
         if (containerW / containerH > targetRatio) {
