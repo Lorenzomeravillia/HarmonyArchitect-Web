@@ -158,9 +158,9 @@ class GUI {
         this.ctx.clearRect(0, 0, w, h);
         this.ctx.fillStyle = "#050814";
         this.ctx.fillRect(0, 0, w, h);
-        this.ctx.strokeStyle = "#2E406A";
+        this.ctx.strokeStyle = "#8A9FCF"; // LIGHTER STAFF LINES FOR MOBILE VISIBILITY
         this.ctx.lineWidth = 1;
-        this.ctx.fillStyle = "#4A65A5";
+        this.ctx.fillStyle = "#8A9FCF"; // Lighter treble/bass clefs
         this.ctx.textAlign = "left";
         this.ctx.textBaseline = "alphabetic";
         // Treble
@@ -196,7 +196,7 @@ class GUI {
                 let y = j === 0 ? (243 - (step - 26) * 17) : (175 - (step - 30) * 17);
                 let x = xBase;
                 // Ledger lines
-                this.ctx.strokeStyle = "#4A65A5";
+                this.ctx.strokeStyle = "#A5BAE6"; // Lighter ledger lines
                 this.ctx.lineWidth = 2;
                 if (j === 0) {
                     if (y >= 413) for (let ly = 413; ly <= y + 5; ly += 34) { this.ctx.beginPath(); this.ctx.moveTo(x - 8, ly); this.ctx.lineTo(x + 28, ly); this.ctx.stroke(); }

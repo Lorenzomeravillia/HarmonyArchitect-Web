@@ -131,11 +131,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function openSettings()  {
         settingsPanel?.classList.add("open");
-        if (settingsToggle) settingsToggle.textContent = "⚙ Settings ▴";
+        if (settingsToggle) settingsToggle.textContent = "⚙▴";
     }
     function closeSettings() {
         settingsPanel?.classList.remove("open");
-        if (settingsToggle) settingsToggle.textContent = "⚙ Settings";
+        if (settingsToggle) settingsToggle.textContent = "⚙";
     }
 
     settingsToggle?.addEventListener("click", () => {
