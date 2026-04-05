@@ -188,7 +188,7 @@ class MusicEngine {
             let color = "#D946A8"; // Extensions (9, 11, 13) — magenta
             if (ival === 0)                  color = "#4A90D9"; // Root    — blue
             else if (ival === 3 || ival === 4) color = "#2EC4B6"; // Third   — teal
-            else if (ival === 7)              color = "#F0B429"; // Fifth   — amber
+            else if (ival === 6 || ival === 7 || ival === 8) color = "#F0B429"; // Fifth (b5/P5/#5) — amber
             else if (ival === 10 || ival === 11) color = "#E8873D"; // Seventh — orange
 
             return {
