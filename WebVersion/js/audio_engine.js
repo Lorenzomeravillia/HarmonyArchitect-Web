@@ -37,7 +37,7 @@ class AudioEngine {
         this.PRESETS = {
             'Orchestra':    [43, 42, 70, 60, 41, 71, 73],
             'Jazz Combo':   [43, 42, 65, 60, 71, 56,  0],
-            'High Contrast':[43, 19, 56, 46, 70, 73, 40],
+            'Clear Mix':   [43, 19, 56, 46, 70, 73, 40],
         };
     }
 

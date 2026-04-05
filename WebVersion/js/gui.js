@@ -18,9 +18,9 @@ class GUI {
         // ── Timbre preset buttons ──────────────────────────────
         const selectContainer = document.getElementById("voice_instruments_frame");
         const presetDefs = [
-            { name: 'Orchestra',     icon: '🎻' },
-            { name: 'Jazz Combo',    icon: '🎷' },
-            { name: 'High Contrast', icon: '⚡' },
+            { name: 'Clear Mix',   icon: '●○○' },
+            { name: 'Jazz Combo',  icon: '●●○' },
+            { name: 'Orchestra',   icon: '●●●' },
         ];
         presetDefs.forEach((p, i) => {
             const btn = document.createElement('button');
