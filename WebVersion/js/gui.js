@@ -150,15 +150,28 @@ class GUI {
         let containerW = container.clientWidth - 8;
         let containerH = container.clientHeight - 8;
 
-        // In landscape, the flex chain often fails to propagate height.
+        // In landscape, the flex chain collapses middle-frame.
         // Compute available height directly from the viewport.
         const isLandscape = window.innerWidth > window.innerHeight;
-        if (isLandscape && containerH < 100) {
-            const middleFrame = container.closest('.middle-frame');
-            if (middleFrame) {
-                const rect = middleFrame.getBoundingClientRect();
-                containerH = rect.height - 8;
-                containerW = rect.width - 140 - 8; // subtract answers-frame width
+        if (isLandscape) {
+            // Measure all non-canvas siblings of main-scrollable
+            const ms = document.querySelector('.main-scrollable');
+            if (ms) {
+                let usedH = 0;
+                ms.querySelectorAll(':scope > *').forEach(el => {
+                    if (!el.classList.contains('middle-frame')) {
+                        usedH += el.getBoundingClientRect().height;
+                    }
+                });
+                const gaps = 10; // approximate gap sum
+                const availH = ms.getBoundingClientRect().height - usedH - gaps;
+                if (availH > containerH) {
+                    containerH = availH;
+                    // In landscape, answers-frame sits beside canvas
+                    const af = document.querySelector('.answers-frame');
+                    const afW = af ? af.getBoundingClientRect().width + 10 : 140;
+                    containerW = ms.getBoundingClientRect().width - afW - 8;
+                }
             }
         }
 
