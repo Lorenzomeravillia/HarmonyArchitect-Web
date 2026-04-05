@@ -110,18 +110,17 @@ class GUI {
         const buttons = document.querySelectorAll('#solo_buttons_frame .solo-btn');
         const noteCount = voicing ? voicing.length : buttons.length;
 
-        // Build jazz voice labels from bottom (0) to top (noteCount-1)
-        // Convention: Bass | [Bari] | [inner] | Lead
+        // Build jazz voice labels bottom→top, counted from Lead down (Berklee convention)
+        // 3 voices: Bass · 2nd · Lead
+        // 4 voices: Bass · 3rd · 2nd · Lead
+        // 5 voices: Bass · 4th · 3rd · 2nd · Lead
+        const ordinals = ['', '2nd', '3rd', '4th', '5th', '6th', '7th'];
         function jazzLabel(i, total) {
             if (i === 0) return 'Bass';
             if (i === total - 1) return 'Lead';
-            // Inner voices: from bottom up, Bari is second-from-bottom
-            // For 3 notes: Bass | Mid | Lead
-            // For 4 notes: Bass | Bari | 2nd | Lead
-            // For 5 notes: Bass | Bari | 3rd | 2nd | Lead
-            const innerFromBottom = i - 1; // 0-indexed among inner voices
-            const innerLabels = ['Bari', '3rd', '2nd'];
-            return innerLabels[innerFromBottom] || ('V' + (i + 1));
+            // Distance from Lead = (total - 1) - i
+            const distFromTop = (total - 1) - i;
+            return ordinals[distFromTop] || ('V' + distFromTop);
         }
 
         buttons.forEach((btn, i) => {
