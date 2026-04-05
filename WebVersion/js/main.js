@@ -79,6 +79,13 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById('auth_close_btn')?.addEventListener('click', () => {
         authModal.classList.add('hidden');
     });
+    // Click backdrop to close
+    authModal?.addEventListener('click', (e) => {
+        if (e.target === authModal) authModal.classList.add('hidden');
+    });
+    paywallModal?.addEventListener('click', (e) => {
+        if (e.target === paywallModal) paywallModal.classList.add('hidden');
+    });
 
     document.getElementById('auth_magic_link_btn')?.addEventListener('click', async () => {
         const email = document.getElementById('auth_email').value;

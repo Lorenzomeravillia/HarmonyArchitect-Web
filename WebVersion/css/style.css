@@ -491,7 +491,11 @@ canvas {
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 100;
+    z-index: 9998;
+    cursor: pointer; /* Signal clickable background */
+}
+.modal-overlay > * {
+    cursor: default; /* Inner card not clickable to dismiss */
 }
 .hidden { display: none !important; }
 

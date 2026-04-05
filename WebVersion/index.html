@@ -154,23 +154,22 @@
 
     <!-- Auth Modal -->
     <div id="auth_modal" class="modal-overlay hidden" style="z-index: 9999;">
-        <div class="next-popup-card" style="position: relative; width: 90%; max-width: 400px; margin: auto; transform: translateY(50vh); margin-top: -150px; background: #050814; border: 2px solid #4A65A5;">
+        <div class="auth-modal-card" style="position: relative; width: 90%; max-width: 400px; background: #050814; border: 2px solid #4A65A5; border-radius: 20px; padding: 28px 24px;">
+            <button id="auth_close_btn" style="position: absolute; top: 12px; right: 14px; background: none; border: none; color: #aaa; font-size: 22px; cursor: pointer; line-height: 1;">&#10005;</button>
             <h2 style="margin-top: 0;">Sign in to ClearVoicing</h2>
             <p id="auth_msg" class="text-muted text-center" style="margin-bottom: 20px;">Save your stats and unlock more energy.</p>
             <input type="email" id="auth_email" placeholder="Your email address" style="width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #4A65A5; background: #010205; color: white; display: block; box-sizing: border-box; font-size: 16px;">
             <button id="auth_magic_link_btn" class="btn btn-primary" style="width: 100%; margin-bottom: 10px;">Send Magic Link ✉️</button>
-            <button id="auth_close_btn" class="btn next-popup-btn-ghost" style="width: 100%;">Close</button>
         </div>
     </div>
     
     <!-- Paywall / Out of Energy Modal -->
     <div id="paywall_modal" class="modal-overlay hidden" style="z-index: 9999;">
-        <div class="next-popup-card text-center" style="position: relative; width: 90%; max-width: 400px; margin: auto; transform: translateY(50vh); margin-top: -150px; background: #050814; border: 2px solid #E8873D;">
+        <div class="auth-modal-card text-center" style="position: relative; width: 90%; max-width: 400px; background: #050814; border: 2px solid #E8873D; border-radius: 20px; padding: 28px 24px;">
             <h2 style="color: #E8873D; margin-top: 0;">Out of Energy ⚡</h2>
             <p id="paywall_body_text" class="text-muted" style="margin: 15px 0;">You've used all your free sessions for today!</p>
             <button id="paywall_login_btn" class="btn btn-primary" style="width: 100%; margin-bottom: 12px;">Login to Save Progress</button>
             <button id="paywall_upgrade_btn" class="btn hidden" style="width: 100%; margin-bottom: 12px; background: #F0B429; color: black; font-weight: bold;">Unlock PRO (Unlimited)</button>
-            <!-- <button id="paywall_ad_btn" class="btn next-popup-btn-sec" style="width: 100%;">Watch Ad (+1 Session)</button> -->
             <div style="margin-top: 25px; border-top: 1px solid #333; padding-top: 15px;">
                 <a href="#" id="beta_bypass_btn" style="color: #666; font-size: 14px; text-decoration: underline;">Beta Tester? Activate Bypass</a>
             </div>
