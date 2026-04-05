@@ -767,14 +767,26 @@ canvas {
    ============================================================ */
 @media (max-width: 1024px) and (orientation: landscape) {
     body {
+        display: flex;
+        flex-direction: column;
+        height: 100dvh;
         padding: 4px 1px 1px;
         padding-left: env(safe-area-inset-left, 1px);
         padding-right: env(safe-area-inset-right, 1px);
+        overflow: hidden;
     }
-    .main-scrollable { display: flex; flex-direction: column; width: 100%; gap: 1px; overflow: hidden !important; height: 100%; }
+    .main-scrollable {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        gap: 1px;
+        overflow: hidden !important;
+        flex: 1;
+        min-height: 0;
+    }
 
     /* Header ultra-compact */
-    .top-frame    { padding: 1px 4px; gap: 1px; flex-direction: row; flex-wrap: wrap; }
+    .top-frame    { padding: 1px 4px; gap: 1px; flex-direction: row; flex-wrap: wrap; flex-shrink: 0; }
     .header-row-1 { gap: 3px; flex: 1; }
     .header-row-2 { gap: 3px; }
     .header-left  { gap: 3px; }
@@ -799,17 +811,18 @@ canvas {
     .settings-grid .dropdown { font-size: 16px; padding: 3px 5px; }
 
     /* Timbre */
-    .instruments-row { padding: 2px 5px; }
+    .instruments-row { padding: 2px 5px; flex-shrink: 0; }
     .timbre-label { font-size: 10px; }
     .preset-btn   { font-size: 11px; padding: 3px 8px; }
 
     /* Play frame compact */
-    .play-frame     { padding: 1px 4px; gap: 3px; flex-wrap: nowrap; }
+    .play-frame     { padding: 1px 4px; gap: 3px; flex-wrap: nowrap; flex-shrink: 0; }
     .play-btn-fixed { height: 28px; font-size: 10px; border-radius: 6px; }
     .reveal-btn     { height: 28px; font-size: 10px; padding: 3px 8px; }
     .combo-text     { font-size: clamp(9px, 2vw, 14px); max-width: 60px; }
 
     /* Legend compact */
+    .legend-frame { padding: 0 4px; flex-shrink: 0; }
     .interval-legend { gap: 3px 10px; }
     .legend-item { font-size: 10px; gap: 4px; }
     .legend-dot  { width: 9px; height: 9px; }
@@ -839,14 +852,19 @@ canvas {
     .answers-frame { width: 130px; min-width: 100px; flex-shrink: 0; grid-template-columns: 1fr; }
     .answer-btn    { font-size: 13px; padding: 2px 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-    /* Solo compact */
-    .solo-frame { padding: 1px 3px; }
-    .solo-label { font-size: 10px; opacity: 0.7; }
+    /* Solo compact — label and buttons on same row */
+    .solo-frame {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 6px;
+        padding: 1px 3px;
+        flex-shrink: 0;
+    }
+    .solo-label { font-size: 10px; opacity: 0.7; flex-shrink: 0; }
     .solo-btn   { padding: 2px 6px; font-size: 10px; }
-    .solo-frame .gap-small { gap: 2px; }
 
     /* Insight */
-    .legend-frame { padding: 0 4px; }
     #insight_label { display: none; }
 
     /* Session */
