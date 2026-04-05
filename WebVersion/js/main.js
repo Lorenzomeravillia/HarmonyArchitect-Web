@@ -367,6 +367,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             });
         }
+        // Show inline feedback controls (Replay / Play Next)
+        showNextPopup(false);
     });
 
     // ── Answer buttons ──────────────────────────────────────
