@@ -1,10 +1,10 @@
-// Maps semitone interval from root to readable degree labels
+// Maps semitone interval from root to readable degree labels (no modal quality)
 const INTERVAL_LABELS = {
     0: 'Root',
-    1: 'b9',   2: '9',
-    3: 'm3',   4: 'M3',
-    5: '11',   6: 'b5',   7: '5',   8: '#5',
-    9: 'dim7', 10: 'm7',  11: 'M7',
+    1: 'b2',   2: '2',
+    3: '3',    4: '3',
+    5: '4',    6: 'b5',   7: '5',   8: '#5',
+    9: 'dim7', 10: '7',   11: '7',
     13: 'b9',  14: '9',   15: '#9',
     17: '11',  18: '#11',
     21: '13'
@@ -66,6 +66,7 @@ class GUI {
                 }
                 solNext();
             };
+            b.style.display = 'none'; // Hidden until PLAY generates voicing
             solo_frame.appendChild(b);
         });
 
