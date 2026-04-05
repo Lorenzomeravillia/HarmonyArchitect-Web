@@ -477,6 +477,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             }
             createAnswers(name, wrongOpts);
+            // Pre-generate voicing so SOLO buttons appear immediately
+            const _prevV = null;
+            const _isOpt = document.getElementById('voice_leading_menu').value.includes('Optimized');
+            const _vv = window.currentProgression.map(s => {
+                const v = window.musicEngine.generateVoicing(s, 'C3', _isOpt, _prevV);
+                return v;
+            });
+            window.currentVoicings = _vv;
+            window.gui.updateSoloButtons(_vv[0]);
         } else {
             window.currentProgression = null;
             let pool = LEVEL_POOLS_SINGLE[level] || LEVEL_POOLS_SINGLE["1: Basic Triads"];
@@ -494,6 +503,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (pm && pm[2] !== qual && !wrongQuals.includes(pm[2])) wrongQuals.push(pm[2]);
             });
             createAnswers(targetChord, wrongQuals.map(q => root + q));
+            // Pre-generate voicing so SOLO buttons appear immediately
+            const _isOpt2 = document.getElementById('voice_leading_menu').value.includes('Optimized');
+            const _tv = window.musicEngine.generateVoicing(targetChord, 'C3', _isOpt2);
+            window.currentVoicings = [_tv];
+            window.gui.updateSoloButtons(_tv);
         }
     }
 
