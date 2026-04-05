@@ -552,8 +552,24 @@ canvas {
 }
 
 /* ── Header layout ─────────────────────────────────────── */
+.top-frame {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.header-row-1 {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+}
+.header-row-2 {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    gap: 6px;
+}
 .header-left  { gap: 6px; flex-shrink: 0; }
-.header-right { gap: 6px; flex-wrap: nowrap; }
 
 /* ── Play frame ────────────────────────────────────────── */
 .play-frame {
@@ -639,17 +655,19 @@ canvas {
     .main-scrollable { width: 100%; gap: 2px; overflow: hidden; }
 
     /* Header */
-    .top-frame    { padding: 4px 6px; flex-wrap: nowrap; align-items: center; justify-content: space-between; gap: 4px; }
-    .header-left  { gap: 8px; }
+    .top-frame    { padding: 4px 6px; gap: 3px; }
+    .header-row-1 { gap: 4px; }
+    .header-row-2 { gap: 4px; justify-content: space-around; }
+    .header-left  { gap: 4px; }
     .header-left .label    { font-size: 12px; }
     .header-left .dropdown { padding: 5px 6px; font-size: 16px; /* prevent iOS zoom */ }
-    .header-right { gap: 8px; }
-    .next-btn     { padding: 0 14px; font-size: 16px; border-radius: 8px; height: 32px; display: flex; align-items: center; justify-content: center; }
+    .icon-btn     { font-size: 16px; padding: 6px 8px; }
+    .next-btn     { padding: 6px 14px; font-size: 13px; border-radius: 8px; }
     .progress-bar { width: 50px; height: 4px; }
     .progress-text { font-size: 16px; font-weight: 800; }
     .streak-badge  { font-size: 12px; }
     .coach-btn    { width: 32px; height: 32px; font-size: 14px; }
-    .settings-toggle-btn { font-size: 16px; padding: 0 12px; border-radius: 8px; height: 32px; display: flex; align-items: center; justify-content: center; }
+    .settings-toggle-btn { font-size: 16px; padding: 6px 10px; border-radius: 8px; }
 
     /* Settings grid */
     .settings-collapsible { gap: 2px; }
@@ -714,11 +732,12 @@ canvas {
     .main-scrollable { width: 100%; gap: 1px; overflow: hidden !important; }
 
     /* Header ultra-compact */
-    .top-frame    { padding: 1px 4px; gap: 2px; }
+    .top-frame    { padding: 1px 4px; gap: 1px; flex-direction: row; flex-wrap: wrap; }
+    .header-row-1 { gap: 3px; flex: 1; }
+    .header-row-2 { gap: 3px; }
     .header-left  { gap: 3px; }
     .header-left .label    { font-size: 10px; }
     .header-left .dropdown { padding: 3px 5px; font-size: 16px; }
-    .header-right { gap: 3px; }
     .next-btn     { padding: 3px 7px; font-size: 10px; }
     .progress-bar { width: 40px; height: 3px; }
     .progress-text { font-size: 10px; }

@@ -22,27 +22,30 @@
 
     <div id="app" class="main-scrollable">
         <!-- Header -->
-        <header class="panel flex-row justify-between top-frame">
-            <div class="flex-row gap-small header-left">
-                <span class="label text-bold">Level:</span>
-                <select id="level_select" class="dropdown"></select>
-                <select id="play_mode_menu" class="dropdown purple-btn mode-select">
-                    <option>Single Chord</option>
-                    <option>Progression</option>
-                </select>
-            </div>
-            <div class="flex-row gap-small header-right">
-                <!-- Progress -->
+        <header class="panel top-frame">
+            <!-- Row 1: Dropdowns + Progress -->
+            <div class="header-row-1">
+                <div class="flex-row gap-small header-left">
+                    <span class="label text-bold">Level:</span>
+                    <select id="level_select" class="dropdown"></select>
+                    <select id="play_mode_menu" class="dropdown purple-btn mode-select">
+                        <option>Single Chord</option>
+                        <option>Progression</option>
+                    </select>
+                </div>
                 <div class="progress-unified" id="progress_unified">
                     <div class="progress-bar"><div id="progress_fill" class="progress-fill" style="width:0%;"></div></div>
                     <span id="progress_text" class="progress-text">0/5</span>
                     <span id="streak_badge" class="streak-badge" style="display:none;"></span>
                 </div>
+            </div>
+            <!-- Row 2: Action buttons -->
+            <div class="header-row-2">
                 <button id="reset_btn" class="btn icon-btn btn-danger" title="Reset Session">🗑️</button>
                 <button id="coach_btn" class="btn icon-btn coach-btn" title="Help tour">?</button>
                 <div id="user_profile_btn" class="btn icon-btn" title="Account / Energy">👤<span id="energy_badge" style="font-size: 10px; vertical-align: top; color: gold; font-weight: bold; margin-left: 2px;">⚡</span></div>
                 <button id="settings_toggle" class="btn settings-toggle-btn">⚙</button>
-                <button id="next_btn" class="btn btn-primary next-btn">↻</button>
+                <button id="next_btn" class="btn btn-primary next-btn">↻ New</button>
             </div>
         </header>
 
