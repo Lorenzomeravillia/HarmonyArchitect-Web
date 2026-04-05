@@ -397,8 +397,9 @@ canvas {
 .interval-legend {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px 18px;
-    justify-content: space-around;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
     padding: 4px 0;
 }
 .legend-item {
@@ -634,23 +635,21 @@ canvas {
     body {
         padding: 4px 2px 2px;
         padding-top: max(4px, env(safe-area-inset-top, 4px));
-        overflow-y: auto !important;
-        height: 100svh;
     }
-    .main-scrollable { width: 100%; gap: 2px; overflow-y: auto !important; overflow-x: hidden; }
+    .main-scrollable { width: 100%; gap: 2px; overflow: hidden; }
 
     /* Header */
-    .top-frame    { padding: 4px 6px; flex-wrap: wrap; gap: 4px; }
-    .header-left  { gap: 4px; }
-    .header-left .label    { font-size: 11px; }
+    .top-frame    { padding: 4px 6px; flex-wrap: nowrap; align-items: center; justify-content: space-between; gap: 4px; }
+    .header-left  { gap: 8px; }
+    .header-left .label    { font-size: 12px; }
     .header-left .dropdown { padding: 5px 6px; font-size: 16px; /* prevent iOS zoom */ }
-    .header-right { gap: 4px; }
-    .next-btn     { padding: 7px 10px; font-size: 12px; }
+    .header-right { gap: 8px; }
+    .next-btn     { padding: 0 14px; font-size: 16px; border-radius: 8px; height: 32px; display: flex; align-items: center; justify-content: center; }
     .progress-bar { width: 50px; height: 4px; }
-    .progress-text { font-size: 12px; }
-    .streak-badge  { font-size: 11px; }
-    .coach-btn    { width: 28px; height: 28px; font-size: 13px; }
-    .settings-toggle-btn { font-size: 11px; padding: 5px 10px; }
+    .progress-text { font-size: 16px; font-weight: 800; }
+    .streak-badge  { font-size: 12px; }
+    .coach-btn    { width: 32px; height: 32px; font-size: 14px; }
+    .settings-toggle-btn { font-size: 16px; padding: 0 12px; border-radius: 8px; height: 32px; display: flex; align-items: center; justify-content: center; }
 
     /* Settings grid */
     .settings-collapsible { gap: 2px; }
@@ -675,18 +674,19 @@ canvas {
     .combo-text     { font-size: clamp(11px, 3vw, 18px); max-width: 70px; }
 
     /* Legend */
-    .legend-frame { padding: 3px 8px; }
-    .interval-legend { gap: 5px 12px; font-size: 0; /* reset */ }
-    .legend-item  { font-size: 13px; gap: 5px; }
+    .legend-frame { padding: 5px 8px; }
+    .interval-legend { gap: 8px; justify-content: center; align-items: center; font-size: 0; }
+    .legend-item  { font-size: 14px; gap: 5px; }
     .legend-dot   { width: 11px; height: 11px; }
 
     /* Middle: stack vertically */
-    .middle-frame { flex-direction: column; flex-wrap: nowrap; min-height: 0 !important; }
-    .staff-frame  { flex: 1; min-height: 100px; }
+    .middle-frame { flex-direction: column; flex-wrap: nowrap; min-height: 0 !important; flex-grow: 1; display: flex; align-items: stretch; }
+    .staff-frame  { flex-grow: 1; flex-basis: 0; min-height: 0; display: flex; align-items: center; justify-content: center; position: relative; }
+    .staff-frame canvas { max-width: 100%; max-height: 100%; object-fit: contain; margin: 0 auto; }
 
-    /* Answers: column below canvas */
-    .answers-frame { width: 100%; flex-direction: column; gap: 3px; flex-shrink: 0; }
-    .answer-btn    { flex: 0 0 auto; padding: 10px 8px; font-size: 20px; min-height: auto; }
+    /* Answers: Grid below canvas */
+    .answers-frame { width: 100%; display: grid; grid-auto-rows: 1fr; gap: 10px; flex-shrink: 0; padding: 4px 0; }
+    .answer-btn    { display: flex; align-items: center; justify-content: center; border-radius: 12px; font-size: 20px; padding: 10px; margin: 0; }
 
     /* Solo */
     .solo-frame { padding: 2px 6px; }
@@ -710,10 +710,8 @@ canvas {
         padding: 4px 1px 1px;
         padding-left: env(safe-area-inset-left, 1px);
         padding-right: env(safe-area-inset-right, 1px);
-        overflow-y: auto !important;
-        height: 100svh;
     }
-    .main-scrollable { width: 100%; gap: 1px; overflow: visible !important; }
+    .main-scrollable { width: 100%; gap: 1px; overflow: hidden !important; }
 
     /* Header ultra-compact */
     .top-frame    { padding: 1px 4px; gap: 2px; }
