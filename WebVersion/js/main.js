@@ -283,7 +283,7 @@ document.addEventListener("DOMContentLoaded", () => {
         setTimeout(() => document.getElementById('play_btn').click(), 300);
     });
     document.getElementById('next_popup_replay').addEventListener('click', () => {
-        hideNextPopup();
+        // Do NOT hide inline controls — only replay the audio
         document.getElementById('play_btn').click();
     });
     document.getElementById('next_popup_stop').addEventListener('click', hideNextPopup);

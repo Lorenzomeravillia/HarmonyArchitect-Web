@@ -688,9 +688,9 @@ canvas {
 
     /* Timbre row */
     .instruments-row { padding: 4px 8px; }
-    .timbre-label    { font-size: 13px; margin-right: 8px; }
-    .timbre-presets  { gap: 6px; }
-    .preset-btn      { font-size: 14px; padding: 6px 12px; }
+    .timbre-label    { font-size: 12px; margin-right: 4px; }
+    .timbre-presets  { gap: 4px; flex-wrap: nowrap; justify-content: space-between; }
+    .preset-btn      { font-size: 12px; padding: 5px 8px; white-space: nowrap; }
 
     /* Play frame */
     .play-frame     { padding: 3px 6px; gap: 4px; }
