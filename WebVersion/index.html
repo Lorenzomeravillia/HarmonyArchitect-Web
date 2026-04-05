@@ -85,7 +85,7 @@
 
         <!-- Play commands -->
         <div class="panel flex-row play-frame">
-            <button id="play_btn" class="btn hardware-btn play-btn-fixed">▶ PLAY</button>
+            <button id="play_btn" class="btn hardware-btn play-btn-fixed">▶ START</button>
             <button id="reveal_btn" class="btn reveal-btn">REVEAL</button>
             <button id="arpeggio_btn" class="btn hardware-btn alt-hardware-btn play-btn-fixed">ARPEGGIATOR</button>
         </div>
@@ -183,16 +183,18 @@
     </div>
 
     <!-- PWA Fullscreen Start Overlay -->
-    <div id="start_overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg-main);z-index:9999;display:flex;align-items:center;justify-content:center;color:white;font-size:24px;cursor:pointer;flex-direction:column;gap:20px;">
-        <span style="font-size:40px;">🎹</span>
-        <span>Tap to start</span>
+    <div id="start_overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg-main);z-index:9999;display:flex;align-items:center;justify-content:center;color:white;flex-direction:column;gap:28px;">
+        <span style="font-size:56px;">🎹</span>
+        <h1 style="font-size:clamp(22px,6vw,32px);font-weight:800;letter-spacing:0.03em;margin:0;text-align:center;">ClearVoicing</h1>
+        <p style="color:#8899BB;font-size:15px;margin:0;text-align:center;">Ear Training for Jazz musicians</p>
+        <button style="background:linear-gradient(135deg,#4A65A5,#2EC4B6);color:white;border:none;border-radius:16px;font-size:20px;font-weight:700;padding:18px 44px;cursor:pointer;letter-spacing:0.04em;box-shadow:0 0 24px rgba(74,101,165,0.5);margin-top:12px;">▶ START TRAINING</button>
     </div>
 
-    <script src="js/audio_engine.js?v=33"></script>
-    <script src="js/music_engine.js?v=33"></script>
-    <script src="js/gui.js?v=33"></script>
-    <script src="js/coach.js?v=33"></script>
-    <script src="js/db_handler.js?v=33"></script>
-    <script src="js/main.js?v=33"></script>
+    <script src="js/audio_engine.js?v=34"></script>
+    <script src="js/music_engine.js?v=34"></script>
+    <script src="js/gui.js?v=34"></script>
+    <script src="js/coach.js?v=34"></script>
+    <script src="js/db_handler.js?v=34"></script>
+    <script src="js/main.js?v=34"></script>
 </body>
 </html>

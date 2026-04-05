@@ -8,6 +8,8 @@ document.addEventListener("DOMContentLoaded", () => {
         startOverlay.addEventListener("click", () => {
             startOverlay.style.display = "none";
             window.audioEngine.unlockAndLoad();
+            // Pre-load first challenge so PLAY is ready immediately
+            startNewChallenge();
             if (!isIOS) {
                 if (document.documentElement.requestFullscreen) {
                     document.documentElement.requestFullscreen();
@@ -444,7 +446,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
 
-        hideNextPopup();
+        hideNextPopup(); // Ensure feedback controls hidden on new challenge
         closeSettings();
         if (window.audioEngine.ctx.state === 'suspended') window.audioEngine.ctx.resume();
         window.gui.drawPitches([]);
@@ -523,7 +525,14 @@ document.addEventListener("DOMContentLoaded", () => {
     // ── PLAY button ─────────────────────────────────────────
     document.getElementById("play_btn").addEventListener("click", () => {
         if (window.audioEngine.ctx.state === 'suspended') window.audioEngine.ctx.resume();
-        if (!window.currentSymbol && !window.currentProgression) startNewChallenge();
+        // Guard: if somehow no challenge loaded yet, start one
+        if (!window.currentSymbol && !window.currentProgression) {
+            startNewChallenge();
+            return; // wait for next click after challenge is loaded
+        }
+        // Switch button label from START → PLAY after first use
+        const playBtn = document.getElementById('play_btn');
+        if (playBtn && playBtn.textContent === '▶ START') playBtn.textContent = '▶ PLAY';
 
         const baseOctave  = "C3";
         const isOptimized = document.getElementById("voice_leading_menu").value.includes("Optimized");
