@@ -134,12 +134,10 @@ class GUI {
         });
     }
 
-    // Reset SOLO buttons to defaults (before a chord is played)
+    // Reset SOLO buttons to hidden (shown dynamically after PLAY generates voicing)
     resetSoloButtons() {
-        const labels = ["Bass", "2nd", "3rd", "4th", "5th", "6th", "Top"];
-        document.querySelectorAll('#solo_buttons_frame .solo-btn').forEach((btn, i) => {
-            btn.style.display = '';
-            btn.textContent = labels[i] || ('V' + (i + 1));
+        document.querySelectorAll('#solo_buttons_frame .solo-btn').forEach(btn => {
+            btn.style.display = 'none';
         });
     }
 
