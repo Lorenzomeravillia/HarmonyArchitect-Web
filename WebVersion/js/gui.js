@@ -105,30 +105,29 @@ class GUI {
     }
 
     // Update SOLO buttons based on the first chord of the current voicing.
-    // Shows only as many buttons as there are notes; labels them by interval function.
+    // Labels use jazz voice-lead convention (bottom→top): Bass, Bari, inner voices, Lead
     updateSoloButtons(voicing) {
         const buttons = document.querySelectorAll('#solo_buttons_frame .solo-btn');
         const noteCount = voicing ? voicing.length : buttons.length;
 
-        // Compute rootPc from first note (Bass = index 0)
-        let rootPc = null;
-        if (voicing && voicing.length > 0) {
-            rootPc = Math.round(12 * Math.log2(voicing[0].frequency / 440) + 69) % 12;
+        // Build jazz voice labels from bottom (0) to top (noteCount-1)
+        // Convention: Bass | [Bari] | [inner] | Lead
+        function jazzLabel(i, total) {
+            if (i === 0) return 'Bass';
+            if (i === total - 1) return 'Lead';
+            // Inner voices: from bottom up, Bari is second-from-bottom
+            // For 3 notes: Bass | Mid | Lead
+            // For 4 notes: Bass | Bari | 2nd | Lead
+            // For 5 notes: Bass | Bari | 3rd | 2nd | Lead
+            const innerFromBottom = i - 1; // 0-indexed among inner voices
+            const innerLabels = ['Bari', '3rd', '2nd'];
+            return innerLabels[innerFromBottom] || ('V' + (i + 1));
         }
 
         buttons.forEach((btn, i) => {
             if (i < noteCount) {
                 btn.style.display = '';
-                if (voicing && voicing[i]) {
-                    if (i === 0) {
-                        btn.textContent = 'Bass';
-                    } else {
-                        // Compute semitone interval from root
-                        const notePc = Math.round(12 * Math.log2(voicing[i].frequency / 440) + 69) % 12;
-                        const ival = (notePc - rootPc + 12) % 12;
-                        btn.textContent = INTERVAL_LABELS[ival] || ('V' + (i + 1));
-                    }
-                }
+                btn.textContent = jazzLabel(i, noteCount);
             } else {
                 btn.style.display = 'none';
             }
