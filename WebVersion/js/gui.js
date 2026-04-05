@@ -241,7 +241,8 @@ class GUI {
     }
 
     setInsight(text) {
-        document.getElementById("insight_label").innerText = text;
+        const el = document.getElementById("insight_label");
+        if (el) el.innerText = text;
     }
 
     highlight(voiceIdx, freq, durationMs, chordIdx = null) {

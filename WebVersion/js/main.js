@@ -356,9 +356,6 @@ document.addEventListener("DOMContentLoaded", () => {
     // ── REVEAL button ───────────────────────────────────────
     document.getElementById('reveal_btn')?.addEventListener('click', () => {
         if (!window.correctAnswerText) return;
-        // Show chord name in combo label
-        const comboLbl = document.getElementById('combo_label');
-        if (comboLbl) comboLbl.textContent = window.correctAnswerText.split('\n')[0];
         // Highlight correct answer button and lock all (no scoring)
         const answersFrame = document.querySelector('.answers-frame');
         if (answersFrame) {
@@ -400,7 +397,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     streak++;
                     b.classList.add('correct');
                     b.innerText = "✓ " + o.split("\n")[0];
-                    document.getElementById("combo_label").innerText = window.realProgressionLabel || o.split("\n")[0];
+                    // combo_label removed from UI
                 } else {
                     streak = 0;
                     b.classList.add('wrong');
@@ -454,7 +451,7 @@ document.addEventListener("DOMContentLoaded", () => {
             let parts = item.split("|");
             let name = parts[0] + "\n(" + parts.slice(1).map(c => transposeChord(c, root)).join(" - ") + ")";
             window.currentProgression = parts.slice(1).map(c => transposeChord(c, root));
-            document.getElementById("combo_label").innerText = "";
+            document.getElementById("combo_label")?.innerText;
             window.realProgressionLabel = parts[0].split("\n")[0] + " in " + root;
 
             let wrongOpts = [];
@@ -486,7 +483,7 @@ document.addEventListener("DOMContentLoaded", () => {
             let qual  = match ? match[2] : "";
             let targetChord = root + qual;
             window.currentSymbol = targetChord;
-            document.getElementById("combo_label").innerText = "";
+            document.getElementById("combo_label")?.innerText;
             window.realProgressionLabel = targetChord;
 
             let wrongQuals = [];
