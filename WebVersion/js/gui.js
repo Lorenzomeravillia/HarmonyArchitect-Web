@@ -18,14 +18,18 @@ class GUI {
         // ── Timbre preset buttons ──────────────────────────────
         const selectContainer = document.getElementById("voice_instruments_frame");
         const presetDefs = [
-            { name: 'Clear Mix',   icon: '●○○' },
-            { name: 'Jazz Combo',  icon: '●●○' },
-            { name: 'Orchestra',   icon: '●●●' },
+            { name: 'Clear Mix',  dots: 1 },
+            { name: 'Jazz Combo', dots: 2 },
+            { name: 'Orchestra',  dots: 3 },
         ];
         presetDefs.forEach((p, i) => {
             const btn = document.createElement('button');
             btn.className = 'btn preset-btn' + (i === 0 ? ' active' : '');
-            btn.textContent = `${p.icon} ${p.name}`;
+            // Build uniform dots: same ● character, inactive ones at 0.2 opacity
+            const dotHTML = [1,2,3].map(d =>
+                `<span style="opacity:${d <= p.dots ? '1' : '0.22'}">●</span>`
+            ).join('');
+            btn.innerHTML = `<span style="letter-spacing:2px;font-size:10px;">${dotHTML}</span>&nbsp;${p.name}`;
             btn.onclick = () => {
                 document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
