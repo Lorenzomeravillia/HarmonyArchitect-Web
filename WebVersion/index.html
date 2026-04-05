@@ -45,7 +45,6 @@
                 <button id="coach_btn" class="btn icon-btn coach-btn" title="Help tour">?</button>
                 <div id="user_profile_btn" class="btn icon-btn" title="Account / Energy">👤<span id="energy_badge" style="font-size: 10px; vertical-align: top; color: gold; font-weight: bold; margin-left: 2px;">⚡</span></div>
                 <button id="settings_toggle" class="btn settings-toggle-btn">⚙</button>
-                <button id="next_btn" class="btn btn-primary next-btn">↻ New</button>
             </div>
         </header>
 
@@ -114,6 +113,12 @@
             </div>
         </div>
 
+        <!-- Inline Feedback Controls (Thumb Zone) -->
+        <div id="inline_feedback" class="inline-feedback-controls">
+            <button id="next_popup_replay" class="btn inline-fb-btn inline-fb-replay">🔄 Replay</button>
+            <button id="next_popup_continue" class="btn inline-fb-btn inline-fb-next">▶ Play Next</button>
+        </div>
+
         <!-- Voice Isolation (Solo) -->
         <div class="panel flex-row flex-wrap solo-frame">
             <span class="label text-muted margin-r solo-label">SOLO:</span>
@@ -123,14 +128,12 @@
         </div>
     </div>
 
-    <!-- Post-Answer Popup -->
-    <div id="next_popup" class="next-popup hidden">
+    <!-- Post-Answer Popup (Legacy - hidden, IDs preserved for JS stop btn) -->
+    <div id="next_popup" class="next-popup hidden" style="display:none !important;">
         <div class="next-popup-card">
             <div id="next_popup_icon" class="next-popup-icon"></div>
             <div id="next_popup_msg" class="next-popup-msg"></div>
             <div class="next-popup-actions">
-                <button id="next_popup_continue" class="btn btn-primary next-popup-btn">▶ Play Next</button>
-                <button id="next_popup_replay" class="btn next-popup-btn-sec">🔁 Replay</button>
                 <button id="next_popup_stop" class="btn next-popup-btn-ghost">✕ Stop</button>
             </div>
         </div>

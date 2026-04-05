@@ -268,15 +268,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const WRONG_MSGS   = ['💡 Almost!', '🎓 Try again!', '🧠 Keep listening!', '🔄 Once more!'];
 
     function showNextPopup(correct) {
-        let msgs = correct ? CORRECT_MSGS : WRONG_MSGS;
-        let msg  = msgs[Math.floor(Math.random() * msgs.length)];
-        if (streak >= 3) msg = '🔥 Streak x' + streak + '!';
-        document.getElementById('next_popup_icon').textContent = correct ? '✅' : '❌';
-        document.getElementById('next_popup_msg').textContent  = msg;
-        document.getElementById('next_popup').classList.remove('hidden');
+        // Show inline feedback controls (thumb zone)
+        const inlineFb = document.getElementById('inline_feedback');
+        if (inlineFb) inlineFb.classList.add('visible');
     }
     function hideNextPopup() {
-        document.getElementById('next_popup').classList.add('hidden');
+        const inlineFb = document.getElementById('inline_feedback');
+        if (inlineFb) inlineFb.classList.remove('visible');
     }
 
     document.getElementById('next_popup_continue').addEventListener('click', () => {
@@ -500,7 +498,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    document.getElementById("next_btn").addEventListener("click", startNewChallenge);
+    document.getElementById("next_btn")?.addEventListener("click", startNewChallenge);
 
     // ── PLAY button ─────────────────────────────────────────
     document.getElementById("play_btn").addEventListener("click", () => {
