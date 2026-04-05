@@ -29,7 +29,7 @@ class GUI {
             const dotHTML = [1,2,3].map(d =>
                 `<span style="opacity:${d <= p.dots ? '1' : '0.22'}">●</span>`
             ).join('');
-            btn.innerHTML = `<span style="letter-spacing:2px;font-size:10px;">${dotHTML}</span>&nbsp;${p.name}`;
+            btn.innerHTML = `<span style="letter-spacing:2px;font-size:13px;">${dotHTML}</span>&nbsp;${p.name}`;
             btn.onclick = () => {
                 document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
