@@ -41,6 +41,8 @@ async function fetchProfile() {
 
 // Energy consumption helper
 async function consumeEnergy() {
+    if (localStorage.getItem('beta_bypass') === 'true') return true;
+
     // If not logged in, fallback to local tracking
     if (!window.currentUser) {
         let localEnergy = parseInt(localStorage.getItem('anon_energy') || '3');
@@ -65,6 +67,8 @@ async function consumeEnergy() {
 }
 
 async function getEnergy() {
+    if (localStorage.getItem('beta_bypass') === 'true') return '∞';
+
     if (!window.currentUser) {
         return parseInt(localStorage.getItem('anon_energy') || '3');
     }

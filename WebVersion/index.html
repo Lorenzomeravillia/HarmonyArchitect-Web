@@ -163,10 +163,13 @@
     <div id="paywall_modal" class="modal-overlay hidden" style="z-index: 9999;">
         <div class="next-popup-card text-center" style="position: relative; width: 90%; max-width: 400px; margin: auto; transform: translateY(50vh); margin-top: -150px; background: #050814; border: 2px solid #E8873D;">
             <h2 style="color: #E8873D; margin-top: 0;">Out of Energy ⚡</h2>
-            <p class="text-muted" style="margin: 15px 0;">You've used all your free sessions for today!</p>
+            <p id="paywall_body_text" class="text-muted" style="margin: 15px 0;">You've used all your free sessions for today!</p>
             <button id="paywall_login_btn" class="btn btn-primary" style="width: 100%; margin-bottom: 12px;">Login to Save Progress</button>
-            <button id="paywall_upgrade_btn" class="btn" style="width: 100%; margin-bottom: 12px; background: #F0B429; color: black; font-weight: bold;">Unlock PRO (Unlimited)</button>
+            <button id="paywall_upgrade_btn" class="btn hidden" style="width: 100%; margin-bottom: 12px; background: #F0B429; color: black; font-weight: bold;">Unlock PRO (Unlimited)</button>
             <!-- <button id="paywall_ad_btn" class="btn next-popup-btn-sec" style="width: 100%;">Watch Ad (+1 Session)</button> -->
+            <div style="margin-top: 25px; border-top: 1px solid #333; padding-top: 15px;">
+                <a href="#" id="beta_bypass_btn" style="color: #666; font-size: 14px; text-decoration: underline;">Beta Tester? Activate Bypass</a>
+            </div>
         </div>
     </div>
 

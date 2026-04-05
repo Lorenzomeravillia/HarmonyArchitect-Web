@@ -23,6 +23,27 @@ document.addEventListener("DOMContentLoaded", () => {
     console.log("=== MAIN JS: INIT ===");
     console.log("window.dbClient =", window.dbClient);
 
+    // ── Paywall Dynamic Rendering ──────────────────────────
+    function showPaywall() {
+        const title = document.querySelector('#paywall_modal h2');
+        const bodyText = document.getElementById('paywall_body_text');
+        const loginBtn = document.getElementById('paywall_login_btn');
+        const upgradeBtn = document.getElementById('paywall_upgrade_btn');
+        
+        if (window.currentUser) {
+            loginBtn.classList.add('hidden');
+            upgradeBtn.classList.remove('hidden');
+            bodyText.textContent = "Your daily free slots are exhausted. Upgrade to PRO for infinite practice!";
+            title.textContent = "Unlock Infinite Power ⚡";
+        } else {
+            loginBtn.classList.remove('hidden');
+            upgradeBtn.classList.add('hidden');
+            bodyText.textContent = "You've used all your anonymous sessions for today! Login to save your progress.";
+            title.textContent = "Out of Energy ⚡";
+        }
+        document.getElementById('paywall_modal').classList.remove('hidden');
+    }
+
     // ── Supabase & Auth Initialization ─────────────────────
     const profileBtn = document.getElementById('user_profile_btn');
     const authModal = document.getElementById('auth_modal');
@@ -86,7 +107,14 @@ document.addEventListener("DOMContentLoaded", () => {
             btn.textContent = "Send Magic Link ✉️";
         }
     });
-
+    // Paywall beta bypass
+    document.getElementById('beta_bypass_btn')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        localStorage.setItem('beta_bypass', 'true');
+        alert("Developer Beta Bypass Activated! You now have unlimited local test energy.");
+        document.getElementById('paywall_modal').classList.add('hidden');
+        updateEnergyUI();
+    });
     // Paywall buttons
     document.getElementById('paywall_login_btn')?.addEventListener('click', () => {
         paywallModal.classList.add('hidden');
@@ -294,7 +322,7 @@ document.addEventListener("DOMContentLoaded", () => {
         updateEnergyUI();
         
         if (!hasEnergy) {
-            document.getElementById('paywall_modal').classList.remove('hidden');
+            showPaywall();
             return;
         }
 
@@ -407,7 +435,7 @@ document.addEventListener("DOMContentLoaded", () => {
             // Check energy ONLY at the very beginning of a completely new session
             let energyStr = await window.getDbEnergy();
             if (energyStr !== '∞' && parseInt(energyStr) <= 0) {
-                document.getElementById('paywall_modal').classList.remove('hidden');
+                showPaywall();
                 return; // Stop here, don't start the challenge
             }
         }
