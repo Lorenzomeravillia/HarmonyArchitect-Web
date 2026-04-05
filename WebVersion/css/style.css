@@ -421,6 +421,18 @@ canvas {
 }
 #insight_label { font-size: 11px; margin-top: 2px; }
 
+/* ── Solo Button Flash Feedback ────────────────────── */
+.solo-btn.flash-active {
+    filter: brightness(1.5);
+    box-shadow: 0 0 10px currentColor;
+    transition: all 0.1s ease-out;
+}
+.solo-btn.flash-missing {
+    background-color: #555555 !important;
+    color: #aaaaaa;
+    transition: background-color 0.1s ease-out;
+}
+
 /* ── Inline Feedback Controls (Thumb Zone) ──────────── */
 .inline-feedback-controls {
     display: flex;

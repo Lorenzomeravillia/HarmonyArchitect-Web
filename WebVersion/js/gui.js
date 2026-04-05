@@ -1,10 +1,13 @@
-// Maps functional note colors (from music_engine) to readable interval labels
-const COLOR_TO_INTERVAL = {
-    '#4A90D9': 'Root',
-    '#2EC4B6': '3rd',
-    '#F0B429': '5th',
-    '#E8873D': '7th',
-    '#D946A8': 'Ext',
+// Maps semitone interval from root to readable degree labels
+const INTERVAL_LABELS = {
+    0: 'Root',
+    1: 'b9',   2: '9',
+    3: 'm3',   4: 'M3',
+    5: '11',   6: 'b5',   7: '5',   8: '#5',
+    9: 'dim7', 10: 'm7',  11: 'M7',
+    13: 'b9',  14: '9',   15: '#9',
+    17: '11',  18: '#11',
+    21: '13'
 };
 
 class GUI {
@@ -49,6 +52,13 @@ class GUI {
                     if (chord && chord.length > i) {
                         let n = chord[i];
                         window.audioEngine.playPitch(n.voiceIdx, n.frequency, 1.2, cIdx);
+                        // Flash active
+                        b.classList.add('flash-active');
+                        setTimeout(() => b.classList.remove('flash-active'), 250);
+                    } else {
+                        // Flash missing — voice absent in this chord
+                        b.classList.add('flash-missing');
+                        setTimeout(() => b.classList.remove('flash-missing'), 250);
                     }
                     cIdx++;
                     let isoTempo = parseInt((document.getElementById('tempo_menu') || {}).value) || 1560;
@@ -99,14 +109,24 @@ class GUI {
         const buttons = document.querySelectorAll('#solo_buttons_frame .solo-btn');
         const noteCount = voicing ? voicing.length : buttons.length;
 
+        // Compute rootPc from first note (Bass = index 0)
+        let rootPc = null;
+        if (voicing && voicing.length > 0) {
+            rootPc = Math.round(12 * Math.log2(voicing[0].frequency / 440) + 69) % 12;
+        }
+
         buttons.forEach((btn, i) => {
             if (i < noteCount) {
                 btn.style.display = '';
                 if (voicing && voicing[i]) {
-                    const note = voicing[i];
-                    btn.textContent = i === 0
-                        ? 'Bass'
-                        : (COLOR_TO_INTERVAL[note.color] || ('V' + (i + 1)));
+                    if (i === 0) {
+                        btn.textContent = 'Bass';
+                    } else {
+                        // Compute semitone interval from root
+                        const notePc = Math.round(12 * Math.log2(voicing[i].frequency / 440) + 69) % 12;
+                        const ival = (notePc - rootPc + 12) % 12;
+                        btn.textContent = INTERVAL_LABELS[ival] || ('V' + (i + 1));
+                    }
                 }
             } else {
                 btn.style.display = 'none';
