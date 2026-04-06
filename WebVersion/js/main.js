@@ -5,7 +5,10 @@ document.addEventListener("DOMContentLoaded", () => {
     // ── PWA Start Overlay ──────────────────────────────────
     let startOverlay = document.getElementById("start_overlay");
     if (startOverlay) {
-        startOverlay.addEventListener("click", () => {
+        startOverlay.addEventListener("click", (e) => {
+            if (e.target.tagName.toLowerCase() === 'a') {
+                return; // Let the link work!
+            }
             startOverlay.style.display = "none";
             window.audioEngine.unlockAndLoad();
             // Pre-load first challenge so PLAY is ready immediately
