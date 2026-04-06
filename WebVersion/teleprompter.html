@@ -123,6 +123,7 @@
         <div id="action-text">READY</div>
         <div id="upcoming-text"></div>
         
+        <button onclick="togglePause()" id="pause-btn" style="position: absolute; top: 2rem; right: 12rem; background: var(--warning); color: #000; border: none; font-size: 0.9rem; padding: 0.8rem 1.2rem;">PAUSE</button>
         <button onclick="closePrompter()" style="position: absolute; top: 2rem; right: 2rem; background: var(--danger); border: none; font-size: 0.9rem; padding: 0.8rem 1.2rem;">STOP / CANCEL</button>
     </div>
 
@@ -214,11 +215,18 @@ let currentRaf = null;
 let startTime = 0;
 let events = [];
 let currentIndex = 0;
+let isPaused = false;
+let pauseStartTime = 0;
+let totalPausedTime = 0;
+let countdownInterval = null;
 
 function loadScenario(id) {
     const sc = SCENARIOS[id];
     events = [...sc.timeline].sort((a,b) => a.time - b.time);
     currentIndex = 0;
+    isPaused = false;
+    totalPausedTime = 0;
+    document.getElementById('pause-btn').innerText = "PAUSE";
     
     document.getElementById('setup-info').innerHTML = `<strong>SETUP APP FIRST:</strong><br>${sc.setup}`;
     document.getElementById('prompter').style.display = 'flex';
@@ -230,12 +238,13 @@ function loadScenario(id) {
     document.getElementById('action-text').innerText = left;
     document.getElementById('upcoming-text').innerText = "Start Screen Recording on iPhone now!";
     
-    const intv = setInterval(() => {
+    countdownInterval = setInterval(() => {
+        if (isPaused) return; // Freeze countdown if paused early
         left--;
         if (left > 0) {
             document.getElementById('action-text').innerText = left;
         } else {
-            clearInterval(intv);
+            clearInterval(countdownInterval);
             document.getElementById('prompter').classList.remove('countdown-mode');
             startEngine();
         }
@@ -248,8 +257,26 @@ function startEngine() {
     tick();
 }
 
+function togglePause() {
+    const btn = document.getElementById('pause-btn');
+    if (!isPaused) {
+        isPaused = true;
+        pauseStartTime = performance.now();
+        btn.innerText = "RESUME";
+    } else {
+        isPaused = false;
+        totalPausedTime += (performance.now() - pauseStartTime);
+        btn.innerText = "PAUSE";
+    }
+}
+
 function tick() {
-    const elapsed = performance.now() - startTime;
+    if (isPaused) {
+        currentRaf = requestAnimationFrame(tick);
+        return;
+    }
+    
+    const elapsed = performance.now() - startTime - totalPausedTime;
     document.getElementById('clock').innerText = (elapsed / 1000).toFixed(1) + "s";
     
     // Check if we hit the next event
@@ -291,13 +318,14 @@ function triggerEvent(ev) {
 function updateUI() {
     if (currentIndex < events.length) {
         const next = events[currentIndex];
-        document.getElementById('upcoming-text').innerText = `Next: ${next.action.replace('\n',' ')} (in ${((next.time - (performance.now() - startTime))/1000).toFixed(1)}s)`;
+        document.getElementById('upcoming-text').innerText = `Next: ${next.action.replace('\n',' ')} (in ${((next.time - (performance.now() - startTime - totalPausedTime))/1000).toFixed(1)}s)`;
     } else {
         document.getElementById('upcoming-text').innerText = "";
     }
 }
 
 function closePrompter() {
+    clearInterval(countdownInterval);
     document.getElementById('prompter').style.display = 'none';
     cancelAnimationFrame(currentRaf);
 }
