@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClearVoicing — Start hearing every single voice.</title>
+<meta name="description" content="Ear training reimagined. Different instruments for each voice make chords transparent. No timers, no pressure — learn at your pace.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-deep: #0a0e1a;
+  --bg-card: #111827;
+  --bg-card-hover: #1a2235;
+  --text-primary: #f0f2f5;
+  --text-secondary: #9ca3af;
+  --text-muted: #6b7280;
+  --accent-teal: #2EC4B6;
+  --accent-teal-glow: rgba(46, 196, 182, 0.15);
+  --accent-blue: #4A90D9;
+  --accent-amber: #F0B429;
+  --accent-orange: #E8873D;
+  --accent-magenta: #D946A8;
+  --accent-lime: #84CC16;
+  --gradient-cta: linear-gradient(135deg, #4A90D9, #2EC4B6);
+  --gradient-hero: radial-gradient(ellipse 80% 60% at 50% 40%, rgba(46,196,182,0.08) 0%, transparent 70%);
+  --font-display: 'DM Serif Display', Georgia, serif;
+  --font-body: 'DM Sans', system-ui, sans-serif;
+  --radius: 12px;
+  --radius-lg: 20px;
+  --max-width: 1120px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; }
+
+body {
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 17px;
+  line-height: 1.7;
+  overflow-x: hidden;
+}
+
+.container { max-width: var(--max-width); margin: 0 auto; padding: 0 24px; }
+
+/* --- NAV --- */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  padding: 16px 24px;
+  background: rgba(10, 14, 26, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+nav .nav-inner {
+  max-width: var(--max-width); margin: 0 auto;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.nav-logo {
+  font-family: var(--font-display); font-size: 22px;
+  color: var(--text-primary); text-decoration: none; letter-spacing: -0.02em;
+}
+.nav-logo span { color: var(--accent-teal); }
+.nav-links { display: flex; gap: 32px; align-items: center; }
+.nav-links a {
+  color: var(--text-secondary); text-decoration: none;
+  font-size: 15px; font-weight: 500; transition: color 0.2s;
+}
+.nav-links a:hover { color: var(--text-primary); }
+.nav-cta {
+  background: var(--gradient-cta) !important; color: #fff !important;
+  padding: 10px 24px; border-radius: 8px;
+  font-weight: 600; font-size: 14px !important;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.nav-cta:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(46,196,182,0.3); }
+@media (max-width: 680px) { .nav-links a:not(.nav-cta) { display: none; } }
+
+/* --- HERO --- */
+.hero {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  text-align: center; padding: 120px 24px 80px;
+  position: relative; background: var(--gradient-hero);
+}
+.hero::before {
+  content: ''; position: absolute; inset: 0;
+  background:
+    radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,0.12) 0%, transparent 100%),
+    radial-gradient(1px 1px at 80% 20%, rgba(255,255,255,0.08) 0%, transparent 100%),
+    radial-gradient(1px 1px at 40% 70%, rgba(255,255,255,0.06) 0%, transparent 100%);
+  pointer-events: none;
+}
+.hero-content { position: relative; z-index: 1; max-width: 720px; }
+
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(46,196,182,0.1); border: 1px solid rgba(46,196,182,0.2);
+  border-radius: 100px; padding: 8px 20px;
+  font-size: 14px; font-weight: 500; color: var(--accent-teal);
+  margin-bottom: 32px; animation: fadeInUp 0.8s ease-out;
+}
+.hero-badge .dot {
+  width: 6px; height: 6px; background: var(--accent-teal);
+  border-radius: 50%; animation: pulse-dot 2s infinite;
+}
+
+h1 {
+  font-family: var(--font-display);
+  font-size: clamp(40px, 7vw, 72px);
+  line-height: 1.08; letter-spacing: -0.03em;
+  margin-bottom: 24px; animation: fadeInUp 0.8s ease-out 0.1s both;
+}
+h1 em { font-style: italic; color: var(--accent-teal); }
+
+.hero-sub {
+  font-size: clamp(17px, 2.2vw, 20px); color: var(--text-secondary);
+  line-height: 1.6; max-width: 540px; margin: 0 auto 40px;
+  animation: fadeInUp 0.8s ease-out 0.2s both;
+}
+
+.hero-cta-group {
+  display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;
+  animation: fadeInUp 0.8s ease-out 0.3s both;
+}
+.btn-primary {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--gradient-cta); color: #fff;
+  padding: 16px 36px; border-radius: 10px;
+  font-size: 17px; font-weight: 600; text-decoration: none;
+  transition: transform 0.2s, box-shadow 0.2s; border: none; cursor: pointer;
+}
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(46,196,182,0.35); }
+.btn-secondary {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text-primary); padding: 16px 36px; border-radius: 10px;
+  font-size: 17px; font-weight: 500; text-decoration: none;
+  transition: background 0.2s, border-color 0.2s; cursor: pointer;
+}
+.btn-secondary:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
+
+.hero-note {
+  margin-top: 20px; font-size: 13px; color: var(--text-muted);
+  animation: fadeInUp 0.8s ease-out 0.4s both;
+}
+
+/* --- SECTIONS --- */
+.section { padding: 100px 24px; position: relative; }
+.section-label {
+  font-size: 13px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.12em; color: var(--accent-teal); margin-bottom: 16px;
+}
+.section-title {
+  font-family: var(--font-display);
+  font-size: clamp(28px, 4.5vw, 44px);
+  line-height: 1.15; letter-spacing: -0.02em; margin-bottom: 20px;
+}
+.section-sub {
+  font-size: 18px; color: var(--text-secondary);
+  max-width: 600px; line-height: 1.6;
+}
+
+/* --- PROBLEM --- */
+.problem-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px; margin-top: 48px;
+}
+.problem-card {
+  background: var(--bg-card); border: 1px solid rgba(255,255,255,0.06);
+  border-radius: var(--radius); padding: 32px;
+  transition: border-color 0.3s, transform 0.3s;
+}
+.problem-card:hover { border-color: rgba(255,255,255,0.12); transform: translateY(-2px); }
+.problem-card .icon { font-size: 28px; margin-bottom: 16px; display: block; }
+.problem-card h3 { font-family: var(--font-display); font-size: 20px; margin-bottom: 10px; }
+.problem-card p { color: var(--text-secondary); font-size: 15px; line-height: 1.6; }
+
+/* --- HOW IT WORKS --- */
+.how-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 64px; align-items: center; margin-top: 56px;
+}
+@media (max-width: 768px) { .how-grid { grid-template-columns: 1fr; gap: 40px; } }
+
+.step-list { display: flex; flex-direction: column; gap: 32px; }
+.step { display: flex; gap: 20px; align-items: flex-start; }
+.step-num {
+  flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%;
+  background: var(--accent-teal-glow); border: 1px solid rgba(46,196,182,0.3);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 18px; color: var(--accent-teal);
+}
+.step h3 { font-size: 18px; font-weight: 600; margin-bottom: 6px; }
+.step p { color: var(--text-secondary); font-size: 15px; line-height: 1.55; }
+
+.app-preview {
+  background: var(--bg-card); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius-lg); padding: 24px;
+  position: relative; overflow: hidden;
+}
+.app-preview::after {
+  content: ''; position: absolute; inset: -1px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, rgba(46,196,182,0.15), transparent 50%, rgba(74,144,217,0.1));
+  pointer-events: none; z-index: 0;
+}
+.app-preview-inner { position: relative; z-index: 1; }
+
+.voice-demo { display: flex; flex-direction: column; gap: 12px; }
+.voice-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 16px; background: rgba(255,255,255,0.03);
+  border-radius: 8px; transition: background 0.3s;
+}
+.voice-row:hover { background: rgba(255,255,255,0.06); }
+.voice-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.voice-name { font-size: 14px; font-weight: 500; min-width: 60px; }
+.voice-instrument { font-size: 13px; color: var(--text-muted); }
+.voice-bar {
+  flex: 1; height: 3px; background: rgba(255,255,255,0.06);
+  border-radius: 2px; position: relative; overflow: hidden;
+}
+.voice-bar-fill {
+  position: absolute; top: 0; left: 0; bottom: 0;
+  border-radius: 2px; animation: voicePlay 3s ease-in-out infinite; opacity: 0.7;
+}
+
+/* --- FEATURES --- */
+.features-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 20px; margin-top: 48px;
+}
+@media (max-width: 900px) { .features-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .features-grid { grid-template-columns: 1fr; } }
+
+.feature-card {
+  background: var(--bg-card); border: 1px solid rgba(255,255,255,0.06);
+  border-radius: var(--radius); padding: 28px;
+  transition: border-color 0.3s, transform 0.2s;
+}
+.feature-card:hover { border-color: rgba(46,196,182,0.2); transform: translateY(-2px); }
+.feature-icon {
+  width: 44px; height: 44px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; margin-bottom: 16px;
+}
+.feature-card h3 { font-size: 17px; font-weight: 600; margin-bottom: 8px; }
+.feature-card p { color: var(--text-secondary); font-size: 14px; line-height: 1.55; }
+
+/* --- SCIENCE --- */
+.science-section {
+  background: linear-gradient(180deg, rgba(46,196,182,0.04) 0%, transparent 100%);
+  border-top: 1px solid rgba(46,196,182,0.08);
+}
+.science-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px; margin-top: 48px;
+}
+.science-card {
+  padding: 28px; border-left: 3px solid var(--accent-teal);
+  background: rgba(255,255,255,0.02);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+.science-card h3 { font-size: 16px; font-weight: 600; margin-bottom: 8px; color: var(--accent-teal); }
+.science-card p { color: var(--text-secondary); font-size: 14px; line-height: 1.6; }
+
+/* --- COMPARE --- */
+.compare-table { width: 100%; border-collapse: collapse; margin-top: 48px; font-size: 15px; }
+.compare-table th, .compare-table td {
+  padding: 16px 20px; text-align: left;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.compare-table th {
+  font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em;
+}
+.compare-table th:nth-child(2) { color: var(--text-muted); }
+.compare-table th:nth-child(3) { color: var(--accent-teal); }
+.compare-table td:first-child { font-weight: 500; color: var(--text-secondary); }
+.compare-table td:nth-child(2) { color: var(--text-muted); }
+.compare-table td:nth-child(3) { color: var(--text-primary); }
+.compare-table tr:hover td { background: rgba(255,255,255,0.02); }
+@media (max-width: 600px) {
+  .compare-table { font-size: 13px; }
+  .compare-table th, .compare-table td { padding: 12px 10px; }
+}
+
+/* --- WHO IT'S FOR --- */
+.audience-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px; margin-top: 48px;
+}
+.audience-card {
+  background: var(--bg-card); border: 1px solid rgba(255,255,255,0.06);
+  border-radius: var(--radius); padding: 28px; text-align: center;
+  transition: border-color 0.3s;
+}
+.audience-card:hover { border-color: rgba(46,196,182,0.2); }
+.audience-card .emoji { font-size: 36px; margin-bottom: 12px; display: block; }
+.audience-card h3 { font-size: 17px; font-weight: 600; margin-bottom: 8px; }
+.audience-card p { color: var(--text-secondary); font-size: 14px; line-height: 1.55; }
+
+/* --- PRICING --- */
+.pricing-card {
+  max-width: 440px; margin: 48px auto 0;
+  background: var(--bg-card); border: 1px solid rgba(46,196,182,0.2);
+  border-radius: var(--radius-lg); padding: 40px; text-align: center;
+  position: relative; overflow: hidden;
+}
+.pricing-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0;
+  height: 3px; background: var(--gradient-cta);
+}
+.pricing-tier {
+  font-size: 13px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--accent-teal); margin-bottom: 8px;
+}
+.pricing-price { font-family: var(--font-display); font-size: 48px; margin-bottom: 4px; }
+.pricing-period { font-size: 14px; color: var(--text-muted); margin-bottom: 24px; }
+.pricing-features { list-style: none; text-align: left; margin-bottom: 32px; }
+.pricing-features li {
+  padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-size: 15px; color: var(--text-secondary);
+  display: flex; align-items: center; gap: 12px;
+}
+.pricing-features li::before { content: '✓'; color: var(--accent-teal); font-weight: 700; flex-shrink: 0; }
+
+/* --- FINAL CTA --- */
+.final-cta {
+  text-align: center; padding: 120px 24px;
+  background: var(--gradient-hero); position: relative;
+}
+.final-cta h2 {
+  font-family: var(--font-display);
+  font-size: clamp(32px, 5vw, 52px);
+  margin-bottom: 16px; letter-spacing: -0.02em;
+}
+.final-cta p {
+  color: var(--text-secondary); font-size: 18px;
+  margin-bottom: 36px; max-width: 480px; margin-left: auto; margin-right: auto;
+}
+
+/* --- FOOTER --- */
+footer {
+  border-top: 1px solid rgba(255,255,255,0.06);
+  padding: 40px 24px; text-align: center;
+  font-size: 14px; color: var(--text-muted);
+}
+footer a { color: var(--text-secondary); text-decoration: none; }
+footer a:hover { color: var(--text-primary); }
+
+/* --- ANIMATIONS --- */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+@keyframes voicePlay { 0% { width: 0%; } 50% { width: 100%; } 100% { width: 0%; } }
+
+.reveal {
+  opacity: 0; transform: translateY(32px);
+  transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+}
+.reveal.visible { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <a href="#" class="nav-logo">Clear<span>Voicing</span></a>
+    <div class="nav-links">
+      <a href="#how">How it works</a>
+      <a href="#features">Features</a>
+      <a href="#who">Who it's for</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#start" class="nav-cta">Try Free</a>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-content">
+    <div class="hero-badge">
+      <span class="dot"></span>
+      Beta — Free access for early testers
+    </div>
+    <h1>Start hearing <em>every single voice.</em></h1>
+    <p class="hero-sub">
+      When you play a chord, do you hear a blob — or four distinct voices? ClearVoicing gives each voice its own instrument, so your ear can finally tell them apart.
+    </p>
+    <div class="hero-cta-group">
+      <a href="#start" class="btn-primary">▶ Start Training Free</a>
+      <a href="#how" class="btn-secondary">See how it works</a>
+    </div>
+    <p class="hero-note">Web app — works on any device, no download needed</p>
+  </div>
+</section>
+
+<!-- PROBLEM -->
+<section class="section" id="problem">
+  <div class="container reveal">
+    <p class="section-label">The problem</p>
+    <h2 class="section-title">Why chords sound like a wall of sound.</h2>
+    <p class="section-sub">
+      Traditional ear training plays all notes on the same instrument. Your brain hears one mass of sound, not individual voices. That's not a talent issue — it's an acoustics issue.
+    </p>
+    <div class="problem-grid">
+      <div class="problem-card">
+        <span class="icon">🎹</span>
+        <h3>Same timbre = same blob</h3>
+        <p>When four notes share the same piano sound, your auditory cortex groups them into one stream. You hear "a chord" but can't pick out the third from the fifth. It all fuses together.</p>
+      </div>
+      <div class="problem-card">
+        <span class="icon">🧩</span>
+        <h3>Too much at once</h3>
+        <p>Hearing 4 notes, analyzing intervals, identifying chord quality, and determining voicing — all in one instant. That's 4 cognitive tasks competing for the same limited mental bandwidth.</p>
+      </div>
+      <div class="problem-card">
+        <span class="icon">⏱️</span>
+        <h3>Pressure kills listening</h3>
+        <p>Timers and score penalties shift your brain from analytical mode to survival mode. Under pressure, you stop listening carefully and start guessing. That's not training — it's panic.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="section" id="how">
+  <div class="container reveal">
+    <p class="section-label">How it works</p>
+    <h2 class="section-title">The orchestra principle.</h2>
+    <p class="section-sub">
+      You can follow a cello in an orchestra even when 80 instruments play at once. ClearVoicing applies the same principle — timbral separation — to every chord you study.
+    </p>
+    <div class="how-grid">
+      <div class="step-list">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div>
+            <h3>Each voice gets its own instrument</h3>
+            <p>Bass plays on double bass. Middle voices on trumpet and horn. Top voice on flute. Your brain naturally separates different timbres — it's the same reason you hear the singer over the band.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div>
+            <h3>Colors show you the structure</h3>
+            <p>Root, third, fifth, seventh — each harmonic function has a consistent color on the staff. See the structure while you hear it. Two channels of information reinforce each other.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div>
+            <h3>Follow voices, not blocks</h3>
+            <p>Instead of guessing a chord label, you learn how each voice moves to the next chord. This is voice leading — the way arrangers and composers actually think about harmony.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div>
+            <h3>Listen as many times as you need</h3>
+            <p>No countdown. No score penalty. No judgment. Replay is free, always. The best learning happens when you're calm and curious, not rushed and anxious.</p>
+          </div>
+        </div>
+      </div>
+      <div class="app-preview">
+        <div class="app-preview-inner">
+          <div style="font-size:13px; color: var(--text-muted); margin-bottom:16px; text-transform:uppercase; letter-spacing:0.1em;">Voice separation — Clear Mix preset</div>
+          <div class="voice-demo">
+            <div class="voice-row">
+              <div class="voice-dot" style="background: var(--accent-blue);"></div>
+              <span class="voice-name" style="color: var(--accent-blue);">Root</span>
+              <span class="voice-instrument">Double Bass</span>
+              <div class="voice-bar"><div class="voice-bar-fill" style="background: var(--accent-blue); animation-delay: 0s;"></div></div>
+            </div>
+            <div class="voice-row">
+              <div class="voice-dot" style="background: var(--accent-teal);"></div>
+              <span class="voice-name" style="color: var(--accent-teal);">Third</span>
+              <span class="voice-instrument">Trumpet</span>
+              <div class="voice-bar"><div class="voice-bar-fill" style="background: var(--accent-teal); animation-delay: 0.3s;"></div></div>
+            </div>
+            <div class="voice-row">
+              <div class="voice-dot" style="background: var(--accent-amber);"></div>
+              <span class="voice-name" style="color: var(--accent-amber);">Fifth</span>
+              <span class="voice-instrument">French Horn</span>
+              <div class="voice-bar"><div class="voice-bar-fill" style="background: var(--accent-amber); animation-delay: 0.6s;"></div></div>
+            </div>
+            <div class="voice-row">
+              <div class="voice-dot" style="background: var(--accent-orange);"></div>
+              <span class="voice-name" style="color: var(--accent-orange);">Seventh</span>
+              <span class="voice-instrument">Flute</span>
+              <div class="voice-bar"><div class="voice-bar-fill" style="background: var(--accent-orange); animation-delay: 0.9s;"></div></div>
+            </div>
+          </div>
+          <div style="margin-top:20px; padding-top:16px; border-top:1px solid rgba(255,255,255,0.06); font-size:13px; color:var(--text-muted);">
+            Same chord, four distinct instruments → four distinct voices you can follow
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="section" id="features">
+  <div class="container reveal">
+    <p class="section-label">Features</p>
+    <h2 class="section-title">Everything you need.<br>Nothing you don't.</h2>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(46,196,182,0.1);">🎵</div>
+        <h3>3 Timbre Presets</h3>
+        <p>Clear Mix (maximum separation), Jazz Combo (partial blend), Orchestra (full challenge). Start easy, progress naturally.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(240,180,41,0.1);">🎼</div>
+        <h3>4 Harmony Levels</h3>
+        <p>From basic triads to jazz extensions, tritone substitutions and secondary dominants. Real music, real voicings, real progressions.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(74,144,217,0.1);">👆</div>
+        <h3>Voice Isolation</h3>
+        <p>Solo any voice to hear it alone. Bass, 2nd, 3rd, Lead — labeled by voicing role, the way arrangers actually think.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(217,70,168,0.1);">📊</div>
+        <h3>Color-Coded Notation</h3>
+        <p>Each harmonic degree gets a consistent color on the staff. See the chord's anatomy while you hear it — two channels that reinforce each other.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(132,204,22,0.1);">⚡</div>
+        <h3>Short Sessions</h3>
+        <p>3 or 5 challenges per session. Focused bursts work better than marathon drilling. Quality of attention beats quantity of repetition.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(232,135,61,0.1);">🎹</div>
+        <h3>Drop-2 Voicings</h3>
+        <p>Professional jazz voicings spread across registers. Wider spacing makes each voice easier to isolate. Optimized voice leading between chords.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- WHO IT'S FOR -->
+<section class="section" id="who">
+  <div class="container reveal">
+    <p class="section-label">Who it's for</p>
+    <h2 class="section-title">If you hear a blob,<br>this is for you.</h2>
+    <p class="section-sub">
+      ClearVoicing works for anyone who wants to hear harmony more clearly — regardless of background, experience level, or how your brain processes sound.
+    </p>
+    <div class="audience-grid">
+      <div class="audience-card">
+        <span class="emoji">🎸</span>
+        <h3>Self-taught musicians</h3>
+        <p>You play by ear and want to understand what you're hearing. Chords aren't a mystery — they're voices you haven't met yet.</p>
+      </div>
+      <div class="audience-card">
+        <span class="emoji">🎓</span>
+        <h3>Music students</h3>
+        <p>Harmony class moves fast. ClearVoicing lets you slow down, isolate each voice, and build real understanding — not just memorized answers.</p>
+      </div>
+      <div class="audience-card">
+        <span class="emoji">🎷</span>
+        <h3>Jazz musicians</h3>
+        <p>ii-V-I progressions, extensions, tritone subs — all in Drop-2 voicings with real voice leading. Hear how the pros connect chords.</p>
+      </div>
+      <div class="audience-card">
+        <span class="emoji">🏫</span>
+        <h3>Music teachers</h3>
+        <p>A tool your students can actually use between lessons. Visual feedback + timbral separation make harmony tangible, not abstract.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SCIENCE -->
+<section class="section science-section" id="science">
+  <div class="container reveal">
+    <p class="section-label">Why it works</p>
+    <h2 class="section-title">Not a gimmick.<br>Auditory science at work.</h2>
+    <p class="section-sub">
+      Every design decision is grounded in research on how the brain processes complex sound.
+    </p>
+    <div class="science-grid">
+      <div class="science-card">
+        <h3>Timbral Stream Segregation</h3>
+        <p>When frequencies share the same timbre, the auditory cortex groups them as one stream. Different timbres create separate perceptual streams. This is why you can follow a cello in an orchestra.</p>
+      </div>
+      <div class="science-card">
+        <h3>Dual Coding</h3>
+        <p>Information encoded through both auditory and visual channels creates stronger memory traces. Color + sound together reinforce learning more than either channel alone.</p>
+      </div>
+      <div class="science-card">
+        <h3>Cognitive Load Theory</h3>
+        <p>Learning is optimized when irrelevant mental effort is minimized. Color-coding offloads pattern recognition to the visual system, freeing your ears to focus on listening.</p>
+      </div>
+      <div class="science-card">
+        <h3>Stress-Free Learning</h3>
+        <p>Pressure and anxiety impair analytical thinking. When you feel safe to explore without judgment, you listen more carefully and learn more deeply.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COMPARE -->
+<section class="section">
+  <div class="container reveal">
+    <p class="section-label">Comparison</p>
+    <h2 class="section-title">A fundamentally different approach.</h2>
+    <div style="overflow-x:auto;">
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Traditional Ear Trainers</th>
+            <th>ClearVoicing</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Timbre</td><td>Piano only</td><td>14 orchestral instruments, per-voice</td></tr>
+          <tr><td>Approach</td><td>Guess the chord label</td><td>Follow each voice through the progression</td></tr>
+          <tr><td>Time pressure</td><td>Timers, countdowns, score penalties</td><td>No timers. Unlimited replay. Your pace</td></tr>
+          <tr><td>Error handling</td><td>Buzzer, red screen, point deduction</td><td>No penalty. Analyze, learn, move on</td></tr>
+          <tr><td>Session length</td><td>20-50 questions</td><td>3-5 focused challenges</td></tr>
+          <tr><td>Voice isolation</td><td>Not available</td><td>Solo any voice by role</td></tr>
+          <tr><td>Visual feedback</td><td>Black and white notation</td><td>Color-coded by harmonic function</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="section" id="pricing">
+  <div class="container reveal">
+    <p class="section-label">Pricing</p>
+    <h2 class="section-title" style="text-align:center;">Start free. No strings attached.</h2>
+    <div class="pricing-card">
+      <div class="pricing-tier">Beta — Full Access</div>
+      <div class="pricing-price">€0</div>
+      <div class="pricing-period">Free during beta · No account required</div>
+      <ul class="pricing-features">
+        <li>All 4 harmony levels</li>
+        <li>All 3 timbre presets</li>
+        <li>Voice isolation (Solo mode)</li>
+        <li>Unlimited replay</li>
+        <li>Single chord & progression modes</li>
+        <li>Color-coded staff notation</li>
+        <li>Works on phone, tablet, desktop</li>
+      </ul>
+      <a href="#" class="btn-primary" style="width:100%; justify-content:center;">▶ Start Training Free</a>
+    </div>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section class="final-cta" id="start">
+  <div class="container reveal">
+    <h2>Ready to hear what's<br>inside the chord?</h2>
+    <p>No download. No account. No credit card.<br>Open the app and start listening.</p>
+    <a href="#" class="btn-primary">▶ Start Training Free</a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+    <p style="margin-bottom:8px;">ClearVoicing — Ear training that lets you hear every voice.</p>
+    <p>Built by a musician, for musicians. <a href="#">Contact</a></p>
+  </div>
+</footer>
+
+<script>
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) entry.target.classList.add('visible');
+  });
+}, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+</script>
+
+</body>
+</html>
