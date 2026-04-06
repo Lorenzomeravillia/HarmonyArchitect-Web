@@ -104,12 +104,31 @@
         countdownActive = true;
 
         // 1. MUST UNLOCK AUDIO DIRECTLY IN THIS TRUSTED SCOPE.
-        // Synthetic element.click() below will lose the 'isTrusted' flag on iOS Safari.
         const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let ctxToKeepAlive = null;
+
         if (AudioContext && (!window.audioEngine || !window.audioEngine.ctx)) {
              try { window.audioEngine.unlockAndLoad(); } catch(e){}
         } else if (window.audioEngine && window.audioEngine.ctx) {
              window.audioEngine.ctx.resume();
+        }
+
+        if (window.audioEngine && window.audioEngine.ctx) {
+            ctxToKeepAlive = window.audioEngine.ctx;
+        }
+
+        // Keep iOS Safari AudioContext alive during the countdown with a silent oscillator
+        if (ctxToKeepAlive) {
+            try {
+                const osc = ctxToKeepAlive.createOscillator();
+                const gain = ctxToKeepAlive.createGain();
+                gain.gain.value = 0.0001; // virtually silent
+                osc.connect(gain);
+                gain.connect(ctxToKeepAlive.destination);
+                osc.start();
+                // Stop it right before simulation starts
+                setTimeout(() => { try { osc.stop(); } catch(e){} }, delayParam + 500);
+            } catch(e) {}
         }
 
         // 2. Fire synthetic click to hide splash screen and trigger startNewChallenge()
@@ -155,16 +174,14 @@
         
         tapTimer = setTimeout(() => {
             if (tapCount === 2) {
-                // Pause / Resume
                 isPlaying = !isPlaying;
                 console.log(isPlaying ? '[VideoSim] Resumed' : '[VideoSim] Paused');
             } else if (tapCount >= 3) {
-                // Reset
                 console.log('[VideoSim] Resetting via gesture...');
                 window.location.reload();
             }
             tapCount = 0;
-        }, 350); // 350ms window for taps
+        }, 350); 
     }, true);
 
     function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -211,10 +228,11 @@
         showVisualTap(x, y);
 
         try { el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); } catch(e){}
+        try { el.dispatchEvent(new MouseEvent('touchstart', { bubbles: true })); } catch(e){}
         try { el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true })); } catch(e){}
+        try { el.dispatchEvent(new MouseEvent('touchend', { bubbles: true })); } catch(e){}
         try { 
             el.click(); 
-            // Fallback for strict iOS DOM environments
             el.dispatchEvent(new Event('click', { bubbles: true }));
         } catch(e) {}
     }
@@ -222,7 +240,7 @@
     function getCorrectAnswerBtn() {
         if (!window.correctAnswerText) return null;
         const btns = Array.from(document.querySelectorAll('.answer-btn'));
-        return btns.find(b => b.dataset.text === window.correctAnswerText);
+        return btns.find(b => b.dataset.answer === window.correctAnswerText); // dataset.answer instead of text
     }
 
     async function startSimulation() {
