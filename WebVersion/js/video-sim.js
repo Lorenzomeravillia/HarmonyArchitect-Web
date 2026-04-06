@@ -103,7 +103,16 @@
         if (countdownActive) return;
         countdownActive = true;
 
-        // Pass the true user gesture to the main app's splash screen synchronously
+        // 1. MUST UNLOCK AUDIO DIRECTLY IN THIS TRUSTED SCOPE.
+        // Synthetic element.click() below will lose the 'isTrusted' flag on iOS Safari.
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext && (!window.audioEngine || !window.audioEngine.ctx)) {
+             try { window.audioEngine.unlockAndLoad(); } catch(e){}
+        } else if (window.audioEngine && window.audioEngine.ctx) {
+             window.audioEngine.ctx.resume();
+        }
+
+        // 2. Fire synthetic click to hide splash screen and trigger startNewChallenge()
         const startOverlay = document.getElementById('start_overlay');
         if (startOverlay && startOverlay.style.display !== 'none') {
             const startBtn = startOverlay.querySelector('button');
@@ -111,14 +120,6 @@
                 try { startBtn.click(); } catch(e){}
             } else {
                 try { startOverlay.click(); } catch(e){}
-            }
-        } else {
-            // Fallback audio unlock if the splash was already gone
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            if (AudioContext && (!window.audioEngine || !window.audioEngine.ctx)) {
-                 try { window.audioEngine.unlockAndLoad(); } catch(e){}
-            } else if (window.audioEngine && window.audioEngine.ctx) {
-                 window.audioEngine.ctx.resume();
             }
         }
 
