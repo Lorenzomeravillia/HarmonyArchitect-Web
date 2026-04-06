@@ -102,13 +102,24 @@
     countdownOverlay.addEventListener('click', () => {
         if (countdownActive) return;
         countdownActive = true;
-        
-        // Unlock AudioContext safely
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        if (AudioContext && (!window.audioEngine || !window.audioEngine.ctx)) {
-             try { window.audioEngine.unlockAndLoad(); } catch(e){}
-        } else if (window.audioEngine && window.audioEngine.ctx) {
-             window.audioEngine.ctx.resume();
+
+        // Pass the true user gesture to the main app's splash screen synchronously
+        const startOverlay = document.getElementById('start_overlay');
+        if (startOverlay && startOverlay.style.display !== 'none') {
+            const startBtn = startOverlay.querySelector('button');
+            if (startBtn) {
+                try { startBtn.click(); } catch(e){}
+            } else {
+                try { startOverlay.click(); } catch(e){}
+            }
+        } else {
+            // Fallback audio unlock if the splash was already gone
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (AudioContext && (!window.audioEngine || !window.audioEngine.ctx)) {
+                 try { window.audioEngine.unlockAndLoad(); } catch(e){}
+            } else if (window.audioEngine && window.audioEngine.ctx) {
+                 window.audioEngine.ctx.resume();
+            }
         }
 
         let left = delayParam / 1000;
@@ -198,9 +209,13 @@
         
         showVisualTap(x, y);
 
-        el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-        el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
-        el.click();
+        try { el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); } catch(e){}
+        try { el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true })); } catch(e){}
+        try { 
+            el.click(); 
+            // Fallback for strict iOS DOM environments
+            el.dispatchEvent(new Event('click', { bubbles: true }));
+        } catch(e) {}
     }
 
     function getCorrectAnswerBtn() {
