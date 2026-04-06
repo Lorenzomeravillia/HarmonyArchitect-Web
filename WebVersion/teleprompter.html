@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,6 +14,7 @@
             --warning: #F59E0B;
             --danger: #EF4444;
         }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background-color: var(--bg);
@@ -25,7 +27,12 @@
             min-height: 100vh;
             overflow-x: hidden;
         }
-        h1 { margin-top: 0; color: var(--accent); }
+
+        h1 {
+            margin-top: 0;
+            color: var(--accent);
+        }
+
         .grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -33,6 +40,7 @@
             width: 100%;
             max-width: 800px;
         }
+
         button {
             background-color: var(--surface);
             color: var(--text);
@@ -44,12 +52,19 @@
             cursor: pointer;
             transition: all 0.2s;
         }
-        button:hover { background-color: var(--accent); color: var(--bg); }
-        
+
+        button:hover {
+            background-color: var(--accent);
+            color: var(--bg);
+        }
+
         #prompter {
             display: none;
             position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             background-color: var(--bg);
             z-index: 100;
             flex-direction: column;
@@ -58,7 +73,7 @@
             text-align: center;
             padding: 2rem;
         }
-        
+
         #clock {
             font-size: 5rem;
             font-family: monospace;
@@ -66,7 +81,7 @@
             opacity: 0.5;
             margin-bottom: 2rem;
         }
-        
+
         #action-text {
             font-size: 6rem;
             font-weight: 900;
@@ -77,14 +92,33 @@
         }
 
         #upcoming-text {
-            margin-top: 2rem;
+            margin-top: 1rem;
             font-size: 2rem;
             color: var(--warning);
             opacity: 0.8;
+            min-height: 3rem;
+        }
+
+        #vo-text {
+            margin-top: 2rem;
+            font-size: 2.2rem;
+            font-weight: 500;
+            line-height: 1.4;
+            color: #A78BFA; /* Soft purple to distinguish from actions */
+            background: rgba(167, 139, 250, 0.1);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border-left: 6px solid #A78BFA;
+            width: 90%;
+            max-width: 900px;
+            min-height: 8rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         #setup-info {
-            background: rgba(255,255,255,0.1);
+            background: rgba(255, 255, 255, 0.1);
             padding: 1rem;
             border-radius: 8px;
             margin-bottom: 2rem;
@@ -94,241 +128,373 @@
             max-width: 600px;
         }
 
-        .countdown-mode #action-text { color: var(--warning); font-size: 10rem; }
-        .flash-action { animation: pop 0.3s ease-out; }
+        .countdown-mode #action-text {
+            color: var(--warning);
+            font-size: 10rem;
+        }
+
+        .flash-action {
+            animation: pop 0.3s ease-out;
+        }
+
         @keyframes pop {
-            0% { transform: scale(0.9); }
-            50% { transform: scale(1.1); color: #fff; }
-            100% { transform: scale(1); }
+            0% {
+                transform: scale(0.9);
+            }
+
+            50% {
+                transform: scale(1.1);
+                color: #fff;
+            }
+
+            100% {
+                transform: scale(1);
+            }
         }
     </style>
 </head>
+
 <body>
 
     <h1>ClearVoicing Teleprompter</h1>
-    <p style="font-size: 1.2rem; margin-bottom: 2rem; opacity: 0.8;">Open this on your Desktop/Laptop. Tap a scenario, get your iPhone ready, and follow the giant instructions!</p>
+    <p style="font-size: 1.2rem; margin-bottom: 2rem; opacity: 0.8;">Open this on your Desktop/Laptop. Tap a scenario,
+        get your iPhone ready, and follow the giant instructions!</p>
 
-    <div class="grid" id="menu">
-        <button onclick="loadScenario('blob-test')">1. Blob Test</button>
-        <button onclick="loadScenario('solo-voices')">2. Solo Voices</button>
-        <button onclick="loadScenario('no-timer')">3. No Timer</button>
-        <button onclick="loadScenario('follow-voice')">4. Follow Voice</button>
-        <button onclick="loadScenario('three-presets')">5. Three Presets</button>
-        <button onclick="loadScenario('full-demo')">6. Full Demo</button>
+    <div class="grid">
+        <button onclick="loadScenario('vid1')">VIDEO 1 — "The Blob Test" (30s)</button>
+        <button onclick="loadScenario('vid2')">VIDEO 2 — "What Each Voice Sounds Like" (33s)</button>
+        <button onclick="loadScenario('vid3')">VIDEO 3 — "Your Ear Training App is Broken" (40s)</button>
+        <button onclick="loadScenario('vid4')">VIDEO 4 — "Follow the Voice" (45s)</button>
+        <button onclick="loadScenario('vid5')">VIDEO 5 — "3 Timbre Presets" (30s)</button>
+        <button onclick="loadScenario('v6a')">VIDEO 6A — "Il Problema" (50s)</button>
+        <button onclick="loadScenario('v6b')">VIDEO 6B — "La Soluzione" (50s)</button>
+        <button onclick="loadScenario('v6c')">VIDEO 6C — "I 3 Preset" (35s)</button>
+        <button onclick="loadScenario('v6d')">VIDEO 6D — "Voice Leading" (60s)</button>
+        <button onclick="loadScenario('v6e')">VIDEO 6E — "Sessione Completa" (90s)</button>
     </div>
+
+    <div id="setup-info"></div>
 
     <div id="prompter">
-        <div id="setup-info"></div>
-        <div id="clock">00.0s</div>
-        <div id="action-text">READY</div>
+        <div id="clock">0.0s</div>
+        <div id="action-text">PREPARE</div>
         <div id="upcoming-text"></div>
-        
-        <button onclick="togglePause()" id="pause-btn" style="position: absolute; top: 2rem; right: 12rem; background: var(--warning); color: #000; border: none; font-size: 0.9rem; padding: 0.8rem 1.2rem;">PAUSE</button>
-        <button onclick="closePrompter()" style="position: absolute; top: 2rem; right: 2rem; background: var(--danger); border: none; font-size: 0.9rem; padding: 0.8rem 1.2rem;">STOP / CANCEL</button>
+        <div style="margin-top: 2rem;">
+            <button id="pause-btn" onclick="togglePause()">PAUSE</button>
+            <button onclick="closePrompter()">CLOSE</button>
+        </div>
     </div>
 
-<script>
-const SCENARIOS = {
-    'blob-test': {
-        setup: "Set Level: 2 (Seventh Chords)<br>Play Mode: Single Chord<br>Preset: Orchestra",
-        timeline: [
-            { time: 3000, action: "Tap PLAY \n▶" },
-            { time: 10000, action: "Change Preset to\nClear Mix" },
-            { time: 11000, action: "Tap PLAY \n▶" },
-            { time: 18000, action: "Solo BASS" },
-            { time: 20000, action: "Solo LEAD" },
-            { time: 22000, action: "DE-SOLO LEAD" },
-            { time: 22200, action: "DE-SOLO BASS" },
-            { time: 24000, action: "Tap PLAY \n▶" },
-            { time: 27000, action: "DONE! 🏁" }
-        ]
-    },
-    'solo-voices': {
-        setup: "Set Level: 2 (Seventh Chords)<br>Play Mode: Single Chord<br>Preset: Clear Mix",
-        timeline: [
-            { time: 3000, action: "Tap PLAY \n▶" },
-            { time: 7000, action: "Solo BASS" },
-            { time: 11000, action: "Solo 2nd VOICE" },
-            { time: 15000, action: "Solo LEAD" },
-            { time: 19000, action: "DE-SOLO LEAD" },
-            { time: 20000, action: "Tap PLAY \n▶" },
-            { time: 23000, action: "DONE! 🏁" }
-        ]
-    },
-    'no-timer': {
-        setup: "Set Level: 1 (Triads)<br>Play Mode: Single Chord<br>Preset: Clear Mix",
-        timeline: [
-            { time: 12000, action: "Tap PLAY \n▶" },
-            { time: 15000, action: "Tap PLAY \n▶" },
-            { time: 18000, action: "Tap PLAY \n▶" },
-            { time: 20000, action: "Tap REVEAL CHORD" },
-            { time: 25000, action: "Tap CORRECT ANSWER" },
-            { time: 30000, action: "Tap REPLAY \n(Popup)" },
-            { time: 33000, action: "Tap CONTINUE \n(Popup)" },
-            { time: 35000, action: "DONE! 🏁" }
-        ]
-    },
-    'follow-voice': {
-        setup: "Set Level: 2 (Seventh Chords)<br>Play Mode: Progression<br>Preset: Clear Mix",
-        timeline: [
-            { time: 3000, action: "Tap PLAY \n▶" },
-            { time: 10000, action: "Solo 2nd VOICE" },
-            { time: 11000, action: "Tap PLAY \n▶" },
-            { time: 15000, action: "DE-SOLO 2nd VOICE" },
-            { time: 16000, action: "Solo LEAD" },
-            { time: 17000, action: "Tap PLAY \n▶" },
-            { time: 22000, action: "DE-SOLO LEAD" },
-            { time: 23000, action: "Tap PLAY \n▶" },
-            { time: 28000, action: "Tap PLAY \n▶" },
-            { time: 32000, action: "DONE! 🏁" }
-        ]
-    },
-    'three-presets': {
-        setup: "Set Level: 2 (Seventh Chords)<br>Play Mode: Single Chord<br>Preset: Clear Mix",
-        timeline: [
-            { time: 3000, action: "Highlight Clear Mix" },
-            { time: 4000, action: "Tap PLAY \n▶" },
-            { time: 9000, action: "Change to JAZZ COMBO" },
-            { time: 10000, action: "Tap PLAY \n▶" },
-            { time: 15000, action: "Change to ORCHESTRA" },
-            { time: 16000, action: "Tap PLAY \n▶" },
-            { time: 20000, action: "DONE! 🏁" }
-        ]
-    },
-    'full-demo': {
-        setup: "Set Level: 1 (Triads)<br>Play Mode: Single Chord<br>Preset: Clear Mix<br>Session Size: 3",
-        timeline: [
-            { time: 0, action: "Tap PLAY \n▶" },
-            { time: 5000, action: "Tap CORRECT ANSWER" },
-            { time: 8000, action: "Tap CONTINUE" },
-            { time: 12000, action: "Tap PLAY \n▶" },
-            { time: 17000, action: "Tap CORRECT ANSWER" },
-            { time: 20000, action: "Tap CONTINUE" },
-            { time: 24000, action: "Tap PLAY \n▶" },
-            { time: 29000, action: "Tap CORRECT ANSWER" },
-            { time: 32000, action: "DONE! 🏁" }
-        ]
-    }
-};
+    <script>
+        const SCENARIOS = {
+            'vid1': {
+                setup: "Level: 2 Seventh Chords | Mode: Single Chord | Timbre: Orchestra (partenza con 'blob')<br>Settings: CHIUSO | Premi PLAY una volta per generare un accordo, poi NON toccare più",
+                timeline: [
+                    { time: 0, action: "🖐 Avvia registrazione. Schermo fermo, app visibile con accordo sul pentagramma.", vo: "📝 Can you hear 4 voices in this chord?" },
+                    { time: 3000, action: "🖐 TAP su PLAY. L'accordo suona con preset Orchestra (suono 'blob' fuso).", vo: "🎙 This is a major seventh chord on piano. Most people hear... one sound." },
+                    { time: 6000, action: "🖐 Attendi. Non toccare nulla. Lascia che il suono finisca.", vo: "🎙 (continua...)" },
+                    { time: 8000, action: "🖐 Attendi ancora. Pausa drammatica.", vo: "📝 Now listen again." },
+                    { time: 10000, action: "🖐 TAP sul preset 'Clear Mix'.", vo: "🎙 Now listen again." },
+                    { time: 12000, action: "🖐 TAP su PLAY. Stesso accordo, ora con timbri separati. La differenza è drammatica.", vo: "🎙 Same chord. But now each voice has its own instrument." },
+                    { time: 16000, action: "🖐 Attendi. Lascia suonare completamente.", vo: "🎙 (continua...)" },
+                    { time: 18000, action: "🖐 TAP sul bottone SOLO 'Bass'. Si sente solo il contrabbasso.", vo: "🎙 You can isolate the bass..." },
+                    { time: 20000, action: "🖐 Attendi 2 secondi. Lascia suonare il basso isolato.", vo: "🎙 (continua...)" },
+                    { time: 22000, action: "🖐 TAP sul bottone SOLO 'Lead'. Si sente solo la voce superiore.", vo: "🎙 ...or just the top voice." },
+                    { time: 24000, action: "🖐 Attendi 2 secondi. Lascia suonare il lead isolato.", vo: "🎙 (continua...)" },
+                    { time: 26000, action: "🖐 TAP su SOLO 'Lead' di nuovo per de-soloare (o tap su PLAY per tutto insieme).", vo: "🎙 ClearVoicing. Free. Link in bio." },
+                    { time: 28000, action: "🖐 Schermo fermo. Fine contenuto utile.", vo: "📝 ClearVoicing — Hear every voice inside the chord. Free · Link in bio" },
+                    { time: 30000, action: "🖐 Ferma registrazione.", vo: "" }
+                ]
+            },
+            'vid2': {
+                setup: "Level: 2 Seventh Chords | Mode: Single Chord | Timbre: Clear Mix<br>Settings: CHIUSO | Premi PLAY una volta per generare un accordo a 4 voci",
+                timeline: [
+                    { time: 0, action: "🖐 Avvia registrazione. App visibile con accordo.", vo: "📝 What does each voice in a chord sound like?" },
+                    { time: 3000, action: "🖐 TAP su PLAY. Accordo completo suona con timbri separati.", vo: "🎙 Here's a D minor seventh. All four voices together." },
+                    { time: 6000, action: "🖐 Attendi. Lascia suonare.", vo: "🎙 (continua...)" },
+                    { time: 8000, action: "🖐 TAP SOLO 'Bass'. Si sente solo la root (contrabbasso).", vo: "🎙 This is the root. The foundation." },
+                    { time: 11000, action: "🖐 Attendi. Lascia suonare il basso.", vo: "📝 🔵 Root — Double Bass" },
+                    { time: 13000, action: "🖐 TAP SOLO '2nd' (o '3rd' se accordo a 4 voci). Si sente la terza (tromba).", vo: "🎙 The third. It tells you if the chord is major or minor." },
+                    { time: 16000, action: "🖐 Attendi. Lascia suonare.", vo: "📝 🟢 Third — Trumpet" },
+                    { time: 18000, action: "🖐 TAP SOLO 'Lead'. Si sente la voce superiore (flauto).", vo: "🎙 And the seventh. The voice that creates tension." },
+                    { time: 21000, action: "🖐 Attendi. Lascia suonare.", vo: "📝 🟠 Seventh — Flute" },
+                    { time: 23000, action: "🖐 TAP per de-soloare (tap su un SOLO già attivo, o tap su PLAY).", vo: "🎙 Now when you hear them together... you can follow each one." },
+                    { time: 24000, action: "🖐 TAP su PLAY. Tutto insieme.", vo: "🎙 (continua...)" },
+                    { time: 27000, action: "🖐 Attendi. Lascia suonare l'accordo completo.", vo: "🎙 (continua...)" },
+                    { time: 30000, action: "🖐 Schermo fermo.", vo: "📝 ClearVoicing — Hear every voice. Free · Link in bio" },
+                    { time: 33000, action: "🖐 Ferma registrazione.", vo: "" }
+                ]
+            },
+            'vid3': {
+                setup: "Level: 1 Basic Triads | Mode: Single Chord | Timbre: Clear Mix<br>Settings: CHIUSO",
+                timeline: [
+                    { time: 0, action: "🖐 Avvia registrazione. Schermo NERO o mockup competitor.", vo: "📝 Why you quit your ear training app" },
+                    { time: 3000, action: "🖐 (Se usi mockup competitor: mostra timer che scorre, buzzer rosso, 'Wrong!')", vo: "🎙 Timer ticking. You panic. You guess. Wrong. Buzzer. Score drops. You close the app and never open it again." },
+                    { time: 9000, action: "🖐 (Fine segmento competitor)", vo: "🎙 (continua...)" },
+                    { time: 10000, action: "🖐 Schermo nero, pausa.", vo: "📝 What if there was no timer?" },
+                    { time: 12000, action: "🖐 TRANSIZIONE a ClearVoicing. App visibile.", vo: "🎙 What if there was no timer?" },
+                    { time: 14000, action: "🖐 TAP su PLAY. Accordo suona.", vo: "🎙 ClearVoicing has no timers. No countdowns. No score penalties. Listen once. Listen again. Listen ten times. Nobody's counting." },
+                    { time: 17000, action: "🖐 Attendi.", vo: "🎙 (continua...)" },
+                    { time: 19000, action: "🖐 TAP su PLAY di nuovo (primo replay). Nessun timer, nessuna penalità.", vo: "🎙 (continua...)" },
+                    { time: 22000, action: "🖐 Attendi.", vo: "🎙 (continua...)" },
+                    { time: 24000, action: "🖐 TAP su PLAY ancora (secondo replay).", vo: "🎙 (continua...)" },
+                    { time: 27000, action: "🖐 TAP su REVEAL. La risposta corretta si evidenzia.", vo: "🎙 Don't know the answer? Reveal it. Study it. No shame. That's how you actually learn." },
+                    { time: 30000, action: "🖐 Attendi 2 secondi. L'utente 'studia' la risposta.", vo: "🎙 (continua...)" },
+                    { time: 32000, action: "🖐 TAP sulla risposta corretta. Feedback verde lime.", vo: "🎙 Answer when you're ready. At your pace. Not the app's pace." },
+                    { time: 34000, action: "🖐 Bottoni Replay e Play Next appaiono.", vo: "🎙 (continua...)" },
+                    { time: 35000, action: "🖐 TAP su 'Replay' (riascolta dopo la risposta).", vo: "🎙 (continua...)" },
+                    { time: 37000, action: "🖐 Attendi.", vo: "🎙 (continua...)" },
+                    { time: 38000, action: "🖐 Schermo fermo.", vo: "📝 ClearVoicing — No timers. No pressure. No judgment. Free · Link in bio" },
+                    { time: 40000, action: "🖐 Ferma registrazione.", vo: "" }
+                ]
+            },
+            'vid4': {
+                setup: "Level: 2 Seventh Chords | Mode: Progression | Timbre: Clear Mix<br>Settings: CHIUSO | Genera la progressione (premi New/Play finché non hai una ii-V-I o qualsiasi progressione a 3-4 accordi)",
+                timeline: [
+                    { time: 0, action: "🖐 Avvia registrazione. App con progressione visibile sul pentagramma.", vo: "📝 Can you hear the third move in a ii-V-I?" },
+                    { time: 3000, action: "🖐 TAP su PLAY. Progressione completa suona.", vo: "🎙 Two-five-one in C major. Three chords. Sounds like three separate events, right?" },
+                    { time: 8000, action: "🖐 Attendi. Lascia suonare tutta la progressione fino alla fine.", vo: "🎙 (continua...)" },
+                    { time: 12000, action: "🖐 TAP SOLO sulla voce '3rd' (o '2nd' — la voce che contiene la terza).", vo: "🎙 Now listen to just the third voice. Hear that? It's a melody hiding inside the chords." },
+                    { time: 14000, action: "🖐 TAP su PLAY. Si sente SOLO la terza attraverso tutta la progressione.", vo: "🎙 (continua...)" },
+                    { time: 19000, action: "🖐 Attendi. Lascia suonare completamente.", vo: "🎙 (continua...)" },
+                    { time: 22000, action: "🖐 TAP per de-soloare.", vo: "🎙 (...continua)" },
+                    { time: 24000, action: "🖐 TAP SOLO sulla voce 'Lead'.", vo: "🎙 The lead voice. Moving by half steps. Smooth, connected." },
+                    { time: 26000, action: "🖐 TAP su PLAY. Si sente solo il lead attraverso la progressione.", vo: "🎙 (continua...)" },
+                    { time: 31000, action: "🖐 Attendi. Lascia suonare.", vo: "🎙 (continua...)" },
+                    { time: 33000, action: "🖐 TAP per de-soloare.", vo: "🎙 Now hear all four voices again. But this time... you can follow each one." },
+                    { time: 34000, action: "🖐 TAP su PLAY. Tutto insieme.", vo: "🎙 (continua...)" },
+                    { time: 39000, action: "🖐 Attendi. Lascia suonare tutta la progressione.", vo: "🎙 (continua...)" },
+                    { time: 43000, action: "🖐 Schermo fermo.", vo: "📝 This is voice leading. This is how harmony actually works. Free · Link in bio" },
+                    { time: 45000, action: "🖐 Ferma registrazione.", vo: "" }
+                ]
+            },
+            'vid5': {
+                setup: "CRITICAL: Level 2 | Single Chord | Clear Mix (partenza)<br>Settings: CHIUSO | Premi PLAY per generare un accordo. Annota quale (es. Am7).",
+                timeline: [
+                    { time: 0, action: "🖐 Avvia registrazione. App con accordo e Clear Mix selezionato.", vo: "📝 Same chord, three levels of difficulty." },
+                    { time: 3000, action: "🖐 TAP su PLAY. Accordo con massima separazione timbrica.", vo: "🎙 Clear Mix. Maximum separation. Every voice is crystal clear." },
+                    { time: 7000, action: "🖐 Attendi. Lascia suonare completamente.", vo: "📝 ● ○ ○ Easy" },
+                    { time: 10000, action: "🖐 TAP sul preset 'Jazz Combo'.", vo: "🎙 Jazz Combo. The voices start blending. Can you still hear the third?" },
+                    { time: 12000, action: "🖐 TAP su PLAY. Stesso accordo, blend parziale.", vo: "🎙 (continua...)" },
+                    { time: 16000, action: "🖐 Attendi. Lascia suonare completamente.", vo: "📝 ● ● ○ Medium" },
+                    { time: 19000, action: "🖐 TAP sul preset 'Orchestra'.", vo: "🎙 Orchestra. Full blend. This is how a real ensemble sounds. Can you still follow each voice?" },
+                    { time: 21000, action: "🖐 TAP su PLAY. Stesso accordo, blend pieno (massima difficoltà).", vo: "🎙 (continua...)" },
+                    { time: 25000, action: "🖐 Attendi. Lascia suonare completamente.", vo: "📝 ● ● ● Hard" },
+                    { time: 28000, action: "🖐 Schermo fermo.", vo: "📝 ClearVoicing — Hear every voice. Free · Link in bio" },
+                    { time: 30000, action: "🖐 Ferma registrazione.", vo: "" }
+                ]
+            },
+            'v6a': {
+                setup: "Seg. A (50s) | Level 2 | Single Chord | Orchestra",
+                timeline: [
+                    { time: 0, action: "🖐 Avvia registrazione (Landscape). App in landscape, preset Orchestra.", vo: "🎙 When I play a chord on piano, I used to hear one sound." },
+                    { time: 3000, action: "🖐 TAP PLAY. Accordo 'blob' suona.", vo: "🎙 Not four voices — just one blob. Here it is." },
+                    { time: 7000, action: "🖐 Attendi.", vo: "🎙 (continua...)" },
+                    { time: 10000, action: "🖐 TAP PLAY (replay). Stesso blob.", vo: "🎙 I tried every ear training app out there. They all told me to listen harder." },
+                    { time: 14000, action: "🖐 Attendi.", vo: "🎙 (continua...)" },
+                    { time: 17000, action: "🖐 Schermo fermo. Pausa.", vo: "🎙 So I built something different." },
+                    { time: 20000, action: "🖐 Ferma registrazione segmento A.", vo: "" }
+                ]
+            },
+            'v6b': {
+                setup: "Seg. B (50s) | Same Chord | CHANGE to Clear Mix",
+                timeline: [
+                    { time: 0, action: "🖐 Avvia registrazione. Stessa schermata.", vo: "🎙 ClearVoicing gives each voice a different instrument." },
+                    { time: 2000, action: "🖐 TAP preset 'Clear Mix'.", vo: "🎙 (...continua)" },
+                    { time: 4000, action: "🖐 TAP PLAY. Stesso accordo, ora con timbri separati.", vo: "🎙 Bass on double bass. The third on trumpet. The seventh on flute." },
+                    { time: 9000, action: "🖐 Attendi. Differenza drammatica.", vo: "🎙 (continua...)" },
+                    { time: 12000, action: "🖐 TAP SOLO 'Bass'. Contrabbasso isolato.", vo: "🎙 Your brain naturally separates different timbres." },
+                    { time: 15000, action: "🖐 Attendi.", vo: "🎙 (continua...)" },
+                    { time: 18000, action: "🖐 TAP SOLO '2nd'. Tromba isolata.", vo: "🎙 It's the same reason you can hear a singer over a band." },
+                    { time: 21000, action: "🖐 Attendi.", vo: "🎙 (continua...)" },
+                    { time: 24000, action: "🖐 TAP SOLO 'Lead'. Flauto isolato.", vo: "🎙 I'm just applying that principle to chord analysis." },
+                    { time: 27000, action: "🖐 Attendi.", vo: "🎙 (continua...)" },
+                    { time: 30000, action: "🖐 TAP de-solo.", vo: "🎙 (...continua)" },
+                    { time: 31000, action: "🖐 TAP PLAY. Tutto insieme.", vo: "🎙 Now when they play together... you hear four voices, not one." },
+                    { time: 35000, action: "🖐 Attendi.", vo: "🎙 (continua...)" },
+                    { time: 38000, action: "🖐 Ferma registrazione segmento B.", vo: "" }
+                ]
+            },
+            'v6c': {
+                setup: "Seg. C (35s) | Same Chord | Clear Mix",
+                timeline: [
+                    { time: 0, action: "🖐 Avvia registrazione. Clear Mix selezionato.", vo: "🎙 Three timbre presets. Clear Mix gives you maximum separation." },
+                    { time: 2000, action: "🖐 TAP PLAY. Accordo con separazione massima.", vo: "🎙 (...continua)" },
+                    { time: 6000, action: "🖐 Attendi.", vo: "🎙 (continua...)" },
+                    { time: 9000, action: "🖐 TAP preset 'Jazz Combo'.", vo: "🎙 Jazz Combo blends the voices more. It's closer to a real small group." },
+                    { time: 11000, action: "🖐 TAP PLAY. Blend parziale.", vo: "🎙 (...continua)" },
+                    { time: 15000, action: "🖐 Attendi.", vo: "🎙 (continua...)" },
+                    { time: 18000, action: "🖐 TAP preset 'Orchestra'.", vo: "🎙 And Orchestra. Full ensemble blend. Maximum difficulty. Can you still follow each voice?" },
+                    { time: 20000, action: "🖐 TAP PLAY. Blend pieno.", vo: "🎙 (...continua)" },
+                    { time: 24000, action: "🖐 Attendi.", vo: "🎙 (continua...)" },
+                    { time: 27000, action: "🖐 Ferma registrazione segmento C.", vo: "" }
+                ]
+            },
+            'v6d': {
+                setup: "Seg. D (60s) | Level 2 | Progression | Clear Mix",
+                timeline: [
+                    { time: 0, action: "🖐 Avvia registrazione. Progressione visibile.", vo: "🎙 But the real power is in progressions. Here's a two-five-one." },
+                    { time: 3000, action: "🖐 TAP PLAY. Progressione completa.", vo: "🎙 Instead of guessing chord labels, you learn to follow how each voice moves." },
+                    { time: 9000, action: "🖐 Attendi fino a fine progressione.", vo: "🎙 (continua...)" },
+                    { time: 14000, action: "🖐 TAP SOLO '3rd' (o la voce che contiene la terza).", vo: "🎙 Solo the third voice. Hear how it resolves by half step? That's the sound of tension resolving." },
+                    { time: 16000, action: "🖐 TAP PLAY. Solo la terza attraverso la progressione.", vo: "🎙 (continua...)" },
+                    { time: 22000, action: "🖐 Attendi.", vo: "🎙 (continua...)" },
+                    { time: 25000, action: "🖐 TAP de-solo.", vo: "🎙 Now the lead voice. Smooth, connected motion. This is voice leading — the way arrangers actually think." },
+                    { time: 27000, action: "🖐 TAP SOLO 'Lead'.", vo: "🎙 (...continua)" },
+                    { time: 29000, action: "🖐 TAP PLAY. Solo il lead.", vo: "🎙 (continua...)" },
+                    { time: 35000, action: "🖐 Attendi.", vo: "🎙 (continua...)" },
+                    { time: 38000, action: "🖐 TAP de-solo.", vo: "🎙 Put it all together. And once you hear it... you can't unhear it." },
+                    { time: 39000, action: "🖐 TAP PLAY. Tutto insieme.", vo: "🎙 (continua...)" },
+                    { time: 45000, action: "🖐 Attendi fino a fine.", vo: "🎙 (continua...)" },
+                    { time: 50000, action: "🖐 Ferma registrazione segmento D.", vo: "" }
+                ]
+            },
+            'v6e': {
+                setup: "Seg. E (90s) | Level 1 | Single Chord | Clear Mix | Session: 3 challenges",
+                timeline: [
+                    { time: 0, action: "🖐 Avvia registrazione.", vo: "🎙 A session is just 3 to 5 challenges. Short, focused, effective." },
+                    { time: 2000, action: "🖐 TAP PLAY. Primo accordo suona.", vo: "🎙 (...continua)" },
+                    { time: 6000, action: "🖐 Attendi.", vo: "🎙 (continua...)" },
+                    { time: 9000, action: "🖐 TAP sulla risposta corretta (guarda il pentagramma per capire quale è).", vo: "🎙 No timers. Answer when you're ready." },
+                    { time: 11000, action: "🖐 Feedback verde. Replay + Play Next appaiono.", vo: "🎙 (...continua)" },
+                    { time: 13000, action: "🖐 TAP 'Play Next'.", vo: "🎙 (...continua)" },
+                    { time: 16000, action: "🖐 TAP PLAY. Secondo accordo.", vo: "🎙 You can replay as many times as you want. No penalty." },
+                    { time: 20000, action: "🖐 Attendi.", vo: "🎙 (continua...)" },
+                    { time: 23000, action: "🖐 TAP PLAY (replay — mostra che puoi riascoltare).", vo: "🎙 (...continua)" },
+                    { time: 27000, action: "🖐 TAP sulla risposta corretta.", vo: "🎙 And if you don't know... reveal the answer. Study it. That's learning, not cheating." },
+                    { time: 29000, action: "🖐 TAP 'Play Next'.", vo: "🎙 (...continua)" },
+                    { time: 32000, action: "🖐 TAP PLAY. Terzo accordo.", vo: "🎙 (...continua)" },
+                    { time: 36000, action: "🖐 Attendi.", vo: "🎙 (continua...)" },
+                    { time: 39000, action: "🖐 TAP REVEAL (mostra che puoi vedere la risposta).", vo: "🎙 Three challenges done. That's a session." },
+                    { time: 42000, action: "🖐 TAP sulla risposta corretta.", vo: "🎙 (...continua)" },
+                    { time: 44000, action: "🖐 Sessione completata. Badge/risultato visibile.", vo: "🎙 ClearVoicing is free during the beta. No account required. Open it and start listening. Link in the description." },
+                    { time: 48000, action: "🖐 Attendi. Lascia il risultato sullo schermo.", vo: "🎙 (continua...)" },
+                    { time: 52000, action: "🖐 Ferma registrazione segmento E.", vo: "" }
+                ]
+            }
+        };
 
-let currentRaf = null;
-let startTime = 0;
-let events = [];
-let currentIndex = 0;
-let isPaused = false;
-let pauseStartTime = 0;
-let totalPausedTime = 0;
-let countdownInterval = null;
+        let currentRaf = null;
+        let startTime = 0;
+        let events = [];
+        let currentIndex = 0;
+        let isPaused = false;
+        let pauseStartTime = 0;
+        let totalPausedTime = 0;
+        let countdownInterval = null;
 
-function loadScenario(id) {
-    const sc = SCENARIOS[id];
-    events = [...sc.timeline].sort((a,b) => a.time - b.time);
-    currentIndex = 0;
-    isPaused = false;
-    totalPausedTime = 0;
-    document.getElementById('pause-btn').innerText = "PAUSE";
-    
-    document.getElementById('setup-info').innerHTML = `<strong>SETUP APP FIRST:</strong><br>${sc.setup}`;
-    document.getElementById('prompter').style.display = 'flex';
-    document.getElementById('prompter').classList.add('countdown-mode');
-    document.getElementById('clock').innerText = "PREPARE APP";
-    
-    // Countdown
-    let left = 5;
-    document.getElementById('action-text').innerText = left;
-    document.getElementById('upcoming-text').innerText = "Start Screen Recording on iPhone now!";
-    
-    countdownInterval = setInterval(() => {
-        if (isPaused) return; // Freeze countdown if paused early
-        left--;
-        if (left > 0) {
+        function loadScenario(id) {
+            const sc = SCENARIOS[id];
+            events = [...sc.timeline].sort((a, b) => a.time - b.time);
+            currentIndex = 0;
+            isPaused = false;
+            totalPausedTime = 0;
+            document.getElementById('pause-btn').innerText = "PAUSE";
+
+            document.getElementById('setup-info').innerHTML = `<strong>SETUP APP FIRST:</strong><br>${sc.setup}`;
+            document.getElementById('prompter').style.display = 'flex';
+            document.getElementById('prompter').classList.add('countdown-mode');
+            document.getElementById('clock').innerText = "PREPARE APP";
+
+            // Countdown
+            let left = 5;
             document.getElementById('action-text').innerText = left;
-        } else {
-            clearInterval(countdownInterval);
-            document.getElementById('prompter').classList.remove('countdown-mode');
-            startEngine();
+            document.getElementById('upcoming-text').innerText = "Start Screen Recording on iPhone now!";
+
+            countdownInterval = setInterval(() => {
+                if (isPaused) return; // Freeze countdown if paused early
+                left--;
+                if (left > 0) {
+                    document.getElementById('action-text').innerText = left;
+                } else {
+                    clearInterval(countdownInterval);
+                    document.getElementById('prompter').classList.remove('countdown-mode');
+                    startEngine();
+                }
+            }, 1000);
         }
-    }, 1000);
-}
 
-function startEngine() {
-    startTime = performance.now();
-    updateUI();
-    tick();
-}
-
-function togglePause() {
-    const btn = document.getElementById('pause-btn');
-    if (!isPaused) {
-        isPaused = true;
-        pauseStartTime = performance.now();
-        btn.innerText = "RESUME";
-    } else {
-        isPaused = false;
-        totalPausedTime += (performance.now() - pauseStartTime);
-        btn.innerText = "PAUSE";
-    }
-}
-
-function tick() {
-    if (isPaused) {
-        currentRaf = requestAnimationFrame(tick);
-        return;
-    }
-    
-    const elapsed = performance.now() - startTime - totalPausedTime;
-    document.getElementById('clock').innerText = (elapsed / 1000).toFixed(1) + "s";
-    
-    // Check if we hit the next event
-    if (currentIndex < events.length) {
-        if (elapsed >= events[currentIndex].time) {
-            triggerEvent(events[currentIndex]);
-            currentIndex++;
+        function startEngine() {
+            startTime = performance.now();
             updateUI();
+            tick();
         }
-    }
-    
-    currentRaf = requestAnimationFrame(tick);
-}
 
-function triggerEvent(ev) {
-    const el = document.getElementById('action-text');
-    el.innerText = ev.action;
-    
-    // Flash animation to grab eye attention
-    el.classList.remove('flash-action');
-    void el.offsetWidth;
-    el.classList.add('flash-action');
-    
-    // Beep sound to help sync looking at screen vs phone
-    try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        const g = ctx.createGain();
-        osc.frequency.value = ev.action.includes("DONE") ? 400 : 800; // Lower pitch for done
-        g.gain.value = 0.1;
-        osc.connect(g);
-        g.connect(ctx.destination);
-        osc.start();
-        g.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.1);
-        setTimeout(() => osc.stop(), 100);
-    } catch(e){}
-}
+        function togglePause() {
+            const btn = document.getElementById('pause-btn');
+            if (!isPaused) {
+                isPaused = true;
+                pauseStartTime = performance.now();
+                btn.innerText = "RESUME";
+            } else {
+                isPaused = false;
+                totalPausedTime += (performance.now() - pauseStartTime);
+                btn.innerText = "PAUSE";
+            }
+        }
 
-function updateUI() {
-    if (currentIndex < events.length) {
-        const next = events[currentIndex];
-        document.getElementById('upcoming-text').innerText = `Next: ${next.action.replace('\n',' ')} (in ${((next.time - (performance.now() - startTime - totalPausedTime))/1000).toFixed(1)}s)`;
-    } else {
-        document.getElementById('upcoming-text').innerText = "";
-    }
-}
+        function tick() {
+            if (isPaused) {
+                currentRaf = requestAnimationFrame(tick);
+                return;
+            }
 
-function closePrompter() {
-    clearInterval(countdownInterval);
-    document.getElementById('prompter').style.display = 'none';
-    cancelAnimationFrame(currentRaf);
-}
-</script>
+            const elapsed = performance.now() - startTime - totalPausedTime;
+            document.getElementById('clock').innerText = (elapsed / 1000).toFixed(1) + "s";
+
+            // Check if we hit the next event
+            if (currentIndex < events.length) {
+                if (elapsed >= events[currentIndex].time) {
+                    triggerEvent(events[currentIndex]);
+                    currentIndex++;
+                    updateUI();
+                }
+            }
+
+            currentRaf = requestAnimationFrame(tick);
+        }
+
+        function triggerEvent(ev) {
+            const el = document.getElementById('action-text');
+            const voEl = document.getElementById('vo-text');
+            
+            el.innerText = ev.action;
+            voEl.innerHTML = ev.vo ? ev.vo : "";
+
+            // Flash animation to grab eye attention
+            el.classList.remove('flash-action');
+            void el.offsetWidth;
+            el.classList.add('flash-action');
+
+            // Beep sound to help sync looking at screen vs phone
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                if (ctx.state === 'suspended') ctx.resume();
+                const osc = ctx.createOscillator();
+                const g = ctx.createGain();
+                osc.frequency.value = ev.action.includes("DONE") ? 400 : 800; // Lower pitch for done
+                g.gain.value = 0.1;
+                osc.connect(g);
+                g.connect(ctx.destination);
+                osc.start();
+                g.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.1);
+                setTimeout(() => osc.stop(), 100);
+            } catch (e) { }
+        }
+
+        function updateUI() {
+            if (currentIndex < events.length) {
+                const next = events[currentIndex];
+                document.getElementById('upcoming-text').innerText = `Next: ${next.action.replace('\n', ' ')} (in ${((next.time - (performance.now() - startTime - totalPausedTime)) / 1000).toFixed(1)}s)`;
+            } else {
+                document.getElementById('upcoming-text').innerText = "";
+            }
+        }
+
+        function closePrompter() {
+            clearInterval(countdownInterval);
+            document.getElementById('prompter').style.display = 'none';
+            cancelAnimationFrame(currentRaf);
+        }
+    </script>
 </body>
-</html>
