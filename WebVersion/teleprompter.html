@@ -83,12 +83,12 @@
         }
 
         #action-text {
-            font-size: 6rem;
+            font-size: clamp(2rem, 5vw, 4rem);
             font-weight: 900;
             color: var(--accent);
             text-transform: uppercase;
             line-height: 1.2;
-            min-height: 200px;
+            min-height: 120px;
         }
 
         #upcoming-text {
@@ -179,6 +179,7 @@
         <div id="clock">0.0s</div>
         <div id="action-text">PREPARE</div>
         <div id="upcoming-text"></div>
+        <div id="vo-text"></div>
         <div style="margin-top: 2rem;">
             <button id="pause-btn" onclick="togglePause()">PAUSE</button>
             <button onclick="closePrompter()">CLOSE</button>
