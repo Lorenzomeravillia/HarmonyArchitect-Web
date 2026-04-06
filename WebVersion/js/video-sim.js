@@ -9,69 +9,55 @@
 
     console.log(`[VideoSim] Initializing simulation: ${simId}`);
 
+    // --- URL PARAMS ---
+    const params = new URLSearchParams(window.location.search);
+    const delayParam = params.get('delay') ? parseInt(params.get('delay')) * 1000 : 5000;
+    const captionsOff = params.get('captions') === 'off';
+
     // --- OVERLAY CSS ---
     const simCss = `
-        /* Tap Indicator */
         .sim-tap-indicator {
-            position: fixed;
-            width: 40px; height: 40px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.4);
-            transform: scale(0);
-            pointer-events: none;
-            z-index: 999999;
+            position: fixed; width: 40px; height: 40px; border-radius: 50%;
+            background: rgba(255, 255, 255, 0.4); transform: scale(0);
+            pointer-events: none; z-index: 999999;
         }
-        .sim-tap-indicator.active {
-            animation: sim-tap 400ms ease-out forwards;
-        }
+        .sim-tap-indicator.active { animation: sim-tap 400ms ease-out forwards; }
         @keyframes sim-tap {
             0% { transform: scale(0.5); opacity: 0.8; }
             100% { transform: scale(2.5); opacity: 0; }
         }
 
-        /* Video Captions */
         .sim-caption-container {
-            position: fixed;
-            bottom: 80px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.7);
-            color: #fff;
-            padding: 12px 24px;
-            border-radius: 12px;
-            font-size: 24px;
-            font-weight: 700;
-            text-align: center;
-            z-index: 100000;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            pointer-events: none;
-            backdrop-filter: blur(4px);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7); color: #fff; padding: 12px 24px;
+            border-radius: 12px; font-size: 24px; font-weight: 700; text-align: center;
+            z-index: 100000; opacity: 0; transition: opacity 0.3s ease;
+            pointer-events: none; backdrop-filter: blur(4px); box-shadow: 0 4px 20px rgba(0,0,0,0.5);
             min-width: 250px;
         }
         .sim-caption-container.show { opacity: 1; }
 
-        /* Sim Control Panel */
-        #sim_panel {
-            position: fixed;
-            top: 10px; left: 10px;
-            width: 220px;
-            background: rgba(10, 17, 40, 0.9);
-            border: 2px solid #55EFC4;
-            color: white;
-            padding: 10px;
-            z-index: 100000;
-            border-radius: 8px;
-            font-family: monospace;
-            font-size: 12px;
-            backdrop-filter: blur(4px);
+        .sim-countdown-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(10, 17, 40, 0.95); z-index: 200000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: #55EFC4; font-family: monospace; transition: opacity 0.5s;
         }
-        #sim_panel button {
-            background: #2D5A9E; color: white; border: none; padding: 4px 8px;
-            margin: 2px; cursor: pointer; border-radius: 4px;
+        .sim-countdown-text { font-size: 60px; font-weight: bold; margin-bottom: 20px; }
+        .sim-countdown-sub { font-size: 20px; color: #fff; opacity: 0.7; }
+
+        .sim-flash {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            border: 8px solid #55EFC4; pointer-events: none; z-index: 199999;
+            opacity: 0; transition: opacity 0.1s;
         }
-        #sim_panel button.hidden-panel-btn { background: #E74C3C; float: right; padding: 2px 5px; }
+        .sim-done-text {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 40px; font-weight: bold; color: #55EFC4; background: rgba(0,0,0,0.8);
+            padding: 20px 40px; border-radius: 16px; z-index: 199999; opacity: 0;
+            pointer-events: none; transition: opacity 0.3s;
+        }
+
         .sim-highlight { box-shadow: 0 0 0 4px #55EFC4 !important; border-radius: 4px; transition: 0.2s; }
     `;
     const style = document.createElement('style');
@@ -85,157 +71,91 @@
 
     const captionDiv = document.createElement('div');
     captionDiv.className = 'sim-caption-container';
-    document.body.appendChild(captionDiv);
+    if (!captionsOff) document.body.appendChild(captionDiv);
 
-    const panelDiv = document.createElement('div');
-    panelDiv.id = 'sim_panel';
-    panelDiv.innerHTML = `
-        <button class="hidden-panel-btn" onclick="document.getElementById('sim_panel').style.display='none'">X</button>
-        <div style="font-weight:bold; margin-bottom:5px; color:#55EFC4;">Sim: ${simId}</div>
-        <div id="sim_timer" style="font-size:16px; margin-bottom:5px;">0.0s</div>
-        <div id="sim_next" style="color:#aaa; min-height: 30px; margin-bottom: 5px;">Ready</div>
-        <button id="sim_start">▶ Start</button>
-        <button id="sim_pause">⏸ Pause</button>
-        <button id="sim_reset">↺ Reset</button>
+    const countdownOverlay = document.createElement('div');
+    countdownOverlay.className = 'sim-countdown-overlay';
+    countdownOverlay.innerHTML = `
+        <div class="sim-countdown-sub">Sim: ${simId}</div>
+        <div class="sim-countdown-text">Tap to Ready</div>
+        <div class="sim-countdown-sub">Start screen recording after tap</div>
     `;
-    document.body.appendChild(panelDiv);
+    document.body.appendChild(countdownOverlay);
 
-    // --- SIMULATIONS CONFIGURATION ---
-    const SIMULATIONS = {
-        'blob-test': {
-            setup: async () => {
-                await setSetting('level_select', '2'); // Seventh Chords
-                await setSetting('play_mode_menu', 'Single Chord');
-                await setPreset('orchestra');
-                await wait(500);
-            },
-            timeline: [
-                { time: 3000, type: 'click', target: '#play_btn' },
-                { time: 10000, type: 'preset', value: 'high_contrast' }, // "Clear Mix" internally
-                { time: 11000, type: 'click', target: '#play_btn' },
-                { time: 18000, type: 'click', target: '#solo_Bass' },
-                { time: 20000, type: 'click', target: '#solo_Lead' },
-                { time: 22000, type: 'click', target: '#solo_Lead' }, // De-solo Lead
-                { time: 22200, type: 'click', target: '#solo_Bass' }, // De-solo Bass
-                { time: 24000, type: 'click', target: '#play_btn' }
-            ]
-        },
-        'solo-voices': {
-            setup: async () => {
-                await setSetting('level_select', '2');
-                await setSetting('play_mode_menu', 'Single Chord');
-                await setPreset('high_contrast');
-                await wait(500);
-            },
-            timeline: [
-                { time: 3000, type: 'click', target: '#play_btn' },
-                { time: 7000, type: 'click', target: '#solo_Bass' },
-                { time: 7100, type: 'caption', text: '🔵 Root — Double Bass' },
-                { time: 10500, type: 'caption', text: null },
-                { time: 11000, type: 'click', target: '#solo_2nd' }, // Might fail if 3-voice, handled safely
-                { time: 11100, type: 'caption', text: '🟢 Second Voice' }, // General fallback name
-                { time: 14500, type: 'caption', text: null },
-                { time: 15000, type: 'click', target: '#solo_Lead' },
-                { time: 15100, type: 'caption', text: '🟠 Lead — Flute' },
-                { time: 18500, type: 'caption', text: null },
-                { time: 19000, type: 'click', target: '#solo_Lead' }, // De-solo
-                { time: 20000, type: 'click', target: '#play_btn' }
-            ]
-        },
-        'no-timer': {
-            setup: async () => {
-                await setSetting('level_select', '1');
-                await setSetting('play_mode_menu', 'Single Chord');
-                await setPreset('high_contrast');
-                await wait(500);
-            },
-            timeline: [
-                { time: 12000, type: 'click', target: '#play_btn' },
-                { time: 15000, type: 'click', target: '#play_btn' },
-                { time: 18000, type: 'click', target: '#play_btn' },
-                { time: 20000, type: 'click', target: '#reveal_btn' },
-                { time: 21000, type: 'highlightCorrect' },
-                { time: 25000, type: 'clickCorrect' },
-                { time: 30000, type: 'click', target: '#next_popup_replay' },
-                { time: 33000, type: 'click', target: '#next_popup_continue' }
-            ]
-        },
-        'follow-voice': {
-            setup: async () => {
-                await setSetting('level_select', '2');
-                await setSetting('play_mode_menu', 'Progression');
-                await setPreset('high_contrast');
-                await wait(500);
-                console.log("[VideoSim] WARNING: Accepting randomly generated progression. Cannot force ii-V-I without hacking core app logic.");
-            },
-            timeline: [
-                { time: 3000, type: 'click', target: '#play_btn' },
-                { time: 10000, type: 'click', target: '#solo_2nd' }, // Wait for DOM element
-                { time: 11000, type: 'click', target: '#play_btn' },
-                { time: 15000, type: 'click', target: '#solo_2nd' }, // De-solo
-                { time: 16000, type: 'click', target: '#solo_Lead' },
-                { time: 17000, type: 'click', target: '#play_btn' },
-                { time: 22000, type: 'click', target: '#solo_Lead' }, // De-solo
-                { time: 23000, type: 'click', target: '#play_btn' },
-                { time: 28000, type: 'click', target: '#play_btn' }
-            ]
-        },
-        'three-presets': {
-            setup: async () => {
-                await setSetting('level_select', '2');
-                await setSetting('play_mode_menu', 'Single Chord');
-                await setPreset('high_contrast'); // Clear Mix
-                await wait(500);
-            },
-            timeline: [
-                { time: 3000, type: 'highlight', target: '[data-preset="high_contrast"]' },
-                { time: 4000, type: 'click', target: '#play_btn' },
-                { time: 4100, type: 'caption', text: '● ○ ○ Easy' },
-                { time: 8000, type: 'caption', text: null },
-                { time: 9000, type: 'preset', value: 'jazz_combo' },
-                { time: 10000, type: 'click', target: '#play_btn' },
-                { time: 10100, type: 'caption', text: '● ● ○ Medium' },
-                { time: 14000, type: 'caption', text: null },
-                { time: 15000, type: 'preset', value: 'orchestra' },
-                { time: 16000, type: 'click', target: '#play_btn' },
-                { time: 16100, type: 'caption', text: '● ● ● Hard' },
-                { time: 20000, type: 'caption', text: null }
-            ]
-        },
-        'full-demo': {
-            setup: async () => {
-                await setSetting('level_select', '1');
-                await setSetting('play_mode_menu', 'Single Chord');
-                await setPreset('high_contrast');
-                await setSetting('session_size_menu', '3'); // Assuming standard value
-                await wait(500);
-            },
-            timeline: [
-                { time: 0, type: 'click', target: '#play_btn' },
-                { time: 5000, type: 'clickCorrect' },
-                { time: 8000, type: 'click', target: '#next_popup_continue' },
-                { time: 12000, type: 'click', target: '#play_btn' },
-                { time: 17000, type: 'clickCorrect' },
-                { time: 20000, type: 'click', target: '#next_popup_continue' },
-                { time: 24000, type: 'click', target: '#play_btn' },
-                { time: 29000, type: 'clickCorrect' }
-            ]
-        }
-    };
+    const flashDiv = document.createElement('div');
+    flashDiv.className = 'sim-flash';
+    document.body.appendChild(flashDiv);
+
+    const doneText = document.createElement('div');
+    doneText.className = 'sim-done-text';
+    doneText.innerText = '✓ Done';
+    document.body.appendChild(doneText);
 
     // --- ENGINE LOGIC ---
     let simStartTime = 0;
-    let simRaf = null;
     let currentActions = [];
     let isPlaying = false;
+    let isFinished = false;
 
-    document.getElementById('sim_start').onclick = startSimulation;
-    document.getElementById('sim_pause').onclick = () => { isPlaying = false; };
-    document.getElementById('sim_reset').onclick = () => window.location.reload();
+    // Countdown & Start Logic
+    let countdownActive = false;
+    countdownOverlay.addEventListener('click', () => {
+        if (countdownActive) return;
+        countdownActive = true;
+        
+        // Unlock AudioContext safely
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext && (!window.audioEngine || !window.audioEngine.ctx)) {
+             try { window.audioEngine.unlockAndLoad(); } catch(e){}
+        } else if (window.audioEngine && window.audioEngine.ctx) {
+             window.audioEngine.ctx.resume();
+        }
 
-    function wait(ms) {
-        return new Promise(r => setTimeout(r, ms));
-    }
+        let left = delayParam / 1000;
+        const textEl = countdownOverlay.querySelector('.sim-countdown-text');
+        textEl.innerText = `Starting in ${left}...`;
+        
+        const intv = setInterval(() => {
+            left--;
+            if (left > 0) {
+                textEl.innerText = `Starting in ${left}...`;
+            } else {
+                clearInterval(intv);
+                countdownOverlay.style.opacity = '0';
+                setTimeout(() => {
+                    countdownOverlay.style.display = 'none';
+                    startSimulation();
+                }, 500);
+            }
+        }, 1000);
+    });
+
+    // Multi-tap gesture logic
+    let tapCount = 0;
+    let tapTimer = null;
+    document.addEventListener('click', (e) => {
+        // Ignore taps on the countdown overlay itself
+        if (e.target.closest('.sim-countdown-overlay')) return;
+        if (isFinished) return;
+
+        tapCount++;
+        clearTimeout(tapTimer);
+        
+        tapTimer = setTimeout(() => {
+            if (tapCount === 2) {
+                // Pause / Resume
+                isPlaying = !isPlaying;
+                console.log(isPlaying ? '[VideoSim] Resumed' : '[VideoSim] Paused');
+            } else if (tapCount >= 3) {
+                // Reset
+                console.log('[VideoSim] Resetting via gesture...');
+                window.location.reload();
+            }
+            tapCount = 0;
+        }, 350); // 350ms window for taps
+    }, true);
+
+    function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
 
     async function setSetting(id, val) {
         const d = document.getElementById(id);
@@ -252,7 +172,7 @@
 
     function showVisualTap(x, y) {
         tapDiv.classList.remove('active');
-        void tapDiv.offsetWidth; // reflow
+        void tapDiv.offsetWidth; 
         tapDiv.style.left = (x - 20) + 'px';
         tapDiv.style.top = (y - 20) + 'px';
         tapDiv.classList.add('active');
@@ -261,9 +181,8 @@
     function simulateClick(selectorOrEl) {
         let el = typeof selectorOrEl === 'string' ? document.querySelector(selectorOrEl) : selectorOrEl;
         
-        // Handle solo buttons dynamically created
         if (!el && typeof selectorOrEl === 'string' && selectorOrEl.startsWith('#solo_')) {
-            const title = selectorOrEl.split('_')[1]; // Bass, 2nd, 3rd, Lead
+            const title = selectorOrEl.split('_')[1];
             const btns = Array.from(document.querySelectorAll('.solo-btn'));
             el = btns.find(b => b.textContent.includes(title));
         }
@@ -291,22 +210,16 @@
     }
 
     async function startSimulation() {
-        if (!SIMULATIONS[simId]) {
-            alert(`Simulation ${simId} not found`);
-            return;
-        }
+        if (!SIMULATIONS[simId]) { alert(`Simulation ${simId} not found`); return; }
 
-        console.log(`[VideoSim] Running pre-config...`);
-        document.getElementById('sim_next').innerText = "Running setup...";
-
-        // Auto-dismiss START TRAINING overlay if visible
+        console.log(`[VideoSim] Running setup...`);
+        
         const startOverlay = document.getElementById('start_overlay');
         if (startOverlay && startOverlay.style.display !== 'none') {
-            simulateClick(startOverlay); // The click listener is on the overlay itself
-            await wait(1500); // Wait for AudioContext and first chord to load
+            simulateClick(startOverlay); 
+            await wait(1500);
         }
         
-        // Close settings if open
         const gearBtn = document.getElementById('settings_toggle');
         const settingsGrid = document.getElementById('settings_collapsible');
         if (settingsGrid && !settingsGrid.classList.contains('hidden')) {
@@ -324,40 +237,46 @@
         tick();
     }
 
-    function tick() {
-        if (!isPlaying) return;
+    function finishSimulation() {
+        isFinished = true;
+        isPlaying = false;
         
-        const now = performance.now();
-        const elapsed = now - simStartTime;
-        document.getElementById('sim_timer').innerText = (elapsed / 1000).toFixed(1) + 's';
+        // Visual indicator for post-production cut
+        flashDiv.style.opacity = '1';
+        doneText.style.opacity = '1';
+        
+        setTimeout(() => { flashDiv.style.opacity = '0'; }, 100);
+        setTimeout(() => { doneText.style.opacity = '0'; }, 2000);
+        
+        console.log("[VideoSim] Finished.");
+    }
+
+    function tick() {
+        if (!isPlaying || isFinished) return;
+        
+        const elapsed = performance.now() - simStartTime;
 
         if (currentActions.length > 0) {
             const next = currentActions[0];
-            document.getElementById('sim_next').innerText = `Next: ${next.type} in ${((next.time - elapsed)/1000).toFixed(1)}s`;
-
             if (elapsed >= next.time) {
                 executeAction(next);
                 currentActions.shift();
             }
         } else {
-            document.getElementById('sim_next').innerText = "DONE.";
-            isPlaying = false;
+            finishSimulation();
+            return;
         }
 
-        simRaf = requestAnimationFrame(tick);
+        requestAnimationFrame(tick);
     }
 
     function executeAction(act) {
         console.log(`[VideoSim] Action @${act.time}ms:`, act);
         switch (act.type) {
-            case 'click':
-                simulateClick(act.target);
-                break;
-            case 'preset':
-                setPreset(act.value);
-                break;
+            case 'click': simulateClick(act.target); break;
+            case 'preset': setPreset(act.value); break;
             case 'caption':
-                if (act.text) {
+                if (act.text && !captionsOff) {
                     captionDiv.innerText = act.text;
                     captionDiv.classList.add('show');
                 } else {
@@ -384,5 +303,4 @@
                 break;
         }
     }
-
 })();
