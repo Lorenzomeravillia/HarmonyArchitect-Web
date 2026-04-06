@@ -496,5 +496,13 @@
             document.getElementById('prompter').style.display = 'none';
             cancelAnimationFrame(currentRaf);
         }
+
+        window.onload = function() {
+            const params = new URLSearchParams(window.location.search);
+            const sim = params.get('sim');
+            if (sim && SCENARIOS[sim]) {
+                loadScenario(sim);
+            }
+        };
     </script>
 </body>
