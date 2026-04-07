@@ -363,7 +363,12 @@ document.addEventListener("DOMContentLoaded", () => {
         if (targetIdx === -1) targetIdx = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'].indexOf(targetRoot);
         const diff    = targetIdx - chromatic.indexOf('C');
         const newIdx  = (idxOrig + diff + 12) % 12;
-        return chromatic[newIdx] + match[2];
+        let finalRoot = chromatic[newIdx];
+        let typeStr   = match[2];
+        if (window.musicEngine) {
+            finalRoot = window.musicEngine._normalizeRoot(finalRoot, typeStr);
+        }
+        return finalRoot + typeStr;
     }
 
     // ── REVEAL button ───────────────────────────────────────
