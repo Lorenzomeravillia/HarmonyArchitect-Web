@@ -481,14 +481,21 @@ document.addEventListener("DOMContentLoaded", () => {
             document.getElementById("combo_label")?.innerText;
             window.realProgressionLabel = parts[0].split("\n")[0] + " in " + root;
 
-            // Determine key context for key signature rendering
-            // Level 1 progressions in lowercase 'i' are minor, uppercase 'I' are major
-            const progLabel = parts[0].toLowerCase();
-            const progIsMajor = !progLabel.startsWith('i') || progLabel.startsWith('im') === false && progLabel[0] === 'i' && progLabel[1] !== 'm'
-                ? !progLabel.startsWith('im') && !progLabel.startsWith('iø') && !progLabel.startsWith('ii') && !progLabel.startsWith('i -')
-                : true;
-            const levelIsMinor = /^i[^I]/.test(parts[0].trim()) && !parts[0].trim().startsWith('Im') ;
-            window.currentKeyContext = { root: root, isMajor: !levelIsMinor };
+            // Determine key context for key signature rendering directly from the first chord
+            let firstChordStr = window.currentProgression[0];
+            let fcMatch = firstChordStr.match(/^([A-G][b#]?)(.*)/);
+            if (fcMatch) {
+                let fcRoot = fcMatch[1];
+                let fcType = fcMatch[2];
+                let fcIsMinor = (fcType.startsWith('m') && !fcType.startsWith('maj')) || fcType.startsWith('dim') || fcType.startsWith('ø') || fcType.startsWith('-');
+                
+                // If the engine normalizer would convert it (e.g. Dbm -> C#m), align the Key Sig context root to match!
+                if (window.musicEngine) fcRoot = window.musicEngine._normalizeRoot(fcRoot, fcType);
+                
+                window.currentKeyContext = { root: fcRoot, isMajor: !fcIsMinor };
+            } else {
+                window.currentKeyContext = { root: root, isMajor: true };
+            }
             window.gui.drawPitches([], window.currentKeyContext);
 
             let wrongOpts = [];
