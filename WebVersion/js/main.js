@@ -172,32 +172,32 @@ document.addEventListener("DOMContentLoaded", () => {
     const LEVEL_POOLS_SINGLE = {
         "1: Basic Triads":    ["C", "Cm", "Cdim", "Caug", "F", "Fm", "G", "Gm", "Bb", "D", "Am"],
         "2: Seventh Chords":  ["Cmaj7", "Cm7", "C7", "Cm7b5", "Fmaj7", "G7", "Bbmaj7", "Ddim7"],
-        "3: Jazz Extensions": ["Cmaj9", "C9", "C13", "G7alt", "G7b9", "Bb7#11", "D-9", "Fm9"],
+        "3: Jazz Extensions": ["Cmaj9", "C9", "C13", "G7alt", "G7b9", "Bb7#11", "Dm9", "Fm9"],
         "4: Advanced":        ["A7alt", "Db7", "E7#9", "B13b9", "F#7b9"]
     };
 
     const LEVEL_POOLS_PROG = {
         "1: Basic Triads": [
             "I - IV - V - I|C|F|G|C",
-            "I - vi - IV - V|C|Am|F|G",
-            "i - iv - V - i|Cm|Fm|G|Cm",
-            "i - VI - VII - i|Cm|Ab|Bb|Cm",
-            "I - ii - V - I|C|Dm|G|C"
+            "I - vim - IV - V|C|Am|F|G",
+            "im - ivm - V - im|Cm|Fm|G|Cm",
+            "im - VI - VII - im|Cm|Ab|Bb|Cm",
+            "I - iim - V - I|C|Dm|G|C"
         ],
         "2: Seventh Chords": [
-            "ii7 - V7 - Imaj7|Dm7|G7|Cmaj7",
+            "iim7 - V7 - Imaj7|Dm7|G7|Cmaj7",
             "iiø7 - V7 - im7|Dm7b5|G7|Cm7",
-            "Imaj7 - vi7 - ii7 - V7|Cmaj7|Am7|Dm7|G7",
-            "iim7 - v7 - Imaj7|Fm7|Bb7|Ebmaj7"
+            "Imaj7 - vim7 - iim7 - V7|Cmaj7|Am7|Dm7|G7",
+            "iim7 - V7 - Imaj7|Fm7|Bb7|Ebmaj7"
         ],
         "3: Jazz Extensions": [
-            "ii9 - V13 - Imaj9|Dm9|G13|Cmaj9",
+            "iim9 - V13 - Imaj9|Dm9|G13|Cmaj9",
             "iiø7 - V7alt - im9|Dm7b5|G7alt|Cm9",
-            "Imaj9 - VI7alt - ii9 - V13|Cmaj9|A7alt|Dm9|G13"
+            "Imaj9 - VI7alt - iim9 - V13|Cmaj9|A7alt|Dm9|G13"
         ],
         "4: Advanced": [
-            "ii7 - subV7 - Imaj7|Dm7|Db7|Cmaj7",
-            "V7/ii - ii7 - V7 - Imaj7|A7|Dm7|G7|Cmaj7",
+            "iim7 - subV7 - Imaj7|Dm7|Db7|Cmaj7",
+            "V7/ii - iim7 - V7 - Imaj7|A7|Dm7|G7|Cmaj7",
             "iim7 - subV7 - Imaj7|Fm7|E7|Ebmaj7"
         ]
     };
@@ -475,6 +475,16 @@ document.addEventListener("DOMContentLoaded", () => {
             document.getElementById("combo_label")?.innerText;
             window.realProgressionLabel = parts[0].split("\n")[0] + " in " + root;
 
+            // Determine key context for key signature rendering
+            // Level 1 progressions in lowercase 'i' are minor, uppercase 'I' are major
+            const progLabel = parts[0].toLowerCase();
+            const progIsMajor = !progLabel.startsWith('i') || progLabel.startsWith('im') === false && progLabel[0] === 'i' && progLabel[1] !== 'm'
+                ? !progLabel.startsWith('im') && !progLabel.startsWith('iø') && !progLabel.startsWith('ii') && !progLabel.startsWith('i -')
+                : true;
+            const levelIsMinor = /^i[^I]/.test(parts[0].trim()) && !parts[0].trim().startsWith('Im') ;
+            window.currentKeyContext = { root: root, isMajor: !levelIsMinor };
+            window.gui.drawPitches([], window.currentKeyContext);
+
             let wrongOpts = [];
             let safePool  = pool.filter(p => p !== item);
             safePool.forEach(p => {
@@ -507,6 +517,7 @@ document.addEventListener("DOMContentLoaded", () => {
             window.gui.updateSoloButtons(_vv[0]);
         } else {
             window.currentProgression = null;
+            window.currentKeyContext = null;  // Single chord: no key signature
             let pool = LEVEL_POOLS_SINGLE[level] || LEVEL_POOLS_SINGLE["1: Basic Triads"];
             let sym  = pool[Math.floor(Math.random() * pool.length)];
             let match = sym.match(/^([A-G][b#]?)(.*)/);
@@ -557,7 +568,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 return v;
             });
             window.currentVoicings = voicings;
-            window.gui.drawPitches(voicings);
+            window.gui.drawPitches(voicings, window.currentKeyContext);
             window.gui.updateSoloButtons(voicings[0]);
             voicings.forEach((v, i) => setTimeout(() => window.audioEngine.playChord(v, cutDuration, i), i * tempoMs));
             window.gui.setInsight("Progression (" + tempoMs + "ms). Drop-2: " + (isOptimized ? "ON" : "OFF"));
@@ -565,7 +576,7 @@ document.addEventListener("DOMContentLoaded", () => {
             let sym = window.currentSymbol;
             let targetVoicing = window.musicEngine.generateVoicing(sym, baseOctave, isOptimized);
             window.currentVoicings = [targetVoicing];
-            window.gui.drawPitches([targetVoicing]);
+            window.gui.drawPitches([targetVoicing], null);  // No key sig for single chord
             window.gui.updateSoloButtons(targetVoicing);
             window.audioEngine.playChord(targetVoicing, cutDuration, 0);
             window.gui.setInsight(`Base: C3 | Voicing: ${isOptimized ? "Opt. (Drop-2)" : "Root"}`);
