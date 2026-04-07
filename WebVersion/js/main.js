@@ -188,17 +188,18 @@ document.addEventListener("DOMContentLoaded", () => {
             "iim7 - V7 - Imaj7|Dm7|G7|Cmaj7",
             "iiø7 - V7 - im7|Dm7b5|G7|Cm7",
             "Imaj7 - vim7 - iim7 - V7|Cmaj7|Am7|Dm7|G7",
-            "iim7 - V7 - Imaj7|Fm7|Bb7|Ebmaj7"
+            "im7 - ivm7 - VII7 - IIImaj7|Cm7|Fm7|Bb7|Ebmaj7"
         ],
         "3: Jazz Extensions": [
             "iim9 - V13 - Imaj9|Dm9|G13|Cmaj9",
             "iiø7 - V7alt - im9|Dm7b5|G7alt|Cm9",
-            "Imaj9 - VI7alt - iim9 - V13|Cmaj9|A7alt|Dm9|G13"
+            "Imaj9 - VI7alt - iim9 - V13|Cmaj9|A7alt|Dm9|G13",
+            "im9 - bVImaj9 - iiø7 - V7alt|Cm9|Abmaj9|Dm7b5|G7alt"
         ],
         "4: Advanced": [
             "iim7 - subV7 - Imaj7|Dm7|Db7|Cmaj7",
             "V7/ii - iim7 - V7 - Imaj7|A7|Dm7|G7|Cmaj7",
-            "iim7 - subV7 - Imaj7|Fm7|E7|Ebmaj7"
+            "Imaj7 - bIII7 - bVImaj7 - subV7|Cmaj7|Eb7|Abmaj7|Db7"
         ]
     };
 
@@ -486,7 +487,11 @@ document.addEventListener("DOMContentLoaded", () => {
             window.gui.drawPitches([], window.currentKeyContext);
 
             let wrongOpts = [];
-            let safePool  = pool.filter(p => p !== item);
+            let targetLength = parts.length - 1; // Number of chords
+            let safePool  = pool.filter(p => {
+                let pparts = p.split("|");
+                return p !== item && (pparts.length - 1 === targetLength);
+            });
             safePool.forEach(p => {
                 let pparts = p.split("|");
                 wrongOpts.push(pparts[0] + "\n(" + pparts.slice(1).map(c => transposeChord(c, root)).join(" - ") + ")");
@@ -497,7 +502,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     for (let p of lvlPool) {
                         if (wrongOpts.length >= 3) break;
                         let pparts = p.split("|");
-                        if (!usedNames.has(pparts[0])) {
+                        let pLength = pparts.length - 1;
+                        if (pLength === targetLength && !usedNames.has(pparts[0])) {
                             usedNames.add(pparts[0]);
                             wrongOpts.push(pparts[0] + "\n(" + pparts.slice(1).map(c => transposeChord(c, root)).join(" - ") + ")");
                         }
