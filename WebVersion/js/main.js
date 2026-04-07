@@ -353,15 +353,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // ── Chord transposer ────────────────────────────────────
     function transposeChord(chordStr, targetRoot) {
-        const chromatic = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+        const sharpRoots = ['G','D','A','E','B','F#','C#'];
+        const chromaticSharp = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+        const chromaticFlat  = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+        const chromatic = sharpRoots.includes(targetRoot) ? chromaticSharp : chromaticFlat;
+
         const match = chordStr.match(/^([A-G][b#]?)(.*)/);
         if (!match) return chordStr;
         const pcStr   = match[1];
-        let idxOrig   = chromatic.indexOf(pcStr);
-        if (idxOrig === -1) idxOrig = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'].indexOf(pcStr);
-        let targetIdx = chromatic.indexOf(targetRoot);
-        if (targetIdx === -1) targetIdx = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'].indexOf(targetRoot);
-        const diff    = targetIdx - chromatic.indexOf('C');
+
+        // Find idxOrig in either reference array
+        let idxOrig = chromaticFlat.indexOf(pcStr);
+        if (idxOrig === -1) idxOrig = chromaticSharp.indexOf(pcStr);
+
+        let targetIdx = chromaticFlat.indexOf(targetRoot);
+        if (targetIdx === -1) targetIdx = chromaticSharp.indexOf(targetRoot);
+
+        const diff    = targetIdx - 0; // C is index 0
         const newIdx  = (idxOrig + diff + 12) % 12;
         let finalRoot = chromatic[newIdx];
         let typeStr   = match[2];
