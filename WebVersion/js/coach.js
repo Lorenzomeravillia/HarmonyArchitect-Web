@@ -1,6 +1,6 @@
 // Coach Marks — first-use contextual tooltips
 (function () {
-    const STORAGE_KEY = 'coachMarksShown_v1';
+    const STORAGE_KEY = 'coachMarksShown_v2';
     const DURATION_MS = 3000; // visible time before auto-dismiss
 
     const MARKS = [
@@ -205,6 +205,12 @@
     }
 
     function startTour(resetAll) {
+        // Forza l'apertura del pannello impostazioni per garantire che gli elementi abbiano dimensioni valide
+        const settingsPanel = document.getElementById('settings_collapsible');
+        if (settingsPanel && !settingsPanel.classList.contains('open')) {
+            settingsPanel.classList.add('open');
+        }
+
         hideCoachMark(() => {
             const shown = resetAll ? {} : getShown();
             queue = MARKS.filter(m => {
