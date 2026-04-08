@@ -1,7 +1,7 @@
 // iOS detection (must precede start overlay handler)
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
-let currentSessionId = crypto.randomUUID ? crypto.randomUUID() : null;
+let currentSessionId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'sim-' + Date.now();
 let currentSessionStart = null;
 let currentChallengeStart = null;
 let currentRevealUsed = false;
@@ -710,6 +710,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // ── PLAY button ─────────────────────────────────────────
     document.getElementById("play_btn").addEventListener("click", async () => {
+      try {
         if (!currentChallengeStart) currentChallengeStart = Date.now();
         if (!currentSessionStart) currentSessionStart = new Date();
         currentChallengeReplays++;
@@ -760,6 +761,9 @@ document.addEventListener("DOMContentLoaded", () => {
             window.audioEngine.playChord(targetVoicing, cutDuration, 0);
             window.gui.setInsight(`Base: C3 | Voicing: ${isOptimized ? "Opt. (Drop-2)" : "Root"}`);
         }
+      } catch (err) {
+        alert("CRASH IN PLAY_BTN: " + err.message + "\n\n" + err.stack);
+      }
     });
 
     // ── ARPEGGIATOR ─────────────────────────────────────────
