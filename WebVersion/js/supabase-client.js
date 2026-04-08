@@ -33,13 +33,14 @@
                     if (signInError) throw signInError;
                     
                     this.user = data.user;
-                    
-                    // Create corresponding user profile in backend table bypassing generating uuid
-                    await supabase.schema('cv').from('users').upsert({
-                        id: this.user.id,
-                        auth_provider: 'anonymous'
-                    }, { onConflict: 'id' });
                 }
+
+                // Ensure corresponding user profile in backend table exists (heals previous failures)
+                await supabase.schema('cv').from('users').upsert({
+                    id: this.user.id,
+                    auth_provider: this.user.is_anonymous ? 'anonymous' : 'email'
+                }, { onConflict: 'id' });
+
                 this.isReady = true;
                 
                 // Fire and forget offline sync 
