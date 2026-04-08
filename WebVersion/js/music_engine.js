@@ -439,6 +439,44 @@ class MusicEngine {
             voiceIndices[i] = LEAD_INDEX - distFromTop;
         }
 
+        // ── 5. Pedagogical Enharmonic Anchoring (Jazz Sight-Reading Optimization) ──
+        let diatonicPCs = null;
+        let globalPreferSharp = useSharp;
+
+        // Se siamo all'interno di una progressione con un KeyContext definito
+        if (typeof window !== 'undefined' && window.currentKeyContext && window.currentKeyContext.root) {
+            let keySig = this.getKeySignature(window.currentKeyContext.root, window.currentKeyContext.isMajor);
+            diatonicPCs = {};
+            
+            // Imposta la preferenza globale (flat/sharp) basata sulla tonalità
+            let contextSpell = this.getSpellingForRoot(window.currentKeyContext.root);
+            if (contextSpell === 'flat') globalPreferSharp = false;
+            else if (contextSpell === 'sharp') globalPreferSharp = true;
+            
+            // A. Mappa i gradi naturali
+            this.letters.forEach(l => {
+                let step = this.stepMap[l];
+                let pc = this.diatonicSteps[step];
+                diatonicPCs[pc] = { base: l, acc: '' };
+            });
+            
+            // B. Sovrascrive coi bemolli presenti in armatura
+            keySig.flats.forEach(f => {
+                let step = this.stepMap[f];
+                let pc = (this.diatonicSteps[step] - 1 + 12) % 12;
+                for (let key in diatonicPCs) if (diatonicPCs[key].base === f) delete diatonicPCs[key];
+                diatonicPCs[pc] = { base: f, acc: 'b' };
+            });
+            
+            // C. Sovrascrive coi diesis presenti in armatura
+            keySig.sharps.forEach(s => {
+                let step = this.stepMap[s];
+                let pc = (this.diatonicSteps[step] + 1) % 12;
+                for (let key in diatonicPCs) if (diatonicPCs[key].base === s) delete diatonicPCs[key];
+                diatonicPCs[pc] = { base: s, acc: '#' };
+            });
+        }
+
         let result = notesMidi.map((midi, idx) => {
             let octave = Math.floor(midi / 12) - 1;
             let pc = midi % 12;
@@ -454,10 +492,30 @@ class MusicEngine {
                 const baseLetterStep = this.stepMap[sp.name[0]];
                 step = octave * 7 + baseLetterStep;
             } else {
-                const noteObj = this.getNoteFromMidi(midi, useSharp);
+                const noteObj = this.getNoteFromMidi(midi, globalPreferSharp);
                 name = noteObj.name;
                 acc  = noteObj.acc;
                 step = noteObj.step;
+            }
+
+            // --- GLOBAL DIATONIC OVERRIDE ---
+            // Forza l'ortografia ad allinearsi alla scala globale per evitare flip-flop (es. D# -> Eb in Do minore)
+            if (diatonicPCs && diatonicPCs[pc]) {
+                let target = diatonicPCs[pc];
+                let expectedName = target.base + target.acc;
+                
+                if (name !== expectedName) {
+                    let expectedNaturalMidi = midi;
+                    if (target.acc === 'b') expectedNaturalMidi += 1;
+                    else if (target.acc === '#') expectedNaturalMidi -= 1;
+                    
+                    // Ricalcolo dell'ottava per prevenire salti visivi sui boundary (es. Cb5 che slitta a B4)
+                    let trueOctave = Math.floor(expectedNaturalMidi / 12) - 1;
+                    
+                    name = expectedName;
+                    acc = target.acc;
+                    step = trueOctave * 7 + this.stepMap[target.base];
+                }
             }
 
             let color = "#D946A8"; 
