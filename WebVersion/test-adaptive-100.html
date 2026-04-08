@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-client.js"></script>
+    <script>
+        // Override localstorage mock to force ON for testing without UI
+        localStorage.setItem('cv_adaptive_enabled', 'true');
+    </script>
+    <script src="js/adaptive.js"></script>
+</head>
+<body>
+    <h1>Simulating 100 Backend Iterations...</h1>
+    <pre id="log"></pre>
+    <script>
+        const log = (msg) => {
+            console.log(msg);
+            document.getElementById('log').textContent += msg + '\n';
+        };
+
+        const qualitiesList = ['maj7', 'm7', '7', 'dim7', 'm7b5', 'aug7'];
+        const rootsList = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+
+        const generateMockChallenge = (overrides) => {
+            // Respect the adaptive override if provided
+            let q = overrides && overrides.forceQuality ? overrides.forceQuality : qualitiesList[Math.floor(Math.random() * qualitiesList.length)];
+            let r = overrides && overrides.forceRoot ? overrides.forceRoot : rootsList[Math.floor(Math.random() * rootsList.length)];
+            return {
+                chord_quality: q,
+                chord_root: r,
+                answer_given: "unknown" // Mocked to simplify parseQuality later
+            };
+        };
+
+        async function runSim() {
+            log("Initializing DB Client...");
+            await window.dbClient.init();
+            
+            // Wait for DB & Auth
+            await new Promise(r => setTimeout(r, 1500));
+            const userId = window.dbClient.getUserId();
+            if (!userId) { log("FAILED: NO USER ID"); return; }
+            log("User Active: " + userId);
+            
+            // Track selector distributions
+            let stats = {
+                totalRuns: 100,
+                overrides_issued: 0,
+                random_explorations: 0, // returned null
+                override_types: {
+                    quality: 0,
+                    root: 0
+                },
+                results_timeline: []
+            };
+
+            log("Executing 100 Challenges Loop...");
+            for (let i = 1; i <= 100; i++) {
+                // 1. Ask adaptive engine for next parameter
+                let overrides = await window.adaptiveEngine.selectNextChallengeOverrides(userId, "1: Basic Triads", "single");
+                
+                if (overrides) {
+                    stats.overrides_issued++;
+                    if (overrides.forceQuality) stats.override_types.quality++;
+                    if (overrides.forceRoot) stats.override_types.root++;
+                } else {
+                    stats.random_explorations++;
+                }
+
+                // 2. Generate
+                let challenge = generateMockChallenge(overrides);
+
+                // 3. Answer randomly (simulate ~60% correct random)
+                let isCorrect = Math.random() < 0.6;
+
+                // 4. Update
+                await window.adaptiveEngine.updateWeakSpots(userId, challenge, isCorrect);
+                
+                stats.results_timeline.push({
+                    step: i,
+                    override_issued: overrides !== null,
+                    override_content: overrides,
+                    challenge: challenge,
+                    correct: isCorrect
+                });
+            }
+
+            // Wait for residual inserts to flush
+            await new Promise(r => setTimeout(r, 2000));
+
+            log("Fetching Final User Data Structure...");
+            const { data: weakSpots, error } = await window.dbClient.client.schema('cv').from('weak_spots').select('*').eq('user_id', userId);
+            
+            let finalOutputObj = {
+                battery_metrics: stats,
+                database_weak_spots: weakSpots || [],
+                error: error
+            };
+
+            log("-----------------------------------------");
+            log("# DATA_DUMP_START");
+            log(JSON.stringify(finalOutputObj, null, 2));
+            log("# DATA_DUMP_END");
+
+            const doneNode = document.createElement('div');
+            doneNode.id = 'sim_done';
+            document.body.appendChild(doneNode);
+        }
+        
+        setTimeout(runSim, 500);
+    </script>
+</body>
+</html>

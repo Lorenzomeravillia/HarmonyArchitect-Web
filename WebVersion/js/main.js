@@ -360,7 +360,7 @@ document.addEventListener("DOMContentLoaded", () => {
         sessionCorrect = 0;
         sessionTotal   = 0;
         streak         = 0;
-        currentSessionId = crypto.randomUUID ? crypto.randomUUID() : null;
+        currentSessionId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'sim-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
         currentSessionStart = null;
         currentSessionReplayCount = 0;
         currentSessionRevealCount = 0;
@@ -561,6 +561,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 b.style.wordBreak = 'break-word';
             });
         }
+        
+        if (!window.hasPlayedCurrentChallenge) {
+            answersFrame.style.opacity = '0.5';
+            answersFrame.style.pointerEvents = 'none';
+        }
     }
 
     // ── Start new challenge ─────────────────────────────────
@@ -579,6 +584,8 @@ document.addEventListener("DOMContentLoaded", () => {
         if (window.audioEngine.ctx.state === 'suspended') window.audioEngine.ctx.resume();
         window.gui.drawPitches([]);
         window.gui.resetSoloButtons();
+        
+        window.hasPlayedCurrentChallenge = false;
 
         const isProgression = document.getElementById("play_mode_menu").value.includes("Progression");
         const level = document.getElementById("level_select").value;
@@ -712,6 +719,13 @@ document.addEventListener("DOMContentLoaded", () => {
         // Switch button label from START → PLAY after first use
         const playBtn = document.getElementById('play_btn');
         if (playBtn && playBtn.textContent === '▶ START') playBtn.textContent = '▶ PLAY';
+        
+        window.hasPlayedCurrentChallenge = true;
+        const answersFrame = document.querySelector('.answers-frame');
+        if (answersFrame) {
+            answersFrame.style.opacity = '1';
+            answersFrame.style.pointerEvents = 'auto';
+        }
 
         const baseOctave  = "C3";
         const isOptimized = document.getElementById("voice_leading_menu").value.includes("Optimized");
