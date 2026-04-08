@@ -1,7 +1,21 @@
 // iOS detection (must precede start overlay handler)
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
+let currentSessionId = crypto.randomUUID ? crypto.randomUUID() : null;
+let currentSessionStart = null;
+let currentChallengeStart = null;
+let currentRevealUsed = false;
+let currentSoloUsed = false;
+let currentChallengeReplays = 0;
+let currentSessionReplayCount = 0;
+let currentSessionRevealCount = 0;
+
 document.addEventListener("DOMContentLoaded", () => {
+    if (window.dbClient) window.dbClient.init();
+
+    // Event Delegation tracking for Solos
+    document.getElementById("solo_buttons_frame")?.addEventListener("click", () => currentSoloUsed = true, true);
+
     // ── PWA Start Overlay ──────────────────────────────────
     let startOverlay = document.getElementById("start_overlay");
     if (startOverlay) {
@@ -308,6 +322,27 @@ document.addEventListener("DOMContentLoaded", () => {
     function showSessionComplete() {
         const sz  = getSessionSize();
         const pct = Math.round(sessionCorrect / sz * 100);
+
+        if (window.dbClient && window.dbClient.isReady && currentSessionStart) {
+             const sessionPayload = {
+                 id: currentSessionId,
+                 started_at: currentSessionStart.toISOString(),
+                 completed_at: new Date().toISOString(),
+                 level: parseInt(document.getElementById("level_select").value.charAt(0)) || 1,
+                 mode: document.getElementById("play_mode_menu").value,
+                 timbre_preset: document.querySelector('.preset-btn.active')?.textContent || 'default',
+                 tempo: (document.getElementById("tempo_menu") || {}).value || '1560',
+                 voice_leading: document.getElementById("voice_leading_menu").value,
+                 total_challenges: sz,
+                 correct_count: sessionCorrect,
+                 reveal_count: currentSessionRevealCount,
+                 replay_count: currentSessionReplayCount,
+                 score_pct: pct,
+                 duration_seconds: Math.floor((Date.now() - currentSessionStart.getTime()) / 1000)
+             };
+             window.dbClient.saveSession(sessionPayload);
+        }
+
         let badge, title;
         if (pct >= 90) { badge = '🥇'; title = 'Excellent!'; }
         else if (pct >= 70) { badge = '🥈'; title = 'Great work!'; }
@@ -325,6 +360,10 @@ document.addEventListener("DOMContentLoaded", () => {
         sessionCorrect = 0;
         sessionTotal   = 0;
         streak         = 0;
+        currentSessionId = crypto.randomUUID ? crypto.randomUUID() : null;
+        currentSessionStart = null;
+        currentSessionReplayCount = 0;
+        currentSessionRevealCount = 0;
         updateProgress();
         updateStreak();
         document.getElementById('session_overlay').classList.add('hidden');
@@ -402,6 +441,8 @@ document.addEventListener("DOMContentLoaded", () => {
     // ── REVEAL button ───────────────────────────────────────
     document.getElementById('reveal_btn')?.addEventListener('click', () => {
         if (!window.correctAnswerText) return;
+        currentRevealUsed = true;
+        currentSessionRevealCount++;
         // Highlight correct answer button and lock all (no scoring)
         const answersFrame = document.querySelector('.answers-frame');
         if (answersFrame) {
@@ -436,8 +477,38 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (b.dataset.answered) return;
                 answersFrame.querySelectorAll('.answer-btn').forEach(btn => btn.dataset.answered = '1');
 
+                const reactionTime = currentChallengeStart ? Date.now() - currentChallengeStart : null;
+                currentChallengeStart = null;
+
                 sessionTotal++;
                 const correct = (o === window.correctAnswerText);
+
+                if (window.dbClient && window.dbClient.isReady) {
+                    const payload = {
+                        session_id: currentSessionId,
+                        challenge_index: sessionTotal,
+                        chord_type: window.realProgressionLabel || window.currentSymbol,
+                        chord_root: window.currentKeyContext ? window.currentKeyContext.root : (window.currentSymbol ? window.currentSymbol.substring(0, window.currentSymbol.length - (window.currentSymbol.match(/m|7|dim|aug|sus|M.*/) || [''])[0].length) : 'C'),
+                        chord_quality: window.currentSymbol && window.currentSymbol.match(/m|7|dim|aug|sus|M.*/) ? window.currentSymbol.match(/m|7|dim|aug|sus|M.*/)[0] : 'triad',
+                        key_context: window.currentKeyContext ? window.currentKeyContext.root : null,
+                        roman_numeral: window.realProgressionLabel,
+                        progression_sequence: window.currentProgression || [],
+                        answer_given: o,
+                        is_correct: correct,
+                        used_reveal: currentRevealUsed,
+                        used_solo: currentSoloUsed,
+                        replay_count: currentChallengeReplays,
+                        reaction_time_ms: reactionTime
+                    };
+                    window.dbClient.saveChallenge(payload);
+                    if (window.adaptiveEngine) {
+                        window.adaptiveEngine.updateWeakSpots(window.dbClient.getUserId(), payload, correct);
+                    }
+                }
+                
+                currentRevealUsed = false;
+                currentSoloUsed = false;
+                currentChallengeReplays = 0;
 
                 if (correct) {
                     sessionCorrect++;
@@ -513,14 +584,28 @@ document.addEventListener("DOMContentLoaded", () => {
         const level = document.getElementById("level_select").value;
         const root  = ROOTS[Math.floor(Math.random() * ROOTS.length)];
 
+        // --- ADAPTIVE OVERRIDES ---
+        let currentRoot = root;
+        let overrides = null;
+        if (window.adaptiveEngine && document.getElementById("adaptive_mode_menu")?.value === "on") {
+            const userId = window.dbClient?.getUserId();
+            if (userId) overrides = await window.adaptiveEngine.selectNextChallengeOverrides(userId, level, isProgression ? "progression" : "single");
+        }
+        if (overrides && overrides.forceRoot) currentRoot = overrides.forceRoot;
+
         if (isProgression) {
             let pool = LEVEL_POOLS_PROG[level] || LEVEL_POOLS_PROG["1: Basic Triads"];
-            let item = pool[Math.floor(Math.random() * pool.length)];
+            let targetItem = null;
+            if (overrides && overrides.forceProgression) {
+                 const match = pool.find(p => p.startsWith(overrides.forceProgression));
+                 if (match) targetItem = match;
+            }
+            let item = targetItem || pool[Math.floor(Math.random() * pool.length)];
             let parts = item.split("|");
-            let name = parts[0] + "\n(" + parts.slice(1).map(c => transposeChord(c, root)).join(" - ") + ")";
-            window.currentProgression = parts.slice(1).map(c => transposeChord(c, root));
+            let name = parts[0] + "\n(" + parts.slice(1).map(c => transposeChord(c, currentRoot)).join(" - ") + ")";
+            window.currentProgression = parts.slice(1).map(c => transposeChord(c, currentRoot));
             document.getElementById("combo_label")?.innerText;
-            window.realProgressionLabel = parts[0].split("\n")[0] + " in " + root;
+            window.realProgressionLabel = parts[0].split("\n")[0] + " in " + currentRoot;
 
             // Determine key context for key signature rendering (Global Standard)
             const progLabel = parts[0].toLowerCase();
@@ -528,7 +613,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 ? !progLabel.startsWith('im') && !progLabel.startsWith('iø') && !progLabel.startsWith('ii') && !progLabel.startsWith('i -')
                 : true;
             const levelIsMinor = /^i[^I]/.test(parts[0].trim()) && !parts[0].trim().startsWith('Im');
-            window.currentKeyContext = { root: root, isMajor: !levelIsMinor };
+            window.currentKeyContext = { root: currentRoot, isMajor: !levelIsMinor };
             window.gui.drawPitches([], window.currentKeyContext);
 
             let wrongOpts = [];
@@ -582,10 +667,15 @@ document.addEventListener("DOMContentLoaded", () => {
             window.currentProgression = null;
             window.currentKeyContext = null;  // Single chord: no key signature
             let pool = LEVEL_POOLS_SINGLE[level] || LEVEL_POOLS_SINGLE["1: Basic Triads"];
-            let sym  = pool[Math.floor(Math.random() * pool.length)];
+            let targetItem = null;
+            if (overrides && overrides.forceQuality) {
+                 const match = pool.find(p => p.includes(overrides.forceQuality));
+                 if (match) targetItem = match;
+            }
+            let sym  = targetItem || pool[Math.floor(Math.random() * pool.length)];
             let match = sym.match(/^([A-G][b#]?)(.*)/);
             let qual  = match ? match[2] : "";
-            let targetChord = root + qual;
+            let targetChord = currentRoot + qual;
             window.currentSymbol = targetChord;
             document.getElementById("combo_label")?.innerText;
             window.realProgressionLabel = targetChord;
@@ -608,6 +698,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // ── PLAY button ─────────────────────────────────────────
     document.getElementById("play_btn").addEventListener("click", () => {
+        if (!currentChallengeStart) currentChallengeStart = Date.now();
+        if (!currentSessionStart) currentSessionStart = new Date();
+        currentChallengeReplays++;
+        currentSessionReplayCount++;
+
         if (window.audioEngine.ctx.state === 'suspended') window.audioEngine.ctx.resume();
         // Guard: if somehow no challenge loaded yet, start one
         if (!window.currentSymbol && !window.currentProgression) {

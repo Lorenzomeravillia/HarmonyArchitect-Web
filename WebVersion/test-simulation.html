@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-client.js"></script>
+    <script src="js/adaptive.js"></script>
+</head>
+<body>
+    <h1>Simulating Backend...</h1>
+    <pre id="log"></pre>
+    <script>
+        const log = (msg) => {
+            console.log(msg);
+            document.getElementById('log').textContent += msg + '\n';
+        };
+
+        async function runSim() {
+            log("Initializing DB Client...");
+            await window.dbClient.init();
+            
+            // Wait for queue flush if any
+            await new Promise(r => setTimeout(r, 1500));
+            const userId = window.dbClient.getUserId();
+            log("User ID authenticated: " + userId);
+
+            if (!userId) { log("FAILED: NO USER ID"); return; }
+
+            log("--- Session 1: Simulated Failure on Dim7 ---");
+            const challenge1 = { chord_quality: "dim7", chord_root: "C", answer_given: "m7b5", roman_numeral: "vii°7" };
+            await window.adaptiveEngine.updateWeakSpots(userId, challenge1, false);
+
+            log("--- Session 2: Simulated Success on Dim7 ---");
+            await window.adaptiveEngine.updateWeakSpots(userId, challenge1, true);
+
+            log("--- Session 3: Simulated Success on M7 ---");
+            const challenge2 = { chord_quality: "maj7", chord_root: "F", roman_numeral: "IVmaj7" };
+            await window.adaptiveEngine.updateWeakSpots(userId, challenge2, true);
+
+            // Wait a sec for safeWrites to finish (they are async fire-and-forget in tracking wrappers, but upsertWeakSpot uses await safeWrite)
+            await new Promise(r => setTimeout(r, 1000));
+
+            log("Fetching weak spots from DB...");
+            const { data, error } = await window.dbClient.client.schema('cv').from('weak_spots').select('*').eq('user_id', userId);
+            
+            if (error) { log("Error: " + JSON.stringify(error)); return; }
+            log("Weak Spots Retrieved: " + data.length);
+            data.forEach(d => {
+                log(`- ${d.dimension}: ${d.value} | Correct: ${d.correct_count}/${d.total_attempts} | Error Rate: ${d.error_rate}`);
+            });
+            log("DONE");
+            // Appending a specific DOM node so browser_agent knows to return
+            const doneNode = document.createElement('div');
+            doneNode.id = 'sim_done';
+            document.body.appendChild(doneNode);
+        }
+        
+        // Start automatically
+        setTimeout(runSim, 500);
+    </script>
+</body>
+</html>

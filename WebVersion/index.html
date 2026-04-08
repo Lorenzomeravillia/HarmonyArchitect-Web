@@ -120,6 +120,11 @@
                     <option value="5" selected>5 challenges</option>
                     <option value="10">10 challenges</option>
                 </select>
+                <span class="label">Adaptive:</span>
+                <select id="adaptive_mode_menu" class="dropdown orange-btn" style="background:#55EFC4; color:#000;">
+                    <option value="off" selected>OFF</option>
+                    <option value="on">ON (SM-2)</option>
+                </select>
             </div>
         </div>
 
@@ -248,6 +253,8 @@
     <!-- Tone.js (High quality sampler and audio context management) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/15.1.22/Tone.js"></script>
 
+    <script src="js/supabase-client.js?v=54"></script>
+    <script src="js/adaptive.js?v=54"></script>
     <script src="js/audio_engine.js?v=54"></script>
     <script src="js/music_engine.js?v=54"></script>
     <script src="js/gui.js?v=54"></script>
