@@ -102,19 +102,19 @@
         </div>
 
         <!-- Staff and Answers -->
-        <div class="middle-frame flex-row flex-wrap">
+        <div class="middle-frame flex-row flex-wrap" style="position: relative;">
             <div class="panel staff-frame flex-1 border-thick" style="position: relative;">
                 <canvas id="staff_canvas" width="600" height="440" style="display: block;"></canvas>
             </div>
             <div class="answers-frame flex-col">
                 <!-- Populated by JS -->
             </div>
-        </div>
-
-        <!-- Inline Feedback Controls (Thumb Zone) -->
-        <div id="inline_feedback" class="inline-feedback-controls">
-            <button id="next_popup_replay" class="btn inline-fb-btn inline-fb-replay">🔄 Replay</button>
-            <button id="next_popup_continue" class="btn inline-fb-btn inline-fb-next">▶ Play Next</button>
+            
+            <!-- Inline Feedback Controls (Thumb Zone) -->
+            <div id="inline_feedback" class="inline-feedback-controls">
+                <button id="next_popup_replay" class="btn inline-fb-btn inline-fb-replay">🔄 Replay</button>
+                <button id="next_popup_continue" class="btn inline-fb-btn inline-fb-next">▶ Play Next</button>
+            </div>
         </div>
 
         <!-- Voice Isolation (Solo) -->
@@ -186,7 +186,7 @@
     <div id="start_overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg-main);z-index:9999;display:flex;align-items:center;justify-content:center;color:white;flex-direction:column;gap:28px;">
         <span style="font-size:56px;">🎹</span>
         <h1 style="font-size:clamp(22px,6vw,32px);font-weight:800;letter-spacing:0.03em;margin:0;text-align:center;">ClearVoicing</h1>
-        <p style="color:#2EC4B6;font-size:12px;margin-top:-20px;font-family:monospace;">VERSION 1.3.4</p>
+        <p style="color:#2EC4B6;font-size:12px;margin-top:-20px;font-family:monospace;">VERSION 1.3.5</p>
         <p style="color:#8899BB;font-size:15px;margin:0;text-align:center;">Start hearing every single voice.</p>
         <button style="background:linear-gradient(135deg,#4A65A5,#2EC4B6);color:white;border:none;border-radius:16px;font-size:20px;font-weight:700;padding:18px 44px;cursor:pointer;letter-spacing:0.04em;box-shadow:0 0 24px rgba(74,101,165,0.5);margin-top:12px;">▶ START TRAINING</button>
         
@@ -208,12 +208,12 @@
     <!-- Tone.js (High quality sampler and audio context management) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/15.1.22/Tone.js"></script>
 
-    <script src="js/audio_engine.js?v=41"></script>
-    <script src="js/music_engine.js?v=41"></script>
-    <script src="js/gui.js?v=41"></script>
-    <script src="js/coach.js?v=41"></script>
-    <script src="js/db_handler.js?v=41"></script>
-    <script src="js/main.js?v=41"></script>
+    <script src="js/audio_engine.js?v=42"></script>
+    <script src="js/music_engine.js?v=42"></script>
+    <script src="js/gui.js?v=42"></script>
+    <script src="js/coach.js?v=42"></script>
+    <script src="js/db_handler.js?v=42"></script>
+    <script src="js/main.js?v=42"></script>
 
 </body>
 </html>

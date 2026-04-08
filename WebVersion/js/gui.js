@@ -172,21 +172,43 @@ class GUI {
         this.logicW = 600;
         this.logicH = 440;
 
-        // Canvas click → play individual note
-        this.canvas.addEventListener("mousedown", (e) => {
+        // Canvas click/touch → play individual note
+        const handleCanvasTap = (clientX, clientY) => {
             if (!window.noteHitboxes) return;
             const rct = this.canvas.getBoundingClientRect();
-            const px = ((e.clientX - rct.left) / rct.width) * this.logicW;
-            const py = ((e.clientY - rct.top) / rct.height) * this.logicH;
-            for (let i = window.noteHitboxes.length - 1; i >= 0; i--) {
-                let hb = window.noteHitboxes[i];
-                if (Math.hypot(px - hb.x, py - hb.y) <= 11) {
-                    if (window.audioEngine.ctx?.state === 'suspended') window.audioEngine.ctx.resume();
-                    window.audioEngine.playPitch(hb.voiceIdx, hb.freq, 1.0, hb.chordIdx);
-                    break;
+            const px = ((clientX - rct.left) / rct.width) * this.logicW;
+            const py = ((clientY - rct.top) / rct.height) * this.logicH;
+            
+            let closest = null;
+            let minDist = 22; // 44px diameter physical hit zone
+            
+            // Nearest neighbor scan
+            for (let hb of window.noteHitboxes) {
+                let dist = Math.hypot(px - hb.x, py - hb.y);
+                if (dist < minDist) {
+                    minDist = dist;
+                    closest = hb;
                 }
             }
+            
+            if (closest) {
+                if (window.audioEngine.ctx?.state === 'suspended') window.audioEngine.ctx.resume();
+                window.audioEngine.playPitch(closest.voiceIdx, closest.freq, 1.0, closest.chordIdx);
+                this._animateNotePulse(closest);
+            }
+        };
+
+        this.canvas.addEventListener("mousedown", (e) => {
+            if (e.pointerType === 'touch') return; // Prevent double trigger
+            handleCanvasTap(e.clientX, e.clientY);
         });
+
+        this.canvas.addEventListener("touchstart", (e) => {
+            e.preventDefault(); // Prevents phantom clicks delaying UI
+            if (e.touches.length > 0) {
+                handleCanvasTap(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        }, { passive: false });
 
         // Auto-resize
         this._resizeObserver = new ResizeObserver(() => {
@@ -226,6 +248,23 @@ class GUI {
         document.querySelectorAll('#solo_buttons_frame .solo-btn').forEach(btn => {
             btn.style.display = 'none';
         });
+    }
+
+    _animateNotePulse(hb) {
+        if (!this.canvas) return;
+        const rct = this.canvas.getBoundingClientRect();
+        // Project canvas logical coordinate space back to raw viewport DOM coordinates
+        const domX = rct.left + (hb.x / this.logicW) * rct.width;
+        const domY = rct.top + (hb.y / this.logicH) * rct.height;
+        
+        let ring = document.createElement('div');
+        ring.className = 'note-pulse-ring';
+        ring.style.left = domX + 'px';
+        ring.style.top = domY + 'px';
+        document.body.appendChild(ring);
+        
+        // Let CSS animation complete before purging
+        setTimeout(() => { if (ring.parentNode) ring.remove(); }, 400);
     }
 
     _sizeCanvas() {

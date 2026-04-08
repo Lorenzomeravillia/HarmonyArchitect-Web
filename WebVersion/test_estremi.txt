@@ -1,0 +1,905 @@
+--- EXTREME TONALITIES PROGRESSION TEST REPORT (v1.3.4) ---
+Generated 100 simulations concentrating heavily on keys with massive alterations (F#, Gb, C#, Db, Eb minor, B minor etc.).
+Iconography stripped. Format: Plain Text.
+===========================================================
+
+Test [001]: 1: Basic Triads
+Global Base Root : E Major
+Correct Solution : I - vim - IV - V in E (E - C#m - A - B)
+Answers Array    :
+   1. [OK] I - vim - IV - V in E (E - C#m - A - B)
+   2. [XX] I - iim - V - I in E (E - F#m - B - E)
+   3. [XX] im - VI - VII - im in E (Em - C - D - Em)
+   4. [XX] I - IV - V - I in E (E - A - B - E)
+-----------------------------------------------------------
+Test [002]: 4: Advanced
+Global Base Root : B Minor
+Correct Solution : iim7 - subV7 - Imaj7 in B (C#m7 - C7 - Bmaj7)
+Answers Array    :
+   1. [XX] iim7 - V7 - Imaj7 in B (C#m7 - F#7 - Bmaj7)
+   2. [XX] iiø7 - V7 - im7 in B (C#m7b5 - F#7 - Bm7)
+   3. [XX] iim9 - V13 - Imaj9 in B (C#m9 - F#13 - Bmaj9)
+   4. [OK] iim7 - subV7 - Imaj7 in B (C#m7 - C7 - Bmaj7)
+-----------------------------------------------------------
+Test [003]: 4: Advanced
+Global Base Root : Cb Major
+Correct Solution : Imaj7 - bIII7 - bVImaj7 - subV7 in Cb (Bmaj7 - D7 - Gmaj7 - C7)
+Answers Array    :
+   1. [OK] Imaj7 - bIII7 - bVImaj7 - subV7 in Cb (Bmaj7 - D7 - Gmaj7 - C7)
+   2. [XX] I - vim - IV - V in Cb (B - Abm - E - Gb)
+   3. [XX] I - IV - V - I in Cb (B - E - Gb - B)
+   4. [XX] V7/ii - iim7 - V7 - Imaj7 in Cb (Ab7 - Dbm7 - Gb7 - Bmaj7)
+-----------------------------------------------------------
+Test [004]: 2: Seventh Chords
+Global Base Root : A Minor
+Correct Solution : iiø7 - V7 - im7 in A (Bm7b5 - E7 - Am7)
+Answers Array    :
+   1. [OK] iiø7 - V7 - im7 in A (Bm7b5 - E7 - Am7)
+   2. [XX] iim7 - V7 - Imaj7 in A (Bm7 - E7 - Amaj7)
+   3. [XX] iim9 - V13 - Imaj9 in A (Bm9 - E13 - Amaj9)
+   4. [XX] iiø7 - V7alt - im9 in A (Bm7b5 - E7alt - Am9)
+-----------------------------------------------------------
+Test [005]: 3: Jazz Extensions
+Global Base Root : A Minor
+Correct Solution : iiø7 - V7alt - im9 in A (Bm7b5 - E7alt - Am9)
+Answers Array    :
+   1. [XX] iiø7 - V7 - im7 in A (Bm7b5 - E7 - Am7)
+   2. [XX] iim9 - V13 - Imaj9 in A (Bm9 - E13 - Amaj9)
+   3. [OK] iiø7 - V7alt - im9 in A (Bm7b5 - E7alt - Am9)
+   4. [XX] iim7 - V7 - Imaj7 in A (Bm7 - E7 - Amaj7)
+-----------------------------------------------------------
+Test [006]: 2: Seventh Chords
+Global Base Root : Gb Major
+Correct Solution : Imaj7 - vim7 - iim7 - V7 in Gb (Gbmaj7 - Ebm7 - Abm7 - Db7)
+Answers Array    :
+   1. [OK] Imaj7 - vim7 - iim7 - V7 in Gb (Gbmaj7 - Ebm7 - Abm7 - Db7)
+   2. [XX] I - vim - IV - V in Gb (Gb - Ebm - B - Db)
+   3. [XX] I - IV - V - I in Gb (Gb - B - Db - Gb)
+   4. [XX] im7 - ivm7 - VII7 - IIImaj7 in Gb (Gbm7 - Bm7 - E7 - Amaj7)
+-----------------------------------------------------------
+Test [007]: 2: Seventh Chords
+Global Base Root : C# Minor
+Correct Solution : iiø7 - V7 - im7 in C# (D#m7b5 - G#7 - C#m7)
+Answers Array    :
+   1. [OK] iiø7 - V7 - im7 in C# (D#m7b5 - G#7 - C#m7)
+   2. [XX] iiø7 - V7alt - im9 in C# (D#m7b5 - G#7alt - C#m9)
+   3. [XX] iim9 - V13 - Imaj9 in C# (D#m9 - G#13 - C#maj9)
+   4. [XX] iim7 - V7 - Imaj7 in C# (D#m7 - G#7 - C#maj7)
+-----------------------------------------------------------
+Test [008]: 2: Seventh Chords
+Global Base Root : C# Minor
+Correct Solution : im7 - ivm7 - VII7 - IIImaj7 in C# (C#m7 - F#m7 - B7 - Emaj7)
+Answers Array    :
+   1. [OK] im7 - ivm7 - VII7 - IIImaj7 in C# (C#m7 - F#m7 - B7 - Emaj7)
+   2. [XX] I - vim - IV - V in C# (C# - A#m - F# - G#)
+   3. [XX] I - IV - V - I in C# (C# - F# - G# - C#)
+   4. [XX] Imaj7 - vim7 - iim7 - V7 in C# (C#maj7 - A#m7 - D#m7 - G#7)
+-----------------------------------------------------------
+Test [009]: 1: Basic Triads
+Global Base Root : Eb Major
+Correct Solution : I - vim - IV - V in Eb (Eb - Cm - Ab - Bb)
+Answers Array    :
+   1. [OK] I - vim - IV - V in Eb (Eb - Cm - Ab - Bb)
+   2. [XX] I - iim - V - I in Eb (Eb - Fm - Bb - Eb)
+   3. [XX] im - ivm - V - im in Eb (Ebm - Abm - Bb - Ebm)
+   4. [XX] I - IV - V - I in Eb (Eb - Ab - Bb - Eb)
+-----------------------------------------------------------
+Test [010]: 2: Seventh Chords
+Global Base Root : A Major
+Correct Solution : Imaj7 - vim7 - iim7 - V7 in A (Amaj7 - F#m7 - Bm7 - E7)
+Answers Array    :
+   1. [OK] Imaj7 - vim7 - iim7 - V7 in A (Amaj7 - F#m7 - Bm7 - E7)
+   2. [XX] I - vim - IV - V in A (A - F#m - D - E)
+   3. [XX] I - IV - V - I in A (A - D - E - A)
+   4. [XX] im7 - ivm7 - VII7 - IIImaj7 in A (Am7 - Dm7 - G7 - Cmaj7)
+-----------------------------------------------------------
+Test [011]: 2: Seventh Chords
+Global Base Root : Cb Minor
+Correct Solution : iim7 - V7 - Imaj7 in Cb (Dbm7 - Gb7 - Bmaj7)
+Answers Array    :
+   1. [XX] iiø7 - V7 - im7 in Cb (Dbm7b5 - Gb7 - Bm7)
+   2. [XX] iim9 - V13 - Imaj9 in Cb (Dbm9 - Gb13 - Bmaj9)
+   3. [OK] iim7 - V7 - Imaj7 in Cb (Dbm7 - Gb7 - Bmaj7)
+   4. [XX] iiø7 - V7alt - im9 in Cb (Dbm7b5 - Gb7alt - Bm9)
+-----------------------------------------------------------
+Test [012]: 2: Seventh Chords
+Global Base Root : Gb Major
+Correct Solution : Imaj7 - vim7 - iim7 - V7 in Gb (Gbmaj7 - Ebm7 - Abm7 - Db7)
+Answers Array    :
+   1. [OK] Imaj7 - vim7 - iim7 - V7 in Gb (Gbmaj7 - Ebm7 - Abm7 - Db7)
+   2. [XX] I - vim - IV - V in Gb (Gb - Ebm - B - Db)
+   3. [XX] I - IV - V - I in Gb (Gb - B - Db - Gb)
+   4. [XX] im7 - ivm7 - VII7 - IIImaj7 in Gb (Gbm7 - Bm7 - E7 - Amaj7)
+-----------------------------------------------------------
+Test [013]: 4: Advanced
+Global Base Root : E Major
+Correct Solution : Imaj7 - bIII7 - bVImaj7 - subV7 in E (Emaj7 - G7 - Cmaj7 - F7)
+Answers Array    :
+   1. [OK] Imaj7 - bIII7 - bVImaj7 - subV7 in E (Emaj7 - G7 - Cmaj7 - F7)
+   2. [XX] I - IV - V - I in E (E - A - B - E)
+   3. [XX] V7/ii - iim7 - V7 - Imaj7 in E (C#7 - F#m7 - B7 - Emaj7)
+   4. [XX] I - vim - IV - V in E (E - C#m - A - B)
+-----------------------------------------------------------
+Test [014]: 3: Jazz Extensions
+Global Base Root : B Minor
+Correct Solution : iim9 - V13 - Imaj9 in B (C#m9 - F#13 - Bmaj9)
+Answers Array    :
+   1. [XX] iim7 - V7 - Imaj7 in B (C#m7 - F#7 - Bmaj7)
+   2. [OK] iim9 - V13 - Imaj9 in B (C#m9 - F#13 - Bmaj9)
+   3. [XX] iiø7 - V7alt - im9 in B (C#m7b5 - F#7alt - Bm9)
+   4. [XX] iiø7 - V7 - im7 in B (C#m7b5 - F#7 - Bm7)
+-----------------------------------------------------------
+Test [015]: 4: Advanced
+Global Base Root : Gb Major
+Correct Solution : Imaj7 - bIII7 - bVImaj7 - subV7 in Gb (Gbmaj7 - A7 - Dmaj7 - G7)
+Answers Array    :
+   1. [XX] I - vim - IV - V in Gb (Gb - Ebm - B - Db)
+   2. [XX] I - IV - V - I in Gb (Gb - B - Db - Gb)
+   3. [XX] V7/ii - iim7 - V7 - Imaj7 in Gb (Eb7 - Abm7 - Db7 - Gbmaj7)
+   4. [OK] Imaj7 - bIII7 - bVImaj7 - subV7 in Gb (Gbmaj7 - A7 - Dmaj7 - G7)
+-----------------------------------------------------------
+Test [016]: 2: Seventh Chords
+Global Base Root : Eb Minor
+Correct Solution : iim7 - V7 - Imaj7 in Eb (Fm7 - Bb7 - Ebmaj7)
+Answers Array    :
+   1. [XX] iiø7 - V7alt - im9 in Eb (Fm7b5 - Bb7alt - Ebm9)
+   2. [OK] iim7 - V7 - Imaj7 in Eb (Fm7 - Bb7 - Ebmaj7)
+   3. [XX] iim9 - V13 - Imaj9 in Eb (Fm9 - Bb13 - Ebmaj9)
+   4. [XX] iiø7 - V7 - im7 in Eb (Fm7b5 - Bb7 - Ebm7)
+-----------------------------------------------------------
+Test [017]: 4: Advanced
+Global Base Root : E Major
+Correct Solution : V7/ii - iim7 - V7 - Imaj7 in E (C#7 - F#m7 - B7 - Emaj7)
+Answers Array    :
+   1. [OK] V7/ii - iim7 - V7 - Imaj7 in E (C#7 - F#m7 - B7 - Emaj7)
+   2. [XX] I - vim - IV - V in E (E - C#m - A - B)
+   3. [XX] I - IV - V - I in E (E - A - B - E)
+   4. [XX] Imaj7 - bIII7 - bVImaj7 - subV7 in E (Emaj7 - G7 - Cmaj7 - F7)
+-----------------------------------------------------------
+Test [018]: 2: Seventh Chords
+Global Base Root : Gb Major
+Correct Solution : Imaj7 - vim7 - iim7 - V7 in Gb (Gbmaj7 - Ebm7 - Abm7 - Db7)
+Answers Array    :
+   1. [OK] Imaj7 - vim7 - iim7 - V7 in Gb (Gbmaj7 - Ebm7 - Abm7 - Db7)
+   2. [XX] I - vim - IV - V in Gb (Gb - Ebm - B - Db)
+   3. [XX] I - IV - V - I in Gb (Gb - B - Db - Gb)
+   4. [XX] im7 - ivm7 - VII7 - IIImaj7 in Gb (Gbm7 - Bm7 - E7 - Amaj7)
+-----------------------------------------------------------
+Test [019]: 1: Basic Triads
+Global Base Root : B Major
+Correct Solution : I - IV - V - I in B (B - E - F# - B)
+Answers Array    :
+   1. [XX] im - ivm - V - im in B (Bm - Em - F# - Bm)
+   2. [OK] I - IV - V - I in B (B - E - F# - B)
+   3. [XX] I - vim - IV - V in B (B - G#m - E - F#)
+   4. [XX] I - iim - V - I in B (B - C#m - F# - B)
+-----------------------------------------------------------
+Test [020]: 4: Advanced
+Global Base Root : Eb Major
+Correct Solution : Imaj7 - bIII7 - bVImaj7 - subV7 in Eb (Ebmaj7 - Gb7 - Bmaj7 - E7)
+Answers Array    :
+   1. [OK] Imaj7 - bIII7 - bVImaj7 - subV7 in Eb (Ebmaj7 - Gb7 - Bmaj7 - E7)
+   2. [XX] I - vim - IV - V in Eb (Eb - Cm - Ab - Bb)
+   3. [XX] I - IV - V - I in Eb (Eb - Ab - Bb - Eb)
+   4. [XX] V7/ii - iim7 - V7 - Imaj7 in Eb (C7 - Fm7 - Bb7 - Ebmaj7)
+-----------------------------------------------------------
+Test [021]: 2: Seventh Chords
+Global Base Root : Ab Major
+Correct Solution : Imaj7 - vim7 - iim7 - V7 in Ab (Abmaj7 - Fm7 - Bbm7 - Eb7)
+Answers Array    :
+   1. [OK] Imaj7 - vim7 - iim7 - V7 in Ab (Abmaj7 - Fm7 - Bbm7 - Eb7)
+   2. [XX] I - vim - IV - V in Ab (Ab - Fm - Db - Eb)
+   3. [XX] I - IV - V - I in Ab (Ab - Db - Eb - Ab)
+   4. [XX] im7 - ivm7 - VII7 - IIImaj7 in Ab (Abm7 - Dbm7 - Gb7 - Bmaj7)
+-----------------------------------------------------------
+Test [022]: 4: Advanced
+Global Base Root : C# Major
+Correct Solution : V7/ii - iim7 - V7 - Imaj7 in C# (A#7 - D#m7 - G#7 - C#maj7)
+Answers Array    :
+   1. [XX] Imaj7 - bIII7 - bVImaj7 - subV7 in C# (C#maj7 - E7 - Amaj7 - D7)
+   2. [XX] I - IV - V - I in C# (C# - F# - G# - C#)
+   3. [XX] I - vim - IV - V in C# (C# - A#m - F# - G#)
+   4. [OK] V7/ii - iim7 - V7 - Imaj7 in C# (A#7 - D#m7 - G#7 - C#maj7)
+-----------------------------------------------------------
+Test [023]: 1: Basic Triads
+Global Base Root : Cb Major
+Correct Solution : I - vim - IV - V in Cb (B - Abm - E - Gb)
+Answers Array    :
+   1. [XX] I - IV - V - I in Cb (B - E - Gb - B)
+   2. [XX] im - ivm - V - im in Cb (Bm - Em - Gb - Bm)
+   3. [XX] I - iim - V - I in Cb (B - Dbm - Gb - B)
+   4. [OK] I - vim - IV - V in Cb (B - Abm - E - Gb)
+-----------------------------------------------------------
+Test [024]: 2: Seventh Chords
+Global Base Root : A Minor
+Correct Solution : iiø7 - V7 - im7 in A (Bm7b5 - E7 - Am7)
+Answers Array    :
+   1. [XX] iim7 - V7 - Imaj7 in A (Bm7 - E7 - Amaj7)
+   2. [XX] iim9 - V13 - Imaj9 in A (Bm9 - E13 - Amaj9)
+   3. [XX] iiø7 - V7alt - im9 in A (Bm7b5 - E7alt - Am9)
+   4. [OK] iiø7 - V7 - im7 in A (Bm7b5 - E7 - Am7)
+-----------------------------------------------------------
+Test [025]: 2: Seventh Chords
+Global Base Root : Gb Major
+Correct Solution : Imaj7 - vim7 - iim7 - V7 in Gb (Gbmaj7 - Ebm7 - Abm7 - Db7)
+Answers Array    :
+   1. [XX] I - vim - IV - V in Gb (Gb - Ebm - B - Db)
+   2. [XX] I - IV - V - I in Gb (Gb - B - Db - Gb)
+   3. [OK] Imaj7 - vim7 - iim7 - V7 in Gb (Gbmaj7 - Ebm7 - Abm7 - Db7)
+   4. [XX] im7 - ivm7 - VII7 - IIImaj7 in Gb (Gbm7 - Bm7 - E7 - Amaj7)
+-----------------------------------------------------------
+Test [026]: 2: Seventh Chords
+Global Base Root : C# Minor
+Correct Solution : iiø7 - V7 - im7 in C# (D#m7b5 - G#7 - C#m7)
+Answers Array    :
+   1. [XX] iiø7 - V7alt - im9 in C# (D#m7b5 - G#7alt - C#m9)
+   2. [XX] iim9 - V13 - Imaj9 in C# (D#m9 - G#13 - C#maj9)
+   3. [OK] iiø7 - V7 - im7 in C# (D#m7b5 - G#7 - C#m7)
+   4. [XX] iim7 - V7 - Imaj7 in C# (D#m7 - G#7 - C#maj7)
+-----------------------------------------------------------
+Test [027]: 2: Seventh Chords
+Global Base Root : A Minor
+Correct Solution : im7 - ivm7 - VII7 - IIImaj7 in A (Am7 - Dm7 - G7 - Cmaj7)
+Answers Array    :
+   1. [XX] Imaj7 - vim7 - iim7 - V7 in A (Amaj7 - F#m7 - Bm7 - E7)
+   2. [XX] I - IV - V - I in A (A - D - E - A)
+   3. [XX] I - vim - IV - V in A (A - F#m - D - E)
+   4. [OK] im7 - ivm7 - VII7 - IIImaj7 in A (Am7 - Dm7 - G7 - Cmaj7)
+-----------------------------------------------------------
+Test [028]: 1: Basic Triads
+Global Base Root : Ab Major
+Correct Solution : I - iim - V - I in Ab (Ab - Bbm - Eb - Ab)
+Answers Array    :
+   1. [OK] I - iim - V - I in Ab (Ab - Bbm - Eb - Ab)
+   2. [XX] I - IV - V - I in Ab (Ab - Db - Eb - Ab)
+   3. [XX] im - ivm - V - im in Ab (Abm - Dbm - Eb - Abm)
+   4. [XX] im - VI - VII - im in Ab (Abm - E - Gb - Abm)
+-----------------------------------------------------------
+Test [029]: 4: Advanced
+Global Base Root : Eb Major
+Correct Solution : V7/ii - iim7 - V7 - Imaj7 in Eb (C7 - Fm7 - Bb7 - Ebmaj7)
+Answers Array    :
+   1. [XX] I - vim - IV - V in Eb (Eb - Cm - Ab - Bb)
+   2. [OK] V7/ii - iim7 - V7 - Imaj7 in Eb (C7 - Fm7 - Bb7 - Ebmaj7)
+   3. [XX] I - IV - V - I in Eb (Eb - Ab - Bb - Eb)
+   4. [XX] Imaj7 - bIII7 - bVImaj7 - subV7 in Eb (Ebmaj7 - Gb7 - Bmaj7 - E7)
+-----------------------------------------------------------
+Test [030]: 4: Advanced
+Global Base Root : Ab Major
+Correct Solution : V7/ii - iim7 - V7 - Imaj7 in Ab (F7 - Bbm7 - Eb7 - Abmaj7)
+Answers Array    :
+   1. [OK] V7/ii - iim7 - V7 - Imaj7 in Ab (F7 - Bbm7 - Eb7 - Abmaj7)
+   2. [XX] I - IV - V - I in Ab (Ab - Db - Eb - Ab)
+   3. [XX] Imaj7 - bIII7 - bVImaj7 - subV7 in Ab (Abmaj7 - B7 - Emaj7 - A7)
+   4. [XX] I - vim - IV - V in Ab (Ab - Fm - Db - Eb)
+-----------------------------------------------------------
+Test [031]: 1: Basic Triads
+Global Base Root : B Major
+Correct Solution : I - IV - V - I in B (B - E - F# - B)
+Answers Array    :
+   1. [XX] I - iim - V - I in B (B - C#m - F# - B)
+   2. [XX] im - ivm - V - im in B (Bm - Em - F# - Bm)
+   3. [XX] im - VI - VII - im in B (Bm - G - A - Bm)
+   4. [OK] I - IV - V - I in B (B - E - F# - B)
+-----------------------------------------------------------
+Test [032]: 1: Basic Triads
+Global Base Root : Gb Major
+Correct Solution : I - IV - V - I in Gb (Gb - B - Db - Gb)
+Answers Array    :
+   1. [XX] im - VI - VII - im in Gb (Gbm - D - E - Gbm)
+   2. [OK] I - IV - V - I in Gb (Gb - B - Db - Gb)
+   3. [XX] im - ivm - V - im in Gb (Gbm - Bm - Db - Gbm)
+   4. [XX] I - vim - IV - V in Gb (Gb - Ebm - B - Db)
+-----------------------------------------------------------
+Test [033]: 3: Jazz Extensions
+Global Base Root : Cb Major
+Correct Solution : Imaj9 - VI7alt - iim9 - V13 in Cb (Bmaj9 - Ab7alt - Dbm9 - Gb13)
+Answers Array    :
+   1. [XX] im9 - bVImaj9 - iiø7 - V7alt in Cb (Bm9 - Gmaj9 - Dbm7b5 - Gb7alt)
+   2. [XX] I - vim - IV - V in Cb (B - Abm - E - Gb)
+   3. [OK] Imaj9 - VI7alt - iim9 - V13 in Cb (Bmaj9 - Ab7alt - Dbm9 - Gb13)
+   4. [XX] I - IV - V - I in Cb (B - E - Gb - B)
+-----------------------------------------------------------
+Test [034]: 1: Basic Triads
+Global Base Root : Cb Major
+Correct Solution : I - vim - IV - V in Cb (B - Abm - E - Gb)
+Answers Array    :
+   1. [XX] im - ivm - V - im in Cb (Bm - Em - Gb - Bm)
+   2. [XX] I - IV - V - I in Cb (B - E - Gb - B)
+   3. [OK] I - vim - IV - V in Cb (B - Abm - E - Gb)
+   4. [XX] im - VI - VII - im in Cb (Bm - G - A - Bm)
+-----------------------------------------------------------
+Test [035]: 2: Seventh Chords
+Global Base Root : Eb Minor
+Correct Solution : im7 - ivm7 - VII7 - IIImaj7 in Eb (Ebm7 - Abm7 - Db7 - Gbmaj7)
+Answers Array    :
+   1. [XX] I - IV - V - I in Eb (Eb - Ab - Bb - Eb)
+   2. [OK] im7 - ivm7 - VII7 - IIImaj7 in Eb (Ebm7 - Abm7 - Db7 - Gbmaj7)
+   3. [XX] Imaj7 - vim7 - iim7 - V7 in Eb (Ebmaj7 - Cm7 - Fm7 - Bb7)
+   4. [XX] I - vim - IV - V in Eb (Eb - Cm - Ab - Bb)
+-----------------------------------------------------------
+Test [036]: 1: Basic Triads
+Global Base Root : Db Minor
+Correct Solution : im - ivm - V - im in Db (Dbm - Gbm - Ab - Dbm)
+Answers Array    :
+   1. [XX] I - iim - V - I in Db (Db - Ebm - Ab - Db)
+   2. [XX] I - vim - IV - V in Db (Db - Bbm - Gb - Ab)
+   3. [OK] im - ivm - V - im in Db (Dbm - Gbm - Ab - Dbm)
+   4. [XX] I - IV - V - I in Db (Db - Gb - Ab - Db)
+-----------------------------------------------------------
+Test [037]: 2: Seventh Chords
+Global Base Root : A Minor
+Correct Solution : iiø7 - V7 - im7 in A (Bm7b5 - E7 - Am7)
+Answers Array    :
+   1. [XX] iiø7 - V7alt - im9 in A (Bm7b5 - E7alt - Am9)
+   2. [XX] iim9 - V13 - Imaj9 in A (Bm9 - E13 - Amaj9)
+   3. [OK] iiø7 - V7 - im7 in A (Bm7b5 - E7 - Am7)
+   4. [XX] iim7 - V7 - Imaj7 in A (Bm7 - E7 - Amaj7)
+-----------------------------------------------------------
+Test [038]: 3: Jazz Extensions
+Global Base Root : F# Minor
+Correct Solution : im9 - bVImaj9 - iiø7 - V7alt in F# (F#m9 - Dmaj9 - G#m7b5 - C#7alt)
+Answers Array    :
+   1. [OK] im9 - bVImaj9 - iiø7 - V7alt in F# (F#m9 - Dmaj9 - G#m7b5 - C#7alt)
+   2. [XX] I - vim - IV - V in F# (F# - D#m - B - C#)
+   3. [XX] I - IV - V - I in F# (F# - B - C# - F#)
+   4. [XX] Imaj9 - VI7alt - iim9 - V13 in F# (F#maj9 - D#7alt - G#m9 - C#13)
+-----------------------------------------------------------
+Test [039]: 4: Advanced
+Global Base Root : Gb Major
+Correct Solution : V7/ii - iim7 - V7 - Imaj7 in Gb (Eb7 - Abm7 - Db7 - Gbmaj7)
+Answers Array    :
+   1. [OK] V7/ii - iim7 - V7 - Imaj7 in Gb (Eb7 - Abm7 - Db7 - Gbmaj7)
+   2. [XX] I - IV - V - I in Gb (Gb - B - Db - Gb)
+   3. [XX] Imaj7 - bIII7 - bVImaj7 - subV7 in Gb (Gbmaj7 - A7 - Dmaj7 - G7)
+   4. [XX] I - vim - IV - V in Gb (Gb - Ebm - B - Db)
+-----------------------------------------------------------
+Test [040]: 2: Seventh Chords
+Global Base Root : Db Minor
+Correct Solution : iiø7 - V7 - im7 in Db (Ebm7b5 - Ab7 - Dbm7)
+Answers Array    :
+   1. [XX] iim7 - V7 - Imaj7 in Db (Ebm7 - Ab7 - Dbmaj7)
+   2. [XX] iim9 - V13 - Imaj9 in Db (Ebm9 - Ab13 - Dbmaj9)
+   3. [XX] iiø7 - V7alt - im9 in Db (Ebm7b5 - Ab7alt - Dbm9)
+   4. [OK] iiø7 - V7 - im7 in Db (Ebm7b5 - Ab7 - Dbm7)
+-----------------------------------------------------------
+Test [041]: 4: Advanced
+Global Base Root : Db Minor
+Correct Solution : iim7 - subV7 - Imaj7 in Db (Ebm7 - D7 - Dbmaj7)
+Answers Array    :
+   1. [OK] iim7 - subV7 - Imaj7 in Db (Ebm7 - D7 - Dbmaj7)
+   2. [XX] iim9 - V13 - Imaj9 in Db (Ebm9 - Ab13 - Dbmaj9)
+   3. [XX] iiø7 - V7 - im7 in Db (Ebm7b5 - Ab7 - Dbm7)
+   4. [XX] iim7 - V7 - Imaj7 in Db (Ebm7 - Ab7 - Dbmaj7)
+-----------------------------------------------------------
+Test [042]: 4: Advanced
+Global Base Root : Cb Major
+Correct Solution : Imaj7 - bIII7 - bVImaj7 - subV7 in Cb (Bmaj7 - D7 - Gmaj7 - C7)
+Answers Array    :
+   1. [OK] Imaj7 - bIII7 - bVImaj7 - subV7 in Cb (Bmaj7 - D7 - Gmaj7 - C7)
+   2. [XX] I - vim - IV - V in Cb (B - Abm - E - Gb)
+   3. [XX] I - IV - V - I in Cb (B - E - Gb - B)
+   4. [XX] V7/ii - iim7 - V7 - Imaj7 in Cb (Ab7 - Dbm7 - Gb7 - Bmaj7)
+-----------------------------------------------------------
+Test [043]: 1: Basic Triads
+Global Base Root : C# Minor
+Correct Solution : im - ivm - V - im in C# (C#m - F#m - G# - C#m)
+Answers Array    :
+   1. [XX] I - iim - V - I in C# (C# - D#m - G# - C#)
+   2. [OK] im - ivm - V - im in C# (C#m - F#m - G# - C#m)
+   3. [XX] I - vim - IV - V in C# (C# - A#m - F# - G#)
+   4. [XX] im - VI - VII - im in C# (C#m - A - B - C#m)
+-----------------------------------------------------------
+Test [044]: 1: Basic Triads
+Global Base Root : Eb Minor
+Correct Solution : im - VI - VII - im in Eb (Ebm - B - Db - Ebm)
+Answers Array    :
+   1. [XX] I - IV - V - I in Eb (Eb - Ab - Bb - Eb)
+   2. [XX] I - vim - IV - V in Eb (Eb - Cm - Ab - Bb)
+   3. [XX] I - iim - V - I in Eb (Eb - Fm - Bb - Eb)
+   4. [OK] im - VI - VII - im in Eb (Ebm - B - Db - Ebm)
+-----------------------------------------------------------
+Test [045]: 1: Basic Triads
+Global Base Root : A Minor
+Correct Solution : im - VI - VII - im in A (Am - F - G - Am)
+Answers Array    :
+   1. [XX] I - vim - IV - V in A (A - F#m - D - E)
+   2. [XX] im - ivm - V - im in A (Am - Dm - E - Am)
+   3. [OK] im - VI - VII - im in A (Am - F - G - Am)
+   4. [XX] I - iim - V - I in A (A - Bm - E - A)
+-----------------------------------------------------------
+Test [046]: 4: Advanced
+Global Base Root : Db Major
+Correct Solution : Imaj7 - bIII7 - bVImaj7 - subV7 in Db (Dbmaj7 - E7 - Amaj7 - D7)
+Answers Array    :
+   1. [XX] V7/ii - iim7 - V7 - Imaj7 in Db (Bb7 - Ebm7 - Ab7 - Dbmaj7)
+   2. [XX] I - IV - V - I in Db (Db - Gb - Ab - Db)
+   3. [XX] I - vim - IV - V in Db (Db - Bbm - Gb - Ab)
+   4. [OK] Imaj7 - bIII7 - bVImaj7 - subV7 in Db (Dbmaj7 - E7 - Amaj7 - D7)
+-----------------------------------------------------------
+Test [047]: 2: Seventh Chords
+Global Base Root : Gb Minor
+Correct Solution : iiø7 - V7 - im7 in Gb (Abm7b5 - Db7 - Gbm7)
+Answers Array    :
+   1. [XX] iiø7 - V7alt - im9 in Gb (Abm7b5 - Db7alt - Gbm9)
+   2. [XX] iim7 - V7 - Imaj7 in Gb (Abm7 - Db7 - Gbmaj7)
+   3. [OK] iiø7 - V7 - im7 in Gb (Abm7b5 - Db7 - Gbm7)
+   4. [XX] iim9 - V13 - Imaj9 in Gb (Abm9 - Db13 - Gbmaj9)
+-----------------------------------------------------------
+Test [048]: 4: Advanced
+Global Base Root : Cb Minor
+Correct Solution : iim7 - subV7 - Imaj7 in Cb (Dbm7 - C7 - Bmaj7)
+Answers Array    :
+   1. [OK] iim7 - subV7 - Imaj7 in Cb (Dbm7 - C7 - Bmaj7)
+   2. [XX] iim7 - V7 - Imaj7 in Cb (Dbm7 - Gb7 - Bmaj7)
+   3. [XX] iiø7 - V7 - im7 in Cb (Dbm7b5 - Gb7 - Bm7)
+   4. [XX] iim9 - V13 - Imaj9 in Cb (Dbm9 - Gb13 - Bmaj9)
+-----------------------------------------------------------
+Test [049]: 1: Basic Triads
+Global Base Root : E Minor
+Correct Solution : im - VI - VII - im in E (Em - C - D - Em)
+Answers Array    :
+   1. [XX] I - IV - V - I in E (E - A - B - E)
+   2. [XX] I - vim - IV - V in E (E - C#m - A - B)
+   3. [XX] im - ivm - V - im in E (Em - Am - B - Em)
+   4. [OK] im - VI - VII - im in E (Em - C - D - Em)
+-----------------------------------------------------------
+Test [050]: 3: Jazz Extensions
+Global Base Root : F# Minor
+Correct Solution : iiø7 - V7alt - im9 in F# (G#m7b5 - C#7alt - F#m9)
+Answers Array    :
+   1. [XX] iim9 - V13 - Imaj9 in F# (G#m9 - C#13 - F#maj9)
+   2. [XX] iiø7 - V7 - im7 in F# (G#m7b5 - C#7 - F#m7)
+   3. [OK] iiø7 - V7alt - im9 in F# (G#m7b5 - C#7alt - F#m9)
+   4. [XX] iim7 - V7 - Imaj7 in F# (G#m7 - C#7 - F#maj7)
+-----------------------------------------------------------
+Test [051]: 1: Basic Triads
+Global Base Root : Ab Minor
+Correct Solution : im - ivm - V - im in Ab (Abm - Dbm - Eb - Abm)
+Answers Array    :
+   1. [OK] im - ivm - V - im in Ab (Abm - Dbm - Eb - Abm)
+   2. [XX] I - IV - V - I in Ab (Ab - Db - Eb - Ab)
+   3. [XX] I - vim - IV - V in Ab (Ab - Fm - Db - Eb)
+   4. [XX] im - VI - VII - im in Ab (Abm - E - Gb - Abm)
+-----------------------------------------------------------
+Test [052]: 2: Seventh Chords
+Global Base Root : A Minor
+Correct Solution : iiø7 - V7 - im7 in A (Bm7b5 - E7 - Am7)
+Answers Array    :
+   1. [XX] iim7 - V7 - Imaj7 in A (Bm7 - E7 - Amaj7)
+   2. [XX] iim9 - V13 - Imaj9 in A (Bm9 - E13 - Amaj9)
+   3. [XX] iiø7 - V7alt - im9 in A (Bm7b5 - E7alt - Am9)
+   4. [OK] iiø7 - V7 - im7 in A (Bm7b5 - E7 - Am7)
+-----------------------------------------------------------
+Test [053]: 3: Jazz Extensions
+Global Base Root : Db Major
+Correct Solution : Imaj9 - VI7alt - iim9 - V13 in Db (Dbmaj9 - Bb7alt - Ebm9 - Ab13)
+Answers Array    :
+   1. [XX] I - vim - IV - V in Db (Db - Bbm - Gb - Ab)
+   2. [XX] I - IV - V - I in Db (Db - Gb - Ab - Db)
+   3. [OK] Imaj9 - VI7alt - iim9 - V13 in Db (Dbmaj9 - Bb7alt - Ebm9 - Ab13)
+   4. [XX] im9 - bVImaj9 - iiø7 - V7alt in Db (Dbm9 - Amaj9 - Ebm7b5 - Ab7alt)
+-----------------------------------------------------------
+Test [054]: 4: Advanced
+Global Base Root : B Major
+Correct Solution : Imaj7 - bIII7 - bVImaj7 - subV7 in B (Bmaj7 - D7 - Gmaj7 - C7)
+Answers Array    :
+   1. [XX] I - vim - IV - V in B (B - G#m - E - F#)
+   2. [XX] I - IV - V - I in B (B - E - F# - B)
+   3. [OK] Imaj7 - bIII7 - bVImaj7 - subV7 in B (Bmaj7 - D7 - Gmaj7 - C7)
+   4. [XX] V7/ii - iim7 - V7 - Imaj7 in B (G#7 - C#m7 - F#7 - Bmaj7)
+-----------------------------------------------------------
+Test [055]: 3: Jazz Extensions
+Global Base Root : Ab Major
+Correct Solution : Imaj9 - VI7alt - iim9 - V13 in Ab (Abmaj9 - F7alt - Bbm9 - Eb13)
+Answers Array    :
+   1. [OK] Imaj9 - VI7alt - iim9 - V13 in Ab (Abmaj9 - F7alt - Bbm9 - Eb13)
+   2. [XX] I - IV - V - I in Ab (Ab - Db - Eb - Ab)
+   3. [XX] im9 - bVImaj9 - iiø7 - V7alt in Ab (Abm9 - Emaj9 - Bbm7b5 - Eb7alt)
+   4. [XX] I - vim - IV - V in Ab (Ab - Fm - Db - Eb)
+-----------------------------------------------------------
+Test [056]: 4: Advanced
+Global Base Root : Gb Minor
+Correct Solution : iim7 - subV7 - Imaj7 in Gb (Abm7 - G7 - Gbmaj7)
+Answers Array    :
+   1. [XX] iim9 - V13 - Imaj9 in Gb (Abm9 - Db13 - Gbmaj9)
+   2. [XX] iiø7 - V7 - im7 in Gb (Abm7b5 - Db7 - Gbm7)
+   3. [XX] iim7 - V7 - Imaj7 in Gb (Abm7 - Db7 - Gbmaj7)
+   4. [OK] iim7 - subV7 - Imaj7 in Gb (Abm7 - G7 - Gbmaj7)
+-----------------------------------------------------------
+Test [057]: 2: Seventh Chords
+Global Base Root : Ab Minor
+Correct Solution : im7 - ivm7 - VII7 - IIImaj7 in Ab (Abm7 - Dbm7 - Gb7 - Bmaj7)
+Answers Array    :
+   1. [XX] Imaj7 - vim7 - iim7 - V7 in Ab (Abmaj7 - Fm7 - Bbm7 - Eb7)
+   2. [XX] I - IV - V - I in Ab (Ab - Db - Eb - Ab)
+   3. [XX] I - vim - IV - V in Ab (Ab - Fm - Db - Eb)
+   4. [OK] im7 - ivm7 - VII7 - IIImaj7 in Ab (Abm7 - Dbm7 - Gb7 - Bmaj7)
+-----------------------------------------------------------
+Test [058]: 1: Basic Triads
+Global Base Root : E Major
+Correct Solution : I - IV - V - I in E (E - A - B - E)
+Answers Array    :
+   1. [XX] im - ivm - V - im in E (Em - Am - B - Em)
+   2. [OK] I - IV - V - I in E (E - A - B - E)
+   3. [XX] I - vim - IV - V in E (E - C#m - A - B)
+   4. [XX] im - VI - VII - im in E (Em - C - D - Em)
+-----------------------------------------------------------
+Test [059]: 2: Seventh Chords
+Global Base Root : Cb Minor
+Correct Solution : im7 - ivm7 - VII7 - IIImaj7 in Cb (Bm7 - Em7 - A7 - Dmaj7)
+Answers Array    :
+   1. [XX] I - vim - IV - V in Cb (B - Abm - E - Gb)
+   2. [XX] Imaj7 - vim7 - iim7 - V7 in Cb (Bmaj7 - Abm7 - Dbm7 - Gb7)
+   3. [OK] im7 - ivm7 - VII7 - IIImaj7 in Cb (Bm7 - Em7 - A7 - Dmaj7)
+   4. [XX] I - IV - V - I in Cb (B - E - Gb - B)
+-----------------------------------------------------------
+Test [060]: 2: Seventh Chords
+Global Base Root : Ab Minor
+Correct Solution : iiø7 - V7 - im7 in Ab (Bbm7b5 - Eb7 - Abm7)
+Answers Array    :
+   1. [XX] iiø7 - V7alt - im9 in Ab (Bbm7b5 - Eb7alt - Abm9)
+   2. [OK] iiø7 - V7 - im7 in Ab (Bbm7b5 - Eb7 - Abm7)
+   3. [XX] iim9 - V13 - Imaj9 in Ab (Bbm9 - Eb13 - Abmaj9)
+   4. [XX] iim7 - V7 - Imaj7 in Ab (Bbm7 - Eb7 - Abmaj7)
+-----------------------------------------------------------
+Test [061]: 3: Jazz Extensions
+Global Base Root : C# Major
+Correct Solution : Imaj9 - VI7alt - iim9 - V13 in C# (C#maj9 - A#7alt - D#m9 - G#13)
+Answers Array    :
+   1. [XX] im9 - bVImaj9 - iiø7 - V7alt in C# (C#m9 - Amaj9 - D#m7b5 - G#7alt)
+   2. [XX] I - IV - V - I in C# (C# - F# - G# - C#)
+   3. [XX] I - vim - IV - V in C# (C# - A#m - F# - G#)
+   4. [OK] Imaj9 - VI7alt - iim9 - V13 in C# (C#maj9 - A#7alt - D#m9 - G#13)
+-----------------------------------------------------------
+Test [062]: 2: Seventh Chords
+Global Base Root : Gb Minor
+Correct Solution : iiø7 - V7 - im7 in Gb (Abm7b5 - Db7 - Gbm7)
+Answers Array    :
+   1. [XX] iiø7 - V7alt - im9 in Gb (Abm7b5 - Db7alt - Gbm9)
+   2. [XX] iim9 - V13 - Imaj9 in Gb (Abm9 - Db13 - Gbmaj9)
+   3. [XX] iim7 - V7 - Imaj7 in Gb (Abm7 - Db7 - Gbmaj7)
+   4. [OK] iiø7 - V7 - im7 in Gb (Abm7b5 - Db7 - Gbm7)
+-----------------------------------------------------------
+Test [063]: 4: Advanced
+Global Base Root : E Minor
+Correct Solution : iim7 - subV7 - Imaj7 in E (F#m7 - F7 - Emaj7)
+Answers Array    :
+   1. [XX] iim7 - V7 - Imaj7 in E (F#m7 - B7 - Emaj7)
+   2. [XX] iiø7 - V7 - im7 in E (F#m7b5 - B7 - Em7)
+   3. [XX] iim9 - V13 - Imaj9 in E (F#m9 - B13 - Emaj9)
+   4. [OK] iim7 - subV7 - Imaj7 in E (F#m7 - F7 - Emaj7)
+-----------------------------------------------------------
+Test [064]: 4: Advanced
+Global Base Root : Db Major
+Correct Solution : V7/ii - iim7 - V7 - Imaj7 in Db (Bb7 - Ebm7 - Ab7 - Dbmaj7)
+Answers Array    :
+   1. [XX] Imaj7 - bIII7 - bVImaj7 - subV7 in Db (Dbmaj7 - E7 - Amaj7 - D7)
+   2. [OK] V7/ii - iim7 - V7 - Imaj7 in Db (Bb7 - Ebm7 - Ab7 - Dbmaj7)
+   3. [XX] I - IV - V - I in Db (Db - Gb - Ab - Db)
+   4. [XX] I - vim - IV - V in Db (Db - Bbm - Gb - Ab)
+-----------------------------------------------------------
+Test [065]: 4: Advanced
+Global Base Root : Db Major
+Correct Solution : Imaj7 - bIII7 - bVImaj7 - subV7 in Db (Dbmaj7 - E7 - Amaj7 - D7)
+Answers Array    :
+   1. [XX] V7/ii - iim7 - V7 - Imaj7 in Db (Bb7 - Ebm7 - Ab7 - Dbmaj7)
+   2. [XX] I - vim - IV - V in Db (Db - Bbm - Gb - Ab)
+   3. [OK] Imaj7 - bIII7 - bVImaj7 - subV7 in Db (Dbmaj7 - E7 - Amaj7 - D7)
+   4. [XX] I - IV - V - I in Db (Db - Gb - Ab - Db)
+-----------------------------------------------------------
+Test [066]: 2: Seventh Chords
+Global Base Root : F# Major
+Correct Solution : Imaj7 - vim7 - iim7 - V7 in F# (F#maj7 - D#m7 - G#m7 - C#7)
+Answers Array    :
+   1. [XX] im7 - ivm7 - VII7 - IIImaj7 in F# (F#m7 - Bm7 - E7 - Amaj7)
+   2. [XX] I - IV - V - I in F# (F# - B - C# - F#)
+   3. [XX] I - vim - IV - V in F# (F# - D#m - B - C#)
+   4. [OK] Imaj7 - vim7 - iim7 - V7 in F# (F#maj7 - D#m7 - G#m7 - C#7)
+-----------------------------------------------------------
+Test [067]: 3: Jazz Extensions
+Global Base Root : Ab Minor
+Correct Solution : im9 - bVImaj9 - iiø7 - V7alt in Ab (Abm9 - Emaj9 - Bbm7b5 - Eb7alt)
+Answers Array    :
+   1. [XX] I - vim - IV - V in Ab (Ab - Fm - Db - Eb)
+   2. [XX] I - IV - V - I in Ab (Ab - Db - Eb - Ab)
+   3. [OK] im9 - bVImaj9 - iiø7 - V7alt in Ab (Abm9 - Emaj9 - Bbm7b5 - Eb7alt)
+   4. [XX] Imaj9 - VI7alt - iim9 - V13 in Ab (Abmaj9 - F7alt - Bbm9 - Eb13)
+-----------------------------------------------------------
+Test [068]: 1: Basic Triads
+Global Base Root : Eb Major
+Correct Solution : I - vim - IV - V in Eb (Eb - Cm - Ab - Bb)
+Answers Array    :
+   1. [OK] I - vim - IV - V in Eb (Eb - Cm - Ab - Bb)
+   2. [XX] im - VI - VII - im in Eb (Ebm - B - Db - Ebm)
+   3. [XX] I - IV - V - I in Eb (Eb - Ab - Bb - Eb)
+   4. [XX] im - ivm - V - im in Eb (Ebm - Abm - Bb - Ebm)
+-----------------------------------------------------------
+Test [069]: 3: Jazz Extensions
+Global Base Root : A Minor
+Correct Solution : im9 - bVImaj9 - iiø7 - V7alt in A (Am9 - Fmaj9 - Bm7b5 - E7alt)
+Answers Array    :
+   1. [XX] I - vim - IV - V in A (A - F#m - D - E)
+   2. [OK] im9 - bVImaj9 - iiø7 - V7alt in A (Am9 - Fmaj9 - Bm7b5 - E7alt)
+   3. [XX] Imaj9 - VI7alt - iim9 - V13 in A (Amaj9 - F#7alt - Bm9 - E13)
+   4. [XX] I - IV - V - I in A (A - D - E - A)
+-----------------------------------------------------------
+Test [070]: 2: Seventh Chords
+Global Base Root : Cb Minor
+Correct Solution : im7 - ivm7 - VII7 - IIImaj7 in Cb (Bm7 - Em7 - A7 - Dmaj7)
+Answers Array    :
+   1. [OK] im7 - ivm7 - VII7 - IIImaj7 in Cb (Bm7 - Em7 - A7 - Dmaj7)
+   2. [XX] I - vim - IV - V in Cb (B - Abm - E - Gb)
+   3. [XX] I - IV - V - I in Cb (B - E - Gb - B)
+   4. [XX] Imaj7 - vim7 - iim7 - V7 in Cb (Bmaj7 - Abm7 - Dbm7 - Gb7)
+-----------------------------------------------------------
+Test [071]: 4: Advanced
+Global Base Root : B Major
+Correct Solution : V7/ii - iim7 - V7 - Imaj7 in B (G#7 - C#m7 - F#7 - Bmaj7)
+Answers Array    :
+   1. [XX] Imaj7 - bIII7 - bVImaj7 - subV7 in B (Bmaj7 - D7 - Gmaj7 - C7)
+   2. [XX] I - IV - V - I in B (B - E - F# - B)
+   3. [XX] I - vim - IV - V in B (B - G#m - E - F#)
+   4. [OK] V7/ii - iim7 - V7 - Imaj7 in B (G#7 - C#m7 - F#7 - Bmaj7)
+-----------------------------------------------------------
+Test [072]: 3: Jazz Extensions
+Global Base Root : C# Minor
+Correct Solution : iiø7 - V7alt - im9 in C# (D#m7b5 - G#7alt - C#m9)
+Answers Array    :
+   1. [XX] iiø7 - V7 - im7 in C# (D#m7b5 - G#7 - C#m7)
+   2. [XX] iim7 - V7 - Imaj7 in C# (D#m7 - G#7 - C#maj7)
+   3. [XX] iim9 - V13 - Imaj9 in C# (D#m9 - G#13 - C#maj9)
+   4. [OK] iiø7 - V7alt - im9 in C# (D#m7b5 - G#7alt - C#m9)
+-----------------------------------------------------------
+Test [073]: 4: Advanced
+Global Base Root : Cb Major
+Correct Solution : V7/ii - iim7 - V7 - Imaj7 in Cb (Ab7 - Dbm7 - Gb7 - Bmaj7)
+Answers Array    :
+   1. [OK] V7/ii - iim7 - V7 - Imaj7 in Cb (Ab7 - Dbm7 - Gb7 - Bmaj7)
+   2. [XX] I - vim - IV - V in Cb (B - Abm - E - Gb)
+   3. [XX] I - IV - V - I in Cb (B - E - Gb - B)
+   4. [XX] Imaj7 - bIII7 - bVImaj7 - subV7 in Cb (Bmaj7 - D7 - Gmaj7 - C7)
+-----------------------------------------------------------
+Test [074]: 3: Jazz Extensions
+Global Base Root : Ab Minor
+Correct Solution : im9 - bVImaj9 - iiø7 - V7alt in Ab (Abm9 - Emaj9 - Bbm7b5 - Eb7alt)
+Answers Array    :
+   1. [OK] im9 - bVImaj9 - iiø7 - V7alt in Ab (Abm9 - Emaj9 - Bbm7b5 - Eb7alt)
+   2. [XX] Imaj9 - VI7alt - iim9 - V13 in Ab (Abmaj9 - F7alt - Bbm9 - Eb13)
+   3. [XX] I - vim - IV - V in Ab (Ab - Fm - Db - Eb)
+   4. [XX] I - IV - V - I in Ab (Ab - Db - Eb - Ab)
+-----------------------------------------------------------
+Test [075]: 2: Seventh Chords
+Global Base Root : A Minor
+Correct Solution : iiø7 - V7 - im7 in A (Bm7b5 - E7 - Am7)
+Answers Array    :
+   1. [XX] iiø7 - V7alt - im9 in A (Bm7b5 - E7alt - Am9)
+   2. [XX] iim9 - V13 - Imaj9 in A (Bm9 - E13 - Amaj9)
+   3. [OK] iiø7 - V7 - im7 in A (Bm7b5 - E7 - Am7)
+   4. [XX] iim7 - V7 - Imaj7 in A (Bm7 - E7 - Amaj7)
+-----------------------------------------------------------
+Test [076]: 3: Jazz Extensions
+Global Base Root : Ab Minor
+Correct Solution : im9 - bVImaj9 - iiø7 - V7alt in Ab (Abm9 - Emaj9 - Bbm7b5 - Eb7alt)
+Answers Array    :
+   1. [XX] I - vim - IV - V in Ab (Ab - Fm - Db - Eb)
+   2. [OK] im9 - bVImaj9 - iiø7 - V7alt in Ab (Abm9 - Emaj9 - Bbm7b5 - Eb7alt)
+   3. [XX] Imaj9 - VI7alt - iim9 - V13 in Ab (Abmaj9 - F7alt - Bbm9 - Eb13)
+   4. [XX] I - IV - V - I in Ab (Ab - Db - Eb - Ab)
+-----------------------------------------------------------
+Test [077]: 4: Advanced
+Global Base Root : Db Minor
+Correct Solution : iim7 - subV7 - Imaj7 in Db (Ebm7 - D7 - Dbmaj7)
+Answers Array    :
+   1. [XX] iim7 - V7 - Imaj7 in Db (Ebm7 - Ab7 - Dbmaj7)
+   2. [OK] iim7 - subV7 - Imaj7 in Db (Ebm7 - D7 - Dbmaj7)
+   3. [XX] iiø7 - V7 - im7 in Db (Ebm7b5 - Ab7 - Dbm7)
+   4. [XX] iim9 - V13 - Imaj9 in Db (Ebm9 - Ab13 - Dbmaj9)
+-----------------------------------------------------------
+Test [078]: 3: Jazz Extensions
+Global Base Root : C# Minor
+Correct Solution : im9 - bVImaj9 - iiø7 - V7alt in C# (C#m9 - Amaj9 - D#m7b5 - G#7alt)
+Answers Array    :
+   1. [XX] I - vim - IV - V in C# (C# - A#m - F# - G#)
+   2. [OK] im9 - bVImaj9 - iiø7 - V7alt in C# (C#m9 - Amaj9 - D#m7b5 - G#7alt)
+   3. [XX] I - IV - V - I in C# (C# - F# - G# - C#)
+   4. [XX] Imaj9 - VI7alt - iim9 - V13 in C# (C#maj9 - A#7alt - D#m9 - G#13)
+-----------------------------------------------------------
+Test [079]: 3: Jazz Extensions
+Global Base Root : C# Major
+Correct Solution : Imaj9 - VI7alt - iim9 - V13 in C# (C#maj9 - A#7alt - D#m9 - G#13)
+Answers Array    :
+   1. [OK] Imaj9 - VI7alt - iim9 - V13 in C# (C#maj9 - A#7alt - D#m9 - G#13)
+   2. [XX] I - vim - IV - V in C# (C# - A#m - F# - G#)
+   3. [XX] I - IV - V - I in C# (C# - F# - G# - C#)
+   4. [XX] im9 - bVImaj9 - iiø7 - V7alt in C# (C#m9 - Amaj9 - D#m7b5 - G#7alt)
+-----------------------------------------------------------
+Test [080]: 2: Seventh Chords
+Global Base Root : C# Minor
+Correct Solution : iim7 - V7 - Imaj7 in C# (D#m7 - G#7 - C#maj7)
+Answers Array    :
+   1. [XX] iiø7 - V7alt - im9 in C# (D#m7b5 - G#7alt - C#m9)
+   2. [XX] iim9 - V13 - Imaj9 in C# (D#m9 - G#13 - C#maj9)
+   3. [XX] iiø7 - V7 - im7 in C# (D#m7b5 - G#7 - C#m7)
+   4. [OK] iim7 - V7 - Imaj7 in C# (D#m7 - G#7 - C#maj7)
+-----------------------------------------------------------
+Test [081]: 1: Basic Triads
+Global Base Root : Eb Major
+Correct Solution : I - IV - V - I in Eb (Eb - Ab - Bb - Eb)
+Answers Array    :
+   1. [XX] im - ivm - V - im in Eb (Ebm - Abm - Bb - Ebm)
+   2. [XX] I - iim - V - I in Eb (Eb - Fm - Bb - Eb)
+   3. [OK] I - IV - V - I in Eb (Eb - Ab - Bb - Eb)
+   4. [XX] I - vim - IV - V in Eb (Eb - Cm - Ab - Bb)
+-----------------------------------------------------------
+Test [082]: 4: Advanced
+Global Base Root : C# Major
+Correct Solution : Imaj7 - bIII7 - bVImaj7 - subV7 in C# (C#maj7 - E7 - Amaj7 - D7)
+Answers Array    :
+   1. [XX] I - vim - IV - V in C# (C# - A#m - F# - G#)
+   2. [XX] I - IV - V - I in C# (C# - F# - G# - C#)
+   3. [XX] V7/ii - iim7 - V7 - Imaj7 in C# (A#7 - D#m7 - G#7 - C#maj7)
+   4. [OK] Imaj7 - bIII7 - bVImaj7 - subV7 in C# (C#maj7 - E7 - Amaj7 - D7)
+-----------------------------------------------------------
+Test [083]: 4: Advanced
+Global Base Root : Eb Minor
+Correct Solution : iim7 - subV7 - Imaj7 in Eb (Fm7 - E7 - Ebmaj7)
+Answers Array    :
+   1. [OK] iim7 - subV7 - Imaj7 in Eb (Fm7 - E7 - Ebmaj7)
+   2. [XX] iiø7 - V7 - im7 in Eb (Fm7b5 - Bb7 - Ebm7)
+   3. [XX] iim9 - V13 - Imaj9 in Eb (Fm9 - Bb13 - Ebmaj9)
+   4. [XX] iim7 - V7 - Imaj7 in Eb (Fm7 - Bb7 - Ebmaj7)
+-----------------------------------------------------------
+Test [084]: 4: Advanced
+Global Base Root : Ab Major
+Correct Solution : V7/ii - iim7 - V7 - Imaj7 in Ab (F7 - Bbm7 - Eb7 - Abmaj7)
+Answers Array    :
+   1. [XX] I - vim - IV - V in Ab (Ab - Fm - Db - Eb)
+   2. [XX] I - IV - V - I in Ab (Ab - Db - Eb - Ab)
+   3. [XX] Imaj7 - bIII7 - bVImaj7 - subV7 in Ab (Abmaj7 - B7 - Emaj7 - A7)
+   4. [OK] V7/ii - iim7 - V7 - Imaj7 in Ab (F7 - Bbm7 - Eb7 - Abmaj7)
+-----------------------------------------------------------
+Test [085]: 2: Seventh Chords
+Global Base Root : Db Minor
+Correct Solution : im7 - ivm7 - VII7 - IIImaj7 in Db (Dbm7 - Gbm7 - B7 - Emaj7)
+Answers Array    :
+   1. [XX] Imaj7 - vim7 - iim7 - V7 in Db (Dbmaj7 - Bbm7 - Ebm7 - Ab7)
+   2. [OK] im7 - ivm7 - VII7 - IIImaj7 in Db (Dbm7 - Gbm7 - B7 - Emaj7)
+   3. [XX] I - IV - V - I in Db (Db - Gb - Ab - Db)
+   4. [XX] I - vim - IV - V in Db (Db - Bbm - Gb - Ab)
+-----------------------------------------------------------
+Test [086]: 3: Jazz Extensions
+Global Base Root : Eb Minor
+Correct Solution : iiø7 - V7alt - im9 in Eb (Fm7b5 - Bb7alt - Ebm9)
+Answers Array    :
+   1. [OK] iiø7 - V7alt - im9 in Eb (Fm7b5 - Bb7alt - Ebm9)
+   2. [XX] iiø7 - V7 - im7 in Eb (Fm7b5 - Bb7 - Ebm7)
+   3. [XX] iim7 - V7 - Imaj7 in Eb (Fm7 - Bb7 - Ebmaj7)
+   4. [XX] iim9 - V13 - Imaj9 in Eb (Fm9 - Bb13 - Ebmaj9)
+-----------------------------------------------------------
+Test [087]: 1: Basic Triads
+Global Base Root : F# Major
+Correct Solution : I - iim - V - I in F# (F# - G#m - C# - F#)
+Answers Array    :
+   1. [XX] im - ivm - V - im in F# (F#m - Bm - C# - F#m)
+   2. [XX] I - IV - V - I in F# (F# - B - C# - F#)
+   3. [XX] I - vim - IV - V in F# (F# - D#m - B - C#)
+   4. [OK] I - iim - V - I in F# (F# - G#m - C# - F#)
+-----------------------------------------------------------
+Test [088]: 3: Jazz Extensions
+Global Base Root : B Minor
+Correct Solution : im9 - bVImaj9 - iiø7 - V7alt in B (Bm9 - Gmaj9 - C#m7b5 - F#7alt)
+Answers Array    :
+   1. [XX] Imaj9 - VI7alt - iim9 - V13 in B (Bmaj9 - G#7alt - C#m9 - F#13)
+   2. [XX] I - IV - V - I in B (B - E - F# - B)
+   3. [XX] I - vim - IV - V in B (B - G#m - E - F#)
+   4. [OK] im9 - bVImaj9 - iiø7 - V7alt in B (Bm9 - Gmaj9 - C#m7b5 - F#7alt)
+-----------------------------------------------------------
+Test [089]: 1: Basic Triads
+Global Base Root : E Major
+Correct Solution : I - IV - V - I in E (E - A - B - E)
+Answers Array    :
+   1. [XX] im - VI - VII - im in E (Em - C - D - Em)
+   2. [XX] im - ivm - V - im in E (Em - Am - B - Em)
+   3. [XX] I - iim - V - I in E (E - F#m - B - E)
+   4. [OK] I - IV - V - I in E (E - A - B - E)
+-----------------------------------------------------------
+Test [090]: 1: Basic Triads
+Global Base Root : Ab Major
+Correct Solution : I - iim - V - I in Ab (Ab - Bbm - Eb - Ab)
+Answers Array    :
+   1. [XX] im - ivm - V - im in Ab (Abm - Dbm - Eb - Abm)
+   2. [XX] I - vim - IV - V in Ab (Ab - Fm - Db - Eb)
+   3. [OK] I - iim - V - I in Ab (Ab - Bbm - Eb - Ab)
+   4. [XX] I - IV - V - I in Ab (Ab - Db - Eb - Ab)
+-----------------------------------------------------------
+Test [091]: 3: Jazz Extensions
+Global Base Root : Eb Minor
+Correct Solution : iim9 - V13 - Imaj9 in Eb (Fm9 - Bb13 - Ebmaj9)
+Answers Array    :
+   1. [XX] iim7 - V7 - Imaj7 in Eb (Fm7 - Bb7 - Ebmaj7)
+   2. [XX] iiø7 - V7alt - im9 in Eb (Fm7b5 - Bb7alt - Ebm9)
+   3. [XX] iiø7 - V7 - im7 in Eb (Fm7b5 - Bb7 - Ebm7)
+   4. [OK] iim9 - V13 - Imaj9 in Eb (Fm9 - Bb13 - Ebmaj9)
+-----------------------------------------------------------
+Test [092]: 2: Seventh Chords
+Global Base Root : Eb Minor
+Correct Solution : im7 - ivm7 - VII7 - IIImaj7 in Eb (Ebm7 - Abm7 - Db7 - Gbmaj7)
+Answers Array    :
+   1. [XX] Imaj7 - vim7 - iim7 - V7 in Eb (Ebmaj7 - Cm7 - Fm7 - Bb7)
+   2. [XX] I - IV - V - I in Eb (Eb - Ab - Bb - Eb)
+   3. [OK] im7 - ivm7 - VII7 - IIImaj7 in Eb (Ebm7 - Abm7 - Db7 - Gbmaj7)
+   4. [XX] I - vim - IV - V in Eb (Eb - Cm - Ab - Bb)
+-----------------------------------------------------------
+Test [093]: 2: Seventh Chords
+Global Base Root : Db Minor
+Correct Solution : iiø7 - V7 - im7 in Db (Ebm7b5 - Ab7 - Dbm7)
+Answers Array    :
+   1. [OK] iiø7 - V7 - im7 in Db (Ebm7b5 - Ab7 - Dbm7)
+   2. [XX] iim9 - V13 - Imaj9 in Db (Ebm9 - Ab13 - Dbmaj9)
+   3. [XX] iim7 - V7 - Imaj7 in Db (Ebm7 - Ab7 - Dbmaj7)
+   4. [XX] iiø7 - V7alt - im9 in Db (Ebm7b5 - Ab7alt - Dbm9)
+-----------------------------------------------------------
+Test [094]: 2: Seventh Chords
+Global Base Root : F# Minor
+Correct Solution : im7 - ivm7 - VII7 - IIImaj7 in F# (F#m7 - Bm7 - E7 - Amaj7)
+Answers Array    :
+   1. [OK] im7 - ivm7 - VII7 - IIImaj7 in F# (F#m7 - Bm7 - E7 - Amaj7)
+   2. [XX] Imaj7 - vim7 - iim7 - V7 in F# (F#maj7 - D#m7 - G#m7 - C#7)
+   3. [XX] I - IV - V - I in F# (F# - B - C# - F#)
+   4. [XX] I - vim - IV - V in F# (F# - D#m - B - C#)
+-----------------------------------------------------------
+Test [095]: 3: Jazz Extensions
+Global Base Root : Ab Minor
+Correct Solution : im9 - bVImaj9 - iiø7 - V7alt in Ab (Abm9 - Emaj9 - Bbm7b5 - Eb7alt)
+Answers Array    :
+   1. [XX] I - vim - IV - V in Ab (Ab - Fm - Db - Eb)
+   2. [XX] Imaj9 - VI7alt - iim9 - V13 in Ab (Abmaj9 - F7alt - Bbm9 - Eb13)
+   3. [OK] im9 - bVImaj9 - iiø7 - V7alt in Ab (Abm9 - Emaj9 - Bbm7b5 - Eb7alt)
+   4. [XX] I - IV - V - I in Ab (Ab - Db - Eb - Ab)
+-----------------------------------------------------------
+Test [096]: 1: Basic Triads
+Global Base Root : E Minor
+Correct Solution : im - VI - VII - im in E (Em - C - D - Em)
+Answers Array    :
+   1. [XX] I - vim - IV - V in E (E - C#m - A - B)
+   2. [OK] im - VI - VII - im in E (Em - C - D - Em)
+   3. [XX] im - ivm - V - im in E (Em - Am - B - Em)
+   4. [XX] I - iim - V - I in E (E - F#m - B - E)
+-----------------------------------------------------------
+Test [097]: 4: Advanced
+Global Base Root : Eb Minor
+Correct Solution : iim7 - subV7 - Imaj7 in Eb (Fm7 - E7 - Ebmaj7)
+Answers Array    :
+   1. [XX] iiø7 - V7 - im7 in Eb (Fm7b5 - Bb7 - Ebm7)
+   2. [XX] iim9 - V13 - Imaj9 in Eb (Fm9 - Bb13 - Ebmaj9)
+   3. [OK] iim7 - subV7 - Imaj7 in Eb (Fm7 - E7 - Ebmaj7)
+   4. [XX] iim7 - V7 - Imaj7 in Eb (Fm7 - Bb7 - Ebmaj7)
+-----------------------------------------------------------
+Test [098]: 4: Advanced
+Global Base Root : F# Major
+Correct Solution : Imaj7 - bIII7 - bVImaj7 - subV7 in F# (F#maj7 - A7 - Dmaj7 - G7)
+Answers Array    :
+   1. [OK] Imaj7 - bIII7 - bVImaj7 - subV7 in F# (F#maj7 - A7 - Dmaj7 - G7)
+   2. [XX] I - vim - IV - V in F# (F# - D#m - B - C#)
+   3. [XX] I - IV - V - I in F# (F# - B - C# - F#)
+   4. [XX] V7/ii - iim7 - V7 - Imaj7 in F# (D#7 - G#m7 - C#7 - F#maj7)
+-----------------------------------------------------------
+Test [099]: 2: Seventh Chords
+Global Base Root : Db Minor
+Correct Solution : iim7 - V7 - Imaj7 in Db (Ebm7 - Ab7 - Dbmaj7)
+Answers Array    :
+   1. [XX] iiø7 - V7 - im7 in Db (Ebm7b5 - Ab7 - Dbm7)
+   2. [XX] iim9 - V13 - Imaj9 in Db (Ebm9 - Ab13 - Dbmaj9)
+   3. [XX] iiø7 - V7alt - im9 in Db (Ebm7b5 - Ab7alt - Dbm9)
+   4. [OK] iim7 - V7 - Imaj7 in Db (Ebm7 - Ab7 - Dbmaj7)
+-----------------------------------------------------------
+Test [100]: 2: Seventh Chords
+Global Base Root : E Minor
+Correct Solution : im7 - ivm7 - VII7 - IIImaj7 in E (Em7 - Am7 - D7 - Gmaj7)
+Answers Array    :
+   1. [OK] im7 - ivm7 - VII7 - IIImaj7 in E (Em7 - Am7 - D7 - Gmaj7)
+   2. [XX] I - vim - IV - V in E (E - C#m - A - B)
+   3. [XX] I - IV - V - I in E (E - A - B - E)
+   4. [XX] Imaj7 - vim7 - iim7 - V7 in E (Emaj7 - C#m7 - F#m7 - B7)
+-----------------------------------------------------------
