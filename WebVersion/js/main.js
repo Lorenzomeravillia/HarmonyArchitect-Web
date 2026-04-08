@@ -351,6 +351,23 @@ document.addEventListener("DOMContentLoaded", () => {
         levelSelect.appendChild(opt);
     });
 
+    // ── Reactive Auto-Regeneration ──────────────────────────
+    function handleReactiveRegen() {
+        // Only trigger mid-session regeneration if the app is visibly running
+        if (document.getElementById("start_overlay")?.style.display === "none") {
+            resetSession();
+            startNewChallenge();
+            if (navigator.vibrate) navigator.vibrate(10);
+            
+            // Switch play button back back to START visually if it was green
+            const playBtn = document.getElementById('play_btn');
+            if (playBtn && playBtn.textContent === '▶ PLAY') playBtn.textContent = '▶ START';
+        }
+    }
+    
+    document.getElementById("play_mode_menu")?.addEventListener("change", handleReactiveRegen);
+    document.getElementById("level_select")?.addEventListener("change", handleReactiveRegen);
+
     // ── Chord transposer ────────────────────────────────────
     function transposeChord(chordStr, targetRoot) {
         const sharpRoots = ['G','D','A','E','B','F#','C#'];
