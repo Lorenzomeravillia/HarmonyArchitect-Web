@@ -206,9 +206,27 @@
 
     // ── Queue ─────────────────────────────────────────────────────────────────────
     function runQueue() {
-        if (queue.length === 0) return;
+        if (queue.length === 0) {
+            const settingsPanel = document.getElementById('settings_collapsible');
+            if (settingsPanel && settingsPanel.classList.contains('open')) {
+                settingsPanel.classList.remove('open');
+            }
+            const shown = getShown();
+            if (!shown['userProfile']) {
+                setTimeout(() => {
+                    showCoachMark({
+                        id: 'userProfile',
+                        target: '#user_profile_btn',
+                        text: "Login here to save your Smart Practice progress on the cloud ☁️",
+                        pos: 'below'
+                    });
+                }, 400); // Wait for CSS transition
+            }
+            return;
+        }
         showCoachMark(queue.shift(), runQueue);
     }
+
 
     function startTour(resetAll) {
         // Forza l'apertura del pannello impostazioni per garantire che gli elementi abbiano dimensioni valide

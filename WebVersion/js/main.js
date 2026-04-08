@@ -219,11 +219,6 @@ document.addEventListener("DOMContentLoaded", () => {
             "Imaj7 - bIII7 - bVImaj7 - subV7|Cmaj7|Eb7|Abmaj7|Db7"
         ]
     };
-
-    window.currentSymbol = null;
-    window.currentProgression = null;
-    window.correctAnswerText = null;
-
     // ── Session tracking ────────────────────────────────────
     let sessionCorrect = 0;
     let sessionTotal   = 0;
@@ -583,7 +578,7 @@ document.addEventListener("DOMContentLoaded", () => {
             let energyStr = await window.getDbEnergy();
             if (energyStr !== '∞' && parseInt(energyStr) <= 0) {
                 showPaywall();
-                return; // Stop here, don't start the challenge
+                return false; // Stop here, don't start the challenge
             }
         }
 
@@ -707,12 +702,14 @@ document.addEventListener("DOMContentLoaded", () => {
             window.currentVoicings = [_tv];
             window.gui.updateSoloButtons(_tv);
         }
+        
+        return true;
     }
 
     document.getElementById("next_btn")?.addEventListener("click", startNewChallenge);
 
     // ── PLAY button ─────────────────────────────────────────
-    document.getElementById("play_btn").addEventListener("click", () => {
+    document.getElementById("play_btn").addEventListener("click", async () => {
         if (!currentChallengeStart) currentChallengeStart = Date.now();
         if (!currentSessionStart) currentSessionStart = new Date();
         currentChallengeReplays++;
@@ -721,8 +718,8 @@ document.addEventListener("DOMContentLoaded", () => {
         if (window.audioEngine.ctx.state === 'suspended') window.audioEngine.ctx.resume();
         // Guard: if somehow no challenge loaded yet, start one
         if (!window.currentSymbol && !window.currentProgression) {
-            startNewChallenge();
-            return; // wait for next click after challenge is loaded
+            let started = await startNewChallenge();
+            if (started === false) return; // Stop if paywall or error
         }
         // Switch button label from START → PLAY after first use
         const playBtn = document.getElementById('play_btn');
