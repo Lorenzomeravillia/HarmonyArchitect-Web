@@ -76,6 +76,7 @@
                 <div class="progress-unified" id="progress_unified">
                     <div class="progress-bar"><div id="progress_fill" class="progress-fill" style="width:0%;"></div></div>
                     <span id="progress_text" class="progress-text">0/5</span>
+                    <span id="smart_badge" class="streak-badge" style="display:inline-block; background-color:#55EFC4; color:#000; margin-left:5px;">🎯 Smart</span>
                     <span id="streak_badge" class="streak-badge" style="display:none;"></span>
                 </div>
             </div>
@@ -120,11 +121,16 @@
                     <option value="5" selected>5 challenges</option>
                     <option value="10">10 challenges</option>
                 </select>
-                <span class="label">Adaptive:</span>
-                <select id="adaptive_mode_menu" class="dropdown orange-btn" style="background:#55EFC4; color:#000;">
-                    <option value="off" selected>OFF</option>
-                    <option value="on">ON (SM-2)</option>
-                </select>
+                <div id="smart_practice_tour_anchor" style="display:flex; flex-direction:column; gap:4px; align-items:flex-start;">
+                    <div style="display:flex; align-items:center; gap:5px;">
+                        <span class="label">Smart Practice:</span>
+                        <select id="adaptive_mode_menu" class="dropdown orange-btn" style="background:#55EFC4; color:#000;">
+                            <option value="off">OFF</option>
+                            <option value="on" selected>ON (SM-2)</option>
+                        </select>
+                    </div>
+                    <span style="font-size:10px; color:#aaa;">Focuses on chords you find difficult</span>
+                </div>
             </div>
         </div>
 

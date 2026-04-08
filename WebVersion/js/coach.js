@@ -59,6 +59,12 @@
             text: "Tap to hear the chord. You can replay as many times as you want — no penalty.",
             pos: 'above'
         },
+        {
+            id: 'smartPractice',
+            target: '#smart_practice_tour_anchor',
+            text: "Smart Practice tracks your weak spots and automatically focuses the exercises on the chords you struggle with the most.",
+            pos: 'below'
+        }
     ];
 
     let queue = [];

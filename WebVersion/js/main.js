@@ -409,6 +409,14 @@ document.addEventListener("DOMContentLoaded", () => {
     
     document.getElementById("play_mode_menu")?.addEventListener("change", handleReactiveRegen);
     document.getElementById("level_select")?.addEventListener("change", handleReactiveRegen);
+    
+    document.getElementById("adaptive_mode_menu")?.addEventListener("change", (e) => {
+        handleReactiveRegen();
+        const smartBadge = document.getElementById("smart_badge");
+        if (smartBadge) {
+            smartBadge.style.display = e.target.value === "on" ? "inline-block" : "none";
+        }
+    });
 
     // ── Chord transposer ────────────────────────────────────
     function transposeChord(chordStr, targetRoot) {
