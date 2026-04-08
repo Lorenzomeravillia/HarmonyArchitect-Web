@@ -52,7 +52,9 @@ document.addEventListener("DOMContentLoaded", () => {
         const loginBtn = document.getElementById('paywall_login_btn');
         const upgradeBtn = document.getElementById('paywall_upgrade_btn');
         
-        if (window.currentUser) {
+        const user = window.dbClient?.user;
+        const authProv = user?.app_metadata?.provider || 'anonymous';
+        if (user && authProv !== 'anonymous') {
             loginBtn.classList.add('hidden');
             upgradeBtn.classList.remove('hidden');
             bodyText.textContent = "Your daily free slots are exhausted. Upgrade to PRO for infinite practice!";
@@ -72,27 +74,38 @@ document.addEventListener("DOMContentLoaded", () => {
     const paywallModal = document.getElementById('paywall_modal');
     const energyBadge = document.getElementById('energy_badge');
 
+    window.getDbEnergy = async () => {
+        if (window.dbClient) return await window.dbClient.getEnergy();
+        return '∞';
+    };
+
+    window.consumeDbEnergy = async () => {
+        return true; // Infinite energy during beta phase
+    };
+
     async function updateEnergyUI() {
         let e = await window.getDbEnergy();
         if (energyBadge) energyBadge.textContent = e === '∞' ? '∞' : e;
     }
 
-    if (window.initDbAuth) {
-        window.initDbAuth(async (event, session) => {
-            if (session) {
+    // Since dbClient initializes asynchronously inside DOMContentLoaded, we don't need a heavy callback observer. 
+    // We just poll or wait for dbClient.isReady
+    setTimeout(async () => {
+        if (window.dbClient && window.dbClient.user) {
+            const isAnon = window.dbClient.user.app_metadata?.provider === 'anonymous';
+            if (!isAnon) {
                 authModal.classList.add('hidden');
-                document.getElementById('auth_msg').textContent = "Logged in as " + session.user.email;
-            } else {
-                document.getElementById('auth_msg').textContent = "Save your stats and unlock more energy.";
+                document.getElementById('auth_msg').textContent = "Logged in as " + window.dbClient.user.email;
             }
-            await updateEnergyUI();
-        });
-    }
+        }
+        await updateEnergyUI();
+    }, 1500);
 
     profileBtn?.addEventListener('click', () => {
-        if (window.currentUser) {
-            // Already logged in, maybe show logout option in future, for now show alert
-            alert("Logged in as: " + window.currentUser.email + "\nTier: " + (window.currentProfile?.tier || 'free'));
+        const user = window.dbClient?.user;
+        const isAnon = user?.app_metadata?.provider === 'anonymous';
+        if (user && !isAnon) {
+            alert("Logged in as: " + user.email + "\nTier: free");
         } else {
             authModal.classList.remove('hidden');
         }
