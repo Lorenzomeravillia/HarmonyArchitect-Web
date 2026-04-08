@@ -334,6 +334,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (window.dbClient && window.dbClient.isReady && currentSessionStart) {
              const sessionPayload = {
                  id: currentSessionId,
+                 user_id: window.dbClient.getUserId(),
                  started_at: currentSessionStart.toISOString(),
                  completed_at: new Date().toISOString(),
                  level: parseInt(document.getElementById("level_select").value.charAt(0)) || 1,
@@ -502,6 +503,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 if (window.dbClient && window.dbClient.isReady) {
                     const payload = {
+                        user_id: window.dbClient.getUserId(),
                         session_id: currentSessionId,
                         challenge_index: sessionTotal,
                         chord_type: window.realProgressionLabel || window.currentSymbol,
