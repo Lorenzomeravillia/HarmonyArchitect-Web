@@ -468,11 +468,24 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         // Auto-scale font for long answer texts (Progression mode)
-        const maxLen = Math.max(...opts.map(o => o.split('\n')[0].length));
-        if (maxLen > 35) {
-            answersFrame.querySelectorAll('.answer-btn').forEach(b => b.style.fontSize = '11px');
-        } else if (maxLen > 25) {
-            answersFrame.querySelectorAll('.answer-btn').forEach(b => b.style.fontSize = '13px');
+        const maxLen = Math.max(...opts.map(o => {
+            const lines = o.split('\n');
+            return Math.max(lines[0].length, lines[1] ? lines[1].length : 0);
+        }));
+
+        if (maxLen > 33) {
+            answersFrame.querySelectorAll('.answer-btn').forEach(b => {
+                b.style.fontSize = '10px';
+                b.style.padding = '8px 4px';
+                b.style.whiteSpace = 'pre-wrap';
+                b.style.wordBreak = 'break-word';
+            });
+        } else if (maxLen > 24) {
+            answersFrame.querySelectorAll('.answer-btn').forEach(b => {
+                b.style.fontSize = '12px';
+                b.style.whiteSpace = 'pre-wrap';
+                b.style.wordBreak = 'break-word';
+            });
         }
     }
 
@@ -542,14 +555,26 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             createAnswers(name, wrongOpts);
             // Pre-generate voicing so SOLO buttons appear immediately
-            const _prevV = null;
+            let _prevV = null;
             const _isOpt = document.getElementById('voice_leading_menu').value.includes('Optimized');
             const _vv = window.currentProgression.map(s => {
                 const v = window.musicEngine.generateVoicing(s, 'C3', _isOpt, _prevV);
+                _prevV = v; // FIXED: Update context for the next chord
                 return v;
             });
             window.currentVoicings = _vv;
-            window.gui.updateSoloButtons(_vv[0]);
+            // UI Fix: Ricerca l'accordo con la massima densità per generare tutti i bottoni 
+            // necessari, in modo da coprire anche i canali delle voci interne opzionali.
+            const _maxV = _vv.reduce((max, v) => v.length > max.length ? v : max, _vv[0]);
+            window.gui.updateSoloButtons(_maxV);
+            
+            // Forcing a redraw at the very end to prevent the ResizeObserver or Fullscreen API 
+            // from clearing the key signature on the very first iteration.
+            requestAnimationFrame(() => {
+                if (window.currentKeyContext) {
+                    window.gui.drawPitches([], window.currentKeyContext);
+                }
+            });
         } else {
             window.currentProgression = null;
             window.currentKeyContext = null;  // Single chord: no key signature
@@ -604,7 +629,9 @@ document.addEventListener("DOMContentLoaded", () => {
             });
             window.currentVoicings = voicings;
             window.gui.drawPitches(voicings, window.currentKeyContext);
-            window.gui.updateSoloButtons(voicings[0]);
+            // UI Fix: Aggiorna i bottoni usando il voicing più denso della progressione appena generata
+            const maxV = voicings.reduce((max, v) => v.length > max.length ? v : max, voicings[0]);
+            window.gui.updateSoloButtons(maxV);
             voicings.forEach((v, i) => setTimeout(() => window.audioEngine.playChord(v, cutDuration, i), i * tempoMs));
             window.gui.setInsight("Progression (" + tempoMs + "ms). Drop-2: " + (isOptimized ? "ON" : "OFF"));
         } else {

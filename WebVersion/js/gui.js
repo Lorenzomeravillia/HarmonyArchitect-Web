@@ -153,14 +153,16 @@ class GUI {
                 function solNext() {
                     if (cIdx >= window.currentVoicings.length) return;
                     let chord = window.currentVoicings[cIdx];
-                    if (chord && chord.length > i) {
-                        let n = chord[i];
-                        window.audioEngine.playPitch(n.voiceIdx, n.frequency, 1.2, cIdx);
-                        b.classList.add('flash-active');
-                        setTimeout(() => b.classList.remove('flash-active'), 250);
-                    } else {
-                        b.classList.add('flash-missing');
-                        setTimeout(() => b.classList.remove('flash-missing'), 250);
+                    if (chord) {
+                        let n = chord.find(c => c.voiceIdx === i);
+                        if (n) {
+                            window.audioEngine.playPitch(n.voiceIdx, n.frequency, 1.2, cIdx);
+                            b.classList.add('flash-active');
+                            setTimeout(() => b.classList.remove('flash-active'), 250);
+                        } else {
+                            b.classList.add('flash-missing');
+                            setTimeout(() => b.classList.remove('flash-missing'), 250);
+                        }
                     }
                     cIdx++;
                     let isoTempo = parseInt((document.getElementById('tempo_menu') || {}).value) || 1560;
@@ -227,20 +229,20 @@ class GUI {
         this.drawEmptyStaff();
     }
 
-    updateSoloButtons(voicing) {
+    updateSoloButtons() {
         const buttons = document.querySelectorAll('#solo_buttons_frame .solo-btn');
-        const noteCount = voicing ? voicing.length : buttons.length;
-        const ordinals = ['', '2nd', '3rd', '4th', '5th', '6th', '7th'];
-        function jazzLabel(i, total) {
-            if (i === 0) return 'Bass';
-            if (i === total - 1) return 'Lead';
-            const distFromTop = (total - 1) - i;
-            return ordinals[distFromTop] || ('V' + distFromTop);
+        let activeIndices = new Set();
+        if (window.currentVoicings) {
+            window.currentVoicings.forEach(chord => {
+                chord.forEach(n => activeIndices.add(n.voiceIdx));
+            });
         }
+        const ordinals = {0:'Bass', 1:'2nd', 2:'3rd', 3:'4th', 4:'5th', 5:'6th', 6:'Lead'};
+        
         buttons.forEach((btn, i) => {
-            if (i < noteCount) {
+            if (activeIndices.has(i)) {
                 btn.style.display = '';
-                btn.textContent = jazzLabel(i, noteCount);
+                btn.textContent = ordinals[i] || ('V' + i);
             } else {
                 btn.style.display = 'none';
             }

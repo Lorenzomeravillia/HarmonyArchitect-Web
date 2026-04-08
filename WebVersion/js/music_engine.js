@@ -221,98 +221,224 @@ class MusicEngine {
         let rootMidi   = this.getMidi(rootStr, baseOctInt);
         let rootPC     = rootMidi % 12;
 
-        // Get diatonic spelling table for this chord type
         const spellTable = this.CHORD_SPELL[typeStr];
-
         let notesMidi, spelledNotes;
 
         if (spellTable) {
-            // Build notes using diatonic spelling
             notesMidi   = spellTable.map(([iv]) => rootMidi + iv);
             spelledNotes = spellTable.map(([iv, lo]) => this.spellNoteDiatonic(rootStr, iv, lo));
         } else {
-            // Fallback to raw semitones
             const rawIntervals = this.chordTypes[typeStr] || [0,4,7];
             notesMidi   = rawIntervals.map(iv => rootMidi + iv);
-            spelledNotes = null; // computed later from MIDI
+            spelledNotes = null;
         }
 
-        // Remove root doublings
-        const beforeFilter = notesMidi.slice();
+        // Remove root doublings in the upper structure (Bass handles it)
         const filterMask = notesMidi.map(m => (m % 12) !== rootPC);
-        notesMidi   = notesMidi.filter((_,i) => filterMask[i]);
-        if (spelledNotes) spelledNotes = spelledNotes.filter((_,i) => filterMask[i]);
-        // Note: index 0 is always root so keep it — filterMask[0] should be true
+        let upperMidi = notesMidi.filter((_,i) => filterMask[i]);
+        let upperSp = spelledNotes ? spelledNotes.filter((_,i) => filterMask[i]) : null;
 
-        // ── Drop-2 or voice-leading optimisation ────────────────
-        if (drop2 && prevVoicing) {
-            let prevTreble = prevVoicing.filter(n => n.voiceIdx > 0).map(n => Math.round(69 + 12 * Math.log2(n.frequency/440)));
-            if (prevTreble.length > 0) {
-                let avgPrev = prevTreble.reduce((a,b)=>a+b)/prevTreble.length;
-                let bestCand = null, bestSp = null, minDist = 9999;
+        // Fallback for chords without upper extensions
+        if (upperMidi.length === 0) {
+            upperMidi = [rootMidi + 7];
+            if (spelledNotes) upperSp = [this.spellNoteDiatonic(rootStr, 7, 4)];
+        }
 
-                for (let octOffset of [-12, 0, 12]) {
-                    for (let rot = 0; rot < notesMidi.length; rot++) {
-                        let cand = notesMidi.slice();
-                        let candSp = spelledNotes ? spelledNotes.slice() : null;
-                        for(let i=0; i<rot; i++) cand[i] += 12;
-                        // sort together
-                        let combined = cand.map((m,i) => ({m, sp: candSp ? candSp[i] : null}));
-                        combined.sort((a,b)=>a.m-b.m);
-                        cand = combined.map(c => c.m + octOffset);
-                        if (candSp) candSp = combined.map(c => c.sp);
+        // ── 1. Candidate Generation (Closed & Drop-2) ─────────────────────────
+        let candidates = [];
+        
+        for (let octOffset of [-12, 0, 12, 24]) {
+            for (let rot = 0; rot < upperMidi.length; rot++) {
+                let candMidi = upperMidi.slice();
+                let candSp = upperSp ? upperSp.slice() : null;
+                
+                for (let i = 0; i < rot; i++) candMidi[i] += 12; // Invert
+                
+                let combined = candMidi.map((m,i) => ({m, sp: candSp ? candSp[i] : null}));
+                combined.sort((a,b) => a.m - b.m);
+                
+                let closeMidi = combined.map(c => c.m + octOffset);
+                let closeSp = combined.map(c => c.sp);
 
-                        let avgCand = cand.reduce((a,b)=>a+b)/cand.length;
-                        let dist = Math.abs(avgCand - avgPrev);
-                        if (cand[cand.length-1] > 79 || cand[0] < 50) dist += 200;
-                        let topCand = cand[cand.length-1];
-                        let topPrev = prevTreble[prevTreble.length-1];
-                        dist += Math.abs(topCand - topPrev) * 0.5;
-                        if (dist < minDist) { minDist = dist; bestCand = cand.slice(); bestSp = candSp ? candSp.slice() : null; }
+                // Ensure playable bounds (e.g. between G3 and A5)
+                if (closeMidi[closeMidi.length-1] <= 81 && closeMidi[0] >= 48) {
+                    candidates.push({ midi: closeMidi, sp: closeSp });
+                }
+
+                if (drop2 && closeMidi.length >= 3) {
+                    let d2Midi = closeMidi.slice();
+                    d2Midi[d2Midi.length - 2] -= 12; // Drop 2nd voice
+                    let d2Combined = d2Midi.map((m,i) => ({m, sp: closeSp[i]}));
+                    d2Combined.sort((a,b) => a.m - b.m);
+                    
+                    let finalD2Midi = d2Combined.map(c => c.m);
+                    let finalD2Sp = d2Combined.map(c => c.sp);
+                    
+                    if (finalD2Midi[finalD2Midi.length-1] <= 81 && finalD2Midi[0] >= 48) {
+                        candidates.push({ midi: finalD2Midi, sp: finalD2Sp });
                     }
                 }
-                if (bestCand) { notesMidi = bestCand; if (bestSp) spelledNotes = bestSp; }
             }
-        } else if (drop2 && notesMidi.length >= 3) {
-            // Simple Drop-2: lower the 2nd from top by an octave
-            let idx = notesMidi.length - 2;
-            notesMidi[idx] -= 12;
-            // Re-sort
-            let combined = notesMidi.map((m,i) => ({m, sp: spelledNotes ? spelledNotes[i] : null}));
-            combined.sort((a,b)=>a.m-b.m);
-            notesMidi    = combined.map(c => c.m);
-            if (spelledNotes) spelledNotes = combined.map(c => c.sp);
+        }
+        
+        if (candidates.length === 0) {
+            candidates.push({ midi: upperMidi.slice(), sp: upperSp ? upperSp.slice() : null });
         }
 
-        // Clamp top note (A5 max, first ledger line)
+        // ── 2. Pedagogical Voice Leading Cost Evaluation ──────────────────────
+        let bestCand = candidates[0];
+        
+        if (prevVoicing) {
+            let prevUpperNodes = prevVoicing.filter(n => n.voiceIdx > 0).sort((a,b) => a.frequency - b.frequency);
+            let prevUpper = prevUpperNodes.map(n => Math.round(69 + 12 * Math.log2(n.frequency/440)));
+
+            if (prevUpper.length > 0) {
+                let minCost = Infinity;
+
+                for (let cand of candidates) {
+                    let cost = 0;
+                    let cMidi = cand.midi;
+                    
+                    let lenC = cMidi.length;
+                    let lenP = prevUpper.length;
+                    let maxLen = Math.max(lenC, lenP);
+                    
+                    for (let i = 0; i < maxLen; i++) {
+                        let cTop = cMidi[lenC - 1 - i];
+                        let pTop = prevUpper[lenP - 1 - i];
+                        
+                        if (cTop !== undefined && pTop !== undefined) {
+                            let dist = Math.abs(cTop - pTop);
+                            if (i === 0) {
+                                cost += dist * 3; // Top voice penalization
+                                if (dist > 4) cost += (dist - 4) * 2; // Extra leap penalty
+                            } else {
+                                cost += dist; // Inner voices
+                            }
+                            // Reward common tones or stepwise motion
+                            if (dist === 0) cost -= 2;
+                            else if (dist <= 2) cost -= 1;
+                        } else {
+                            cost += 5; // Penalty for dropping/adding inner voices
+                        }
+                    }
+
+                    // Parallel 5ths and 8ves (comparing all pairs)
+                    let minLen = Math.min(lenC, lenP);
+                    for (let i = 0; i < minLen - 1; i++) {
+                        for (let j = i + 1; j < minLen; j++) {
+                            let c1 = cMidi[lenC - 1 - i], c2 = cMidi[lenC - 1 - j];
+                            let p1 = prevUpper[lenP - 1 - i], p2 = prevUpper[lenP - 1 - j];
+                            
+                            let cInt = Math.abs(c1 - c2) % 12;
+                            let pInt = Math.abs(p1 - p2) % 12;
+                            
+                            if ((pInt === 7 || pInt === 0) && cInt === pInt) {
+                                let dir1 = Math.sign(c1 - p1);
+                                let dir2 = Math.sign(c2 - p2);
+                                if (dir1 !== 0 && dir1 === dir2 && (c1 - p1) === (c2 - p2)) {
+                                    cost += 50; // Severe Parallel penalty
+                                }
+                            }
+                            
+                            // Tritone resolution (reward contrary motion on active dissonances)
+                            if (Math.abs(p1 - p2) % 12 === 6) {
+                                let dir1 = Math.sign(c1 - p1);
+                                let dir2 = Math.sign(c2 - p2);
+                                if (dir1 !== 0 && dir2 !== 0 && dir1 !== dir2) {
+                                    if (Math.abs(c1 - p1) <= 2 && Math.abs(c2 - p2) <= 2) {
+                                        cost -= 15;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (cost < minCost) {
+                        minCost = cost;
+                        bestCand = cand;
+                    }
+                }
+            } else {
+                let minCost = Infinity;
+                for (let cand of candidates) {
+                    let cost = Math.abs(cand.midi[cand.midi.length-1] - 72); 
+                    if (cost < minCost) { minCost = cost; bestCand = cand; }
+                }
+            }
+        } else {
+            // First chord - Centralize top note around C5
+            let minCost = Infinity;
+            for (let cand of candidates) {
+                let cost = Math.abs(cand.midi[cand.midi.length-1] - 72);
+                if (cost < minCost) { minCost = cost; bestCand = cand; }
+            }
+        }
+
+        notesMidi = bestCand.midi;
+        spelledNotes = bestCand.sp;
+
+        // Emergency Bound Clamps
         while(notesMidi[notesMidi.length-1] > 81) {
             for(let i=0; i<notesMidi.length; i++) notesMidi[i] -= 12;
-            if (spelledNotes) for(let i=0; i<spelledNotes.length; i++) spelledNotes[i].oct -= 1;
         }
-
-        // Gently clamp bottom only if doing so won't push the top note out of bounds
         while(notesMidi[0] < 55 && notesMidi[notesMidi.length-1] + 12 <= 81) {
             for(let i=0; i<notesMidi.length; i++) notesMidi[i] += 12;
-            if (spelledNotes) for(let i=0; i<spelledNotes.length; i++) spelledNotes[i].oct += 1;
         }
 
-        // ── Bass note (root, always below upper voices) ───────────
+        // ── 3. Smooth Bass Voice Leading ─────────────────────────────────────────
         let bassMidi = this.getMidi(rootStr, baseOctInt === 4 ? 3 : 2);
-        // Clamp bass between C2 (48) and C3 (60) as requested by user
-        while (bassMidi < 48) bassMidi += 12;
-        while (bassMidi > 60) bassMidi -= 12;
+        if (prevVoicing) {
+            let prevBassNode = prevVoicing.find(n => n.voiceIdx === 0);
+            if (prevBassNode) {
+                let prevBass = Math.round(69 + 12 * Math.log2(prevBassNode.frequency/440));
+                let bestBass = bassMidi;
+                let minBDist = Infinity;
+                
+                for (let oct = -2; oct <= 2; oct++) {
+                    let cBass = bassMidi + (oct * 12);
+                    if (cBass >= 36 && cBass <= 60 && cBass < notesMidi[0]) {
+                        let bDist = Math.abs(cBass - prevBass);
+                        if (bDist < minBDist) {
+                            minBDist = bDist;
+                            bestBass = cBass;
+                        }
+                    }
+                }
+                if (minBDist !== Infinity) bassMidi = bestBass;
+            }
+        } else {
+            while (bassMidi < 40) bassMidi += 12;
+            while (bassMidi > 60) bassMidi -= 12;
+        }
         
-        // Ensure bass is strictly below the actual voicing
         while (bassMidi >= notesMidi[0]) bassMidi -= 12;
 
         notesMidi.unshift(bassMidi);
         if (spelledNotes) {
-            // Bass is always root
             spelledNotes.unshift({ name: rootStr, acc: rootStr.slice(1), step: this.stepMap[rootStr[0]] });
         }
 
-        // ── Build result array ────────────────────────────────────
+        // ── 4. Pedagogical Top-Down Voice Allocation (Jazz Approach) ──────────────────
         let useSharp = (this.getSpellingForRoot(rootStr) === 'sharp');
+        
+        let voiceIndices = new Array(notesMidi.length);
+        
+        // Il Basso occupa rigorosamente lo slot 0 come fondazione armonica inamovibile
+        voiceIndices[0] = 0;
+        
+        // Nel jazz la melodia comanda. Fissiamo il Lead a un "Chair ID" assoluto (es. 6).
+        // Le voci interne scalano a ritroso (5, 4, 3...). 
+        // Se l'accordo ha meno note, i "buchi" (indici non assegnati) si formeranno
+        // naturalmente nelle voci interne più gravi, mantenendo Soprano e Basso intatti.
+        const LEAD_INDEX = 6; 
+        let upperCount = notesMidi.length - 1;
+        
+        for (let i = 1; i <= upperCount; i++) {
+            let distFromTop = upperCount - i;
+            voiceIndices[i] = LEAD_INDEX - distFromTop;
+        }
+
         let result = notesMidi.map((midi, idx) => {
             let octave = Math.floor(midi / 12) - 1;
             let pc = midi % 12;
@@ -325,19 +451,16 @@ class MusicEngine {
                 const sp = spelledNotes[idx];
                 name = sp.name;
                 acc  = sp.acc;
-                // Compute proper octave-aware step
                 const baseLetterStep = this.stepMap[sp.name[0]];
                 step = octave * 7 + baseLetterStep;
             } else {
-                // Fallback: raw MIDI spelling
                 const noteObj = this.getNoteFromMidi(midi, useSharp);
                 name = noteObj.name;
                 acc  = noteObj.acc;
                 step = noteObj.step;
             }
 
-            // Functional color palette
-            let color = "#D946A8"; // Extensions — magenta
+            let color = "#D946A8"; 
             if (ival === 0) color = "#4A90D9";
             else if (ival === 3 || ival === 4) {
                 color = (ival === 3 && (typeStr.includes('alt') || typeStr.includes('#9'))) ? "#D946A8" : "#2EC4B6";
@@ -347,7 +470,7 @@ class MusicEngine {
             }
             else if (ival === 9 || ival === 10 || ival === 11) color = "#E8873D";
 
-            return { name, step, color, accidental: acc, frequency: freq, voiceIdx: idx };
+            return { name, step, color, accidental: acc, frequency: freq, voiceIdx: voiceIndices[idx] };
         });
 
         return result;
