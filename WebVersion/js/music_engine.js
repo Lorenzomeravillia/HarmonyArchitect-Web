@@ -233,12 +233,36 @@ class MusicEngine {
             spelledNotes = null;
         }
 
-        // Remove root doublings in the upper structure (Bass handles it)
-        const filterMask = notesMidi.map(m => (m % 12) !== rootPC);
-        let upperMidi = notesMidi.filter((_,i) => filterMask[i]);
-        let upperSp = spelledNotes ? spelledNotes.filter((_,i) => filterMask[i]) : null;
+        // ── 0. Smart Jazz Density Manager (Pedagogical 4-Part Structure) ──────────
+        // Equalizziamo la struttura per tendere a 4 voci superiori costanti.
+        let upperMidi = notesMidi.slice();
+        let upperSp = spelledNotes ? spelledNotes.slice() : null;
 
-        // Fallback for chords without upper extensions
+        // A. Se l'accordo è troppo denso (> 4 voci, es. 9th, 13th), sfoltiamo dalla Root (Rootless)
+        if (upperMidi.length > 4) {
+            let rootIdx = upperMidi.findIndex(m => (m % 12) === rootPC);
+            if (rootIdx !== -1) {
+                upperMidi.splice(rootIdx, 1);
+                if (upperSp) upperSp.splice(rootIdx, 1);
+            }
+        }
+        
+        // B. Se è ancora > 4 voci, sacrifichiamo la QUINTA GIUSTA (Regola d'oro del Jazz)
+        // Mai sacrificare le Guide Tones (Terza e Settima).
+        if (upperMidi.length > 4) {
+            let fifthIdx = upperMidi.findIndex(m => (m % 12) === (rootPC + 7) % 12);
+            if (fifthIdx !== -1) {
+                upperMidi.splice(fifthIdx, 1);
+                if (upperSp) upperSp.splice(fifthIdx, 1);
+            }
+        }
+
+        // C. Fallback di sicurezza per accordi anomali estesi
+        while (upperMidi.length > 4) {
+            upperMidi.splice(1, 1); // Rimuove una tensione bassa
+            if (upperSp) upperSp.splice(1, 1);
+        }
+
         if (upperMidi.length === 0) {
             upperMidi = [rootMidi + 7];
             if (spelledNotes) upperSp = [this.spellNoteDiatonic(rootStr, 7, 4)];
@@ -419,24 +443,42 @@ class MusicEngine {
             spelledNotes.unshift({ name: rootStr, acc: rootStr.slice(1), step: this.stepMap[rootStr[0]] });
         }
 
-        // ── 4. Pedagogical Top-Down Voice Allocation (Jazz Approach) ──────────────────
+        // ── 4. Outer Shell Semantic Voice Allocation ──────────────────────────────────
         let useSharp = (this.getSpellingForRoot(rootStr) === 'sharp');
-        
         let voiceIndices = new Array(notesMidi.length);
         
-        // Il Basso occupa rigorosamente lo slot 0 come fondazione armonica inamovibile
+        // Il Basso occupa rigorosamente lo slot 0 (Fondazione inamovibile)
         voiceIndices[0] = 0;
         
-        // Nel jazz la melodia comanda. Fissiamo il Lead a un "Chair ID" assoluto (es. 6).
-        // Le voci interne scalano a ritroso (5, 4, 3...). 
-        // Se l'accordo ha meno note, i "buchi" (indici non assegnati) si formeranno
-        // naturalmente nelle voci interne più gravi, mantenendo Soprano e Basso intatti.
-        const LEAD_INDEX = 6; 
+        // Nel jazz, i confini esterni dell'accordo definiscono il sound (Outer Shell). 
+        // Ancoriamo il Lead a 6 e la base dell'upper structure a 3. 
+        // Eventuali note omesse (buchi) cadranno rigorosamente sulle voci interne (4 o 5).
+        const LEAD_INDEX = 6;
+        const BOTTOM_UPPER_INDEX = 3;
+
         let upperCount = notesMidi.length - 1;
         
-        for (let i = 1; i <= upperCount; i++) {
-            let distFromTop = upperCount - i;
-            voiceIndices[i] = LEAD_INDEX - distFromTop;
+        if (upperCount === 1) {
+            voiceIndices[1] = LEAD_INDEX;
+        } else if (upperCount === 2) {
+            voiceIndices[1] = BOTTOM_UPPER_INDEX;
+            voiceIndices[2] = LEAD_INDEX;
+        } else if (upperCount === 3) {
+            // 3 note superiori: Outer shell + 1 voce interna bassa. "Buco" sul canale 5.
+            voiceIndices[1] = BOTTOM_UPPER_INDEX;
+            voiceIndices[2] = 4; 
+            voiceIndices[3] = LEAD_INDEX;
+        } else if (upperCount === 4) {
+            // Struttura completa a 4 voci
+            voiceIndices[1] = BOTTOM_UPPER_INDEX;
+            voiceIndices[2] = 4;
+            voiceIndices[3] = 5;
+            voiceIndices[4] = LEAD_INDEX;
+        } else {
+            // Fallback estremo
+            for (let i = 1; i <= upperCount; i++) {
+                voiceIndices[i] = BOTTOM_UPPER_INDEX + i - 1;
+            }
         }
 
         // ── 5. Pedagogical Enharmonic Anchoring (Jazz Sight-Reading Optimization) ──
