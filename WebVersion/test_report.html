@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset='utf-8'>
+<title>Progression Test Report (100 Iterations)</title>
+<style>
+body { font-family: 'Inter', sans-serif; background: #0b132b; color: #fff; padding: 40px; }
+h1 { color: #2EC4B6; }
+.test-card { background: #1c2541; padding: 20px; margin-bottom: 20px; border-radius: 12px; border-left: 4px solid #4a65a5; }
+.target-key { color: #8899bb; font-weight: bold; margin-bottom: 10px; }
+.correct-ans { color: #5bc0be; font-size: 1.2em; margin-bottom: 15px; }
+.opts { display: flex; flex-direction: column; gap: 8px; }
+.opt { background: #0b132b; padding: 10px; border-radius: 8px; font-family: monospace; font-size: 14px; }
+.opt-correct { border: 1px solid #5bc0be; color: #5bc0be; }
+.opt-wrong { border: 1px solid #3a506b; color: #a9bacf; }
+</style>
+</head>
+<body>
+<h1>100 Random Progressions Validation Test</h1>
+<p>This report statically generates 100 multiple choice sets validating the algorithm.</p>
+<div class='test-card'>
+<h3>Test #1 : 1: Basic Triads</h3>
+<div class='target-key'>Base Root: G</div>
+<div class='correct-ans'>I - vim - IV - V<br/>(G - Em - C - D)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(G - C - D - G)</div>
+<div class='opt opt-wrong'>❌ im - ivm - V - im<br/>(Gm - Cm - D - Gm)</div>
+<div class='opt opt-correct'>✅ I - vim - IV - V<br/>(G - Em - C - D)</div>
+<div class='opt opt-wrong'>❌ im - VI - VII - im<br/>(Gm - Eb - F - Gm)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #2 : 4: Advanced</h3>
+<div class='target-key'>Base Root: F</div>
+<div class='correct-ans'>iim7 - subV7 - Imaj7<br/>(Gm7 - Gb7 - Fmaj7)</div>
+<div class='opts'>
+<div class='opt opt-correct'>✅ iim7 - subV7 - Imaj7<br/>(Gm7 - Gb7 - Fmaj7)</div>
+<div class='opt opt-wrong'>❌ iim9 - V13 - Imaj9<br/>(Gm9 - C13 - Fmaj9)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7 - im7<br/>(Gm7b5 - C7 - Fm7)</div>
+<div class='opt opt-wrong'>❌ iim7 - V7 - Imaj7<br/>(Gm7 - C7 - Fmaj7)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #3 : 4: Advanced</h3>
+<div class='target-key'>Base Root: A</div>
+<div class='correct-ans'>iim7 - subV7 - Imaj7<br/>(Bm7 - Bb7 - Amaj7)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ iim9 - V13 - Imaj9<br/>(Bm9 - E13 - Amaj9)</div>
+<div class='opt opt-correct'>✅ iim7 - subV7 - Imaj7<br/>(Bm7 - Bb7 - Amaj7)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7 - im7<br/>(Bm7b5 - E7 - Am7)</div>
+<div class='opt opt-wrong'>❌ iim7 - V7 - Imaj7<br/>(Bm7 - E7 - Amaj7)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #4 : 2: Seventh Chords</h3>
+<div class='target-key'>Base Root: F</div>
+<div class='correct-ans'>iiø7 - V7 - im7<br/>(Gm7b5 - C7 - Fm7)</div>
+<div class='opts'>
+<div class='opt opt-correct'>✅ iiø7 - V7 - im7<br/>(Gm7b5 - C7 - Fm7)</div>
+<div class='opt opt-wrong'>❌ iim7 - V7 - Imaj7<br/>(Gm7 - C7 - Fmaj7)</div>
+<div class='opt opt-wrong'>❌ iim9 - V13 - Imaj9<br/>(Gm9 - C13 - Fmaj9)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7alt - im9<br/>(Gm7b5 - C7alt - Fm9)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #5 : 4: Advanced</h3>
+<div class='target-key'>Base Root: Bb</div>
+<div class='correct-ans'>V7/ii - iim7 - V7 - Imaj7<br/>(G7 - Cm7 - F7 - Bbmaj7)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ Imaj7 - bIII7 - bVImaj7 - subV7<br/>(Bbmaj7 - Db7 - Gbmaj7 - B7)</div>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(Bb - Eb - F - Bb)</div>
+<div class='opt opt-correct'>✅ V7/ii - iim7 - V7 - Imaj7<br/>(G7 - Cm7 - F7 - Bbmaj7)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(Bb - Gm - Eb - F)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #6 : 2: Seventh Chords</h3>
+<div class='target-key'>Base Root: D</div>
+<div class='correct-ans'>iiø7 - V7 - im7<br/>(Em7b5 - A7 - Dm7)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ iim9 - V13 - Imaj9<br/>(Em9 - A13 - Dmaj9)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7alt - im9<br/>(Em7b5 - A7alt - Dm9)</div>
+<div class='opt opt-wrong'>❌ iim7 - V7 - Imaj7<br/>(Em7 - A7 - Dmaj7)</div>
+<div class='opt opt-correct'>✅ iiø7 - V7 - im7<br/>(Em7b5 - A7 - Dm7)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #7 : 1: Basic Triads</h3>
+<div class='target-key'>Base Root: Bb</div>
+<div class='correct-ans'>im - ivm - V - im<br/>(Bbm - Ebm - F - Bbm)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ im - VI - VII - im<br/>(Bbm - Gb - Ab - Bbm)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(Bb - Gm - Eb - F)</div>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(Bb - Eb - F - Bb)</div>
+<div class='opt opt-correct'>✅ im - ivm - V - im<br/>(Bbm - Ebm - F - Bbm)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #8 : 1: Basic Triads</h3>
+<div class='target-key'>Base Root: F</div>
+<div class='correct-ans'>I - iim - V - I<br/>(F - Gm - C - F)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ im - VI - VII - im<br/>(Fm - Db - Eb - Fm)</div>
+<div class='opt opt-wrong'>❌ im - ivm - V - im<br/>(Fm - Bbm - C - Fm)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(F - Dm - Bb - C)</div>
+<div class='opt opt-correct'>✅ I - iim - V - I<br/>(F - Gm - C - F)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #9 : 4: Advanced</h3>
+<div class='target-key'>Base Root: C</div>
+<div class='correct-ans'>V7/ii - iim7 - V7 - Imaj7<br/>(A7 - Dm7 - G7 - Cmaj7)</div>
+<div class='opts'>
+<div class='opt opt-correct'>✅ V7/ii - iim7 - V7 - Imaj7<br/>(A7 - Dm7 - G7 - Cmaj7)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(C - Am - F - G)</div>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(C - F - G - C)</div>
+<div class='opt opt-wrong'>❌ Imaj7 - bIII7 - bVImaj7 - subV7<br/>(Cmaj7 - Eb7 - Abmaj7 - Db7)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #10 : 1: Basic Triads</h3>
+<div class='target-key'>Base Root: A</div>
+<div class='correct-ans'>im - ivm - V - im<br/>(Am - Dm - E - Am)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ I - iim - V - I<br/>(A - Bm - E - A)</div>
+<div class='opt opt-correct'>✅ im - ivm - V - im<br/>(Am - Dm - E - Am)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(A - F#m - D - E)</div>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(A - D - E - A)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #11 : 3: Jazz Extensions</h3>
+<div class='target-key'>Base Root: G</div>
+<div class='correct-ans'>Imaj9 - VI7alt - iim9 - V13<br/>(Gmaj9 - E7alt - Am9 - D13)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(G - C - D - G)</div>
+<div class='opt opt-correct'>✅ Imaj9 - VI7alt - iim9 - V13<br/>(Gmaj9 - E7alt - Am9 - D13)</div>
+<div class='opt opt-wrong'>❌ im9 - bVImaj9 - iiø7 - V7alt<br/>(Gm9 - Ebmaj9 - Am7b5 - D7alt)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(G - Em - C - D)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #12 : 1: Basic Triads</h3>
+<div class='target-key'>Base Root: C</div>
+<div class='correct-ans'>I - IV - V - I<br/>(C - F - G - C)</div>
+<div class='opts'>
+<div class='opt opt-correct'>✅ I - IV - V - I<br/>(C - F - G - C)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(C - Am - F - G)</div>
+<div class='opt opt-wrong'>❌ im - ivm - V - im<br/>(Cm - Fm - G - Cm)</div>
+<div class='opt opt-wrong'>❌ I - iim - V - I<br/>(C - Dm - G - C)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #13 : 2: Seventh Chords</h3>
+<div class='target-key'>Base Root: Bb</div>
+<div class='correct-ans'>iim7 - V7 - Imaj7<br/>(Cm7 - F7 - Bbmaj7)</div>
+<div class='opts'>
+<div class='opt opt-correct'>✅ iim7 - V7 - Imaj7<br/>(Cm7 - F7 - Bbmaj7)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7alt - im9<br/>(Cm7b5 - F7alt - Bbm9)</div>
+<div class='opt opt-wrong'>❌ iim9 - V13 - Imaj9<br/>(Cm9 - F13 - Bbmaj9)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7 - im7<br/>(Cm7b5 - F7 - Bbm7)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #14 : 2: Seventh Chords</h3>
+<div class='target-key'>Base Root: D</div>
+<div class='correct-ans'>iim7 - V7 - Imaj7<br/>(Em7 - A7 - Dmaj7)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ iiø7 - V7 - im7<br/>(Em7b5 - A7 - Dm7)</div>
+<div class='opt opt-wrong'>❌ iim9 - V13 - Imaj9<br/>(Em9 - A13 - Dmaj9)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7alt - im9<br/>(Em7b5 - A7alt - Dm9)</div>
+<div class='opt opt-correct'>✅ iim7 - V7 - Imaj7<br/>(Em7 - A7 - Dmaj7)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #15 : 2: Seventh Chords</h3>
+<div class='target-key'>Base Root: Bb</div>
+<div class='correct-ans'>Imaj7 - vim7 - iim7 - V7<br/>(Bbmaj7 - Gm7 - Cm7 - F7)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ im7 - ivm7 - VII7 - IIImaj7<br/>(Bbm7 - Ebm7 - Ab7 - Dbmaj7)</div>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(Bb - Eb - F - Bb)</div>
+<div class='opt opt-correct'>✅ Imaj7 - vim7 - iim7 - V7<br/>(Bbmaj7 - Gm7 - Cm7 - F7)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(Bb - Gm - Eb - F)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #16 : 1: Basic Triads</h3>
+<div class='target-key'>Base Root: C</div>
+<div class='correct-ans'>I - vim - IV - V<br/>(C - Am - F - G)</div>
+<div class='opts'>
+<div class='opt opt-correct'>✅ I - vim - IV - V<br/>(C - Am - F - G)</div>
+<div class='opt opt-wrong'>❌ im - ivm - V - im<br/>(Cm - Fm - G - Cm)</div>
+<div class='opt opt-wrong'>❌ im - VI - VII - im<br/>(Cm - Ab - Bb - Cm)</div>
+<div class='opt opt-wrong'>❌ I - iim - V - I<br/>(C - Dm - G - C)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #17 : 2: Seventh Chords</h3>
+<div class='target-key'>Base Root: G</div>
+<div class='correct-ans'>im7 - ivm7 - VII7 - IIImaj7<br/>(Gm7 - Cm7 - F7 - Bbmaj7)</div>
+<div class='opts'>
+<div class='opt opt-correct'>✅ im7 - ivm7 - VII7 - IIImaj7<br/>(Gm7 - Cm7 - F7 - Bbmaj7)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(G - Em - C - D)</div>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(G - C - D - G)</div>
+<div class='opt opt-wrong'>❌ Imaj7 - vim7 - iim7 - V7<br/>(Gmaj7 - Em7 - Am7 - D7)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #18 : 2: Seventh Chords</h3>
+<div class='target-key'>Base Root: F</div>
+<div class='correct-ans'>Imaj7 - vim7 - iim7 - V7<br/>(Fmaj7 - Dm7 - Gm7 - C7)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(F - Dm - Bb - C)</div>
+<div class='opt opt-correct'>✅ Imaj7 - vim7 - iim7 - V7<br/>(Fmaj7 - Dm7 - Gm7 - C7)</div>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(F - Bb - C - F)</div>
+<div class='opt opt-wrong'>❌ im7 - ivm7 - VII7 - IIImaj7<br/>(Fm7 - Bbm7 - Eb7 - Abmaj7)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #19 : 3: Jazz Extensions</h3>
+<div class='target-key'>Base Root: A</div>
+<div class='correct-ans'>iim9 - V13 - Imaj9<br/>(Bm9 - E13 - Amaj9)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ iim7 - V7 - Imaj7<br/>(Bm7 - E7 - Amaj7)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7 - im7<br/>(Bm7b5 - E7 - Am7)</div>
+<div class='opt opt-correct'>✅ iim9 - V13 - Imaj9<br/>(Bm9 - E13 - Amaj9)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7alt - im9<br/>(Bm7b5 - E7alt - Am9)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #20 : 2: Seventh Chords</h3>
+<div class='target-key'>Base Root: G</div>
+<div class='correct-ans'>iiø7 - V7 - im7<br/>(Am7b5 - D7 - Gm7)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ iim9 - V13 - Imaj9<br/>(Am9 - D13 - Gmaj9)</div>
+<div class='opt opt-correct'>✅ iiø7 - V7 - im7<br/>(Am7b5 - D7 - Gm7)</div>
+<div class='opt opt-wrong'>❌ iim7 - V7 - Imaj7<br/>(Am7 - D7 - Gmaj7)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7alt - im9<br/>(Am7b5 - D7alt - Gm9)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #21 : 1: Basic Triads</h3>
+<div class='target-key'>Base Root: A</div>
+<div class='correct-ans'>im - ivm - V - im<br/>(Am - Dm - E - Am)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ im - VI - VII - im<br/>(Am - F - G - Am)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(A - F#m - D - E)</div>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(A - D - E - A)</div>
+<div class='opt opt-correct'>✅ im - ivm - V - im<br/>(Am - Dm - E - Am)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #22 : 2: Seventh Chords</h3>
+<div class='target-key'>Base Root: A</div>
+<div class='correct-ans'>Imaj7 - vim7 - iim7 - V7<br/>(Amaj7 - F#m7 - Bm7 - E7)</div>
+<div class='opts'>
+<div class='opt opt-correct'>✅ Imaj7 - vim7 - iim7 - V7<br/>(Amaj7 - F#m7 - Bm7 - E7)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(A - F#m - D - E)</div>
+<div class='opt opt-wrong'>❌ im7 - ivm7 - VII7 - IIImaj7<br/>(Am7 - Dm7 - G7 - Cmaj7)</div>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(A - D - E - A)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #23 : 4: Advanced</h3>
+<div class='target-key'>Base Root: Eb</div>
+<div class='correct-ans'>Imaj7 - bIII7 - bVImaj7 - subV7<br/>(Ebmaj7 - Gb7 - Bmaj7 - E7)</div>
+<div class='opts'>
+<div class='opt opt-correct'>✅ Imaj7 - bIII7 - bVImaj7 - subV7<br/>(Ebmaj7 - Gb7 - Bmaj7 - E7)</div>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(Eb - Ab - Bb - Eb)</div>
+<div class='opt opt-wrong'>❌ V7/ii - iim7 - V7 - Imaj7<br/>(C7 - Fm7 - Bb7 - Ebmaj7)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(Eb - Cm - Ab - Bb)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #24 : 1: Basic Triads</h3>
+<div class='target-key'>Base Root: F</div>
+<div class='correct-ans'>im - ivm - V - im<br/>(Fm - Bbm - C - Fm)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(F - Dm - Bb - C)</div>
+<div class='opt opt-wrong'>❌ im - VI - VII - im<br/>(Fm - Db - Eb - Fm)</div>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(F - Bb - C - F)</div>
+<div class='opt opt-correct'>✅ im - ivm - V - im<br/>(Fm - Bbm - C - Fm)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #25 : 2: Seventh Chords</h3>
+<div class='target-key'>Base Root: F</div>
+<div class='correct-ans'>iiø7 - V7 - im7<br/>(Gm7b5 - C7 - Fm7)</div>
+<div class='opts'>
+<div class='opt opt-correct'>✅ iiø7 - V7 - im7<br/>(Gm7b5 - C7 - Fm7)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7alt - im9<br/>(Gm7b5 - C7alt - Fm9)</div>
+<div class='opt opt-wrong'>❌ iim9 - V13 - Imaj9<br/>(Gm9 - C13 - Fmaj9)</div>
+<div class='opt opt-wrong'>❌ iim7 - V7 - Imaj7<br/>(Gm7 - C7 - Fmaj7)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #26 : 2: Seventh Chords</h3>
+<div class='target-key'>Base Root: A</div>
+<div class='correct-ans'>iiø7 - V7 - im7<br/>(Bm7b5 - E7 - Am7)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ iim7 - V7 - Imaj7<br/>(Bm7 - E7 - Amaj7)</div>
+<div class='opt opt-wrong'>❌ iim9 - V13 - Imaj9<br/>(Bm9 - E13 - Amaj9)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7alt - im9<br/>(Bm7b5 - E7alt - Am9)</div>
+<div class='opt opt-correct'>✅ iiø7 - V7 - im7<br/>(Bm7b5 - E7 - Am7)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #27 : 3: Jazz Extensions</h3>
+<div class='target-key'>Base Root: F</div>
+<div class='correct-ans'>iim9 - V13 - Imaj9<br/>(Gm9 - C13 - Fmaj9)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ iiø7 - V7alt - im9<br/>(Gm7b5 - C7alt - Fm9)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7 - im7<br/>(Gm7b5 - C7 - Fm7)</div>
+<div class='opt opt-wrong'>❌ iim7 - V7 - Imaj7<br/>(Gm7 - C7 - Fmaj7)</div>
+<div class='opt opt-correct'>✅ iim9 - V13 - Imaj9<br/>(Gm9 - C13 - Fmaj9)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #28 : 3: Jazz Extensions</h3>
+<div class='target-key'>Base Root: G</div>
+<div class='correct-ans'>iim9 - V13 - Imaj9<br/>(Am9 - D13 - Gmaj9)</div>
+<div class='opts'>
+<div class='opt opt-correct'>✅ iim9 - V13 - Imaj9<br/>(Am9 - D13 - Gmaj9)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7 - im7<br/>(Am7b5 - D7 - Gm7)</div>
+<div class='opt opt-wrong'>❌ iim7 - V7 - Imaj7<br/>(Am7 - D7 - Gmaj7)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7alt - im9<br/>(Am7b5 - D7alt - Gm9)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #29 : 3: Jazz Extensions</h3>
+<div class='target-key'>Base Root: A</div>
+<div class='correct-ans'>iim9 - V13 - Imaj9<br/>(Bm9 - E13 - Amaj9)</div>
+<div class='opts'>
+<div class='opt opt-correct'>✅ iim9 - V13 - Imaj9<br/>(Bm9 - E13 - Amaj9)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7 - im7<br/>(Bm7b5 - E7 - Am7)</div>
+<div class='opt opt-wrong'>❌ iim7 - V7 - Imaj7<br/>(Bm7 - E7 - Amaj7)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7alt - im9<br/>(Bm7b5 - E7alt - Am9)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #30 : 3: Jazz Extensions</h3>
+<div class='target-key'>Base Root: D</div>
+<div class='correct-ans'>Imaj9 - VI7alt - iim9 - V13<br/>(Dmaj9 - B7alt - Em9 - A13)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(D - G - A - D)</div>
+<div class='opt opt-wrong'>❌ im9 - bVImaj9 - iiø7 - V7alt<br/>(Dm9 - Bbmaj9 - Em7b5 - A7alt)</div>
+<div class='opt opt-correct'>✅ Imaj9 - VI7alt - iim9 - V13<br/>(Dmaj9 - B7alt - Em9 - A13)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(D - Bm - G - A)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #31 : 3: Jazz Extensions</h3>
+<div class='target-key'>Base Root: D</div>
+<div class='correct-ans'>iim9 - V13 - Imaj9<br/>(Em9 - A13 - Dmaj9)</div>
+<div class='opts'>
+<div class='opt opt-correct'>✅ iim9 - V13 - Imaj9<br/>(Em9 - A13 - Dmaj9)</div>
+<div class='opt opt-wrong'>❌ iim7 - V7 - Imaj7<br/>(Em7 - A7 - Dmaj7)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7alt - im9<br/>(Em7b5 - A7alt - Dm9)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7 - im7<br/>(Em7b5 - A7 - Dm7)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #32 : 1: Basic Triads</h3>
+<div class='target-key'>Base Root: Eb</div>
+<div class='correct-ans'>im - ivm - V - im<br/>(Ebm - G#m - Bb - Ebm)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(Eb - Cm - Ab - Bb)</div>
+<div class='opt opt-correct'>✅ im - ivm - V - im<br/>(Ebm - G#m - Bb - Ebm)</div>
+<div class='opt opt-wrong'>❌ im - VI - VII - im<br/>(Ebm - B - Db - Ebm)</div>
+<div class='opt opt-wrong'>❌ I - iim - V - I<br/>(Eb - Fm - Bb - Eb)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #33 : 1: Basic Triads</h3>
+<div class='target-key'>Base Root: Bb</div>
+<div class='correct-ans'>I - iim - V - I<br/>(Bb - Cm - F - Bb)</div>
+<div class='opts'>
+<div class='opt opt-correct'>✅ I - iim - V - I<br/>(Bb - Cm - F - Bb)</div>
+<div class='opt opt-wrong'>❌ im - ivm - V - im<br/>(Bbm - Ebm - F - Bbm)</div>
+<div class='opt opt-wrong'>❌ im - VI - VII - im<br/>(Bbm - Gb - Ab - Bbm)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(Bb - Gm - Eb - F)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #34 : 4: Advanced</h3>
+<div class='target-key'>Base Root: C</div>
+<div class='correct-ans'>V7/ii - iim7 - V7 - Imaj7<br/>(A7 - Dm7 - G7 - Cmaj7)</div>
+<div class='opts'>
+<div class='opt opt-correct'>✅ V7/ii - iim7 - V7 - Imaj7<br/>(A7 - Dm7 - G7 - Cmaj7)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(C - Am - F - G)</div>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(C - F - G - C)</div>
+<div class='opt opt-wrong'>❌ Imaj7 - bIII7 - bVImaj7 - subV7<br/>(Cmaj7 - Eb7 - Abmaj7 - Db7)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #35 : 4: Advanced</h3>
+<div class='target-key'>Base Root: A</div>
+<div class='correct-ans'>iim7 - subV7 - Imaj7<br/>(Bm7 - Bb7 - Amaj7)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ iiø7 - V7 - im7<br/>(Bm7b5 - E7 - Am7)</div>
+<div class='opt opt-wrong'>❌ iim9 - V13 - Imaj9<br/>(Bm9 - E13 - Amaj9)</div>
+<div class='opt opt-wrong'>❌ iim7 - V7 - Imaj7<br/>(Bm7 - E7 - Amaj7)</div>
+<div class='opt opt-correct'>✅ iim7 - subV7 - Imaj7<br/>(Bm7 - Bb7 - Amaj7)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #36 : 3: Jazz Extensions</h3>
+<div class='target-key'>Base Root: A</div>
+<div class='correct-ans'>Imaj9 - VI7alt - iim9 - V13<br/>(Amaj9 - F#7alt - Bm9 - E13)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(A - F#m - D - E)</div>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(A - D - E - A)</div>
+<div class='opt opt-correct'>✅ Imaj9 - VI7alt - iim9 - V13<br/>(Amaj9 - F#7alt - Bm9 - E13)</div>
+<div class='opt opt-wrong'>❌ im9 - bVImaj9 - iiø7 - V7alt<br/>(Am9 - Fmaj9 - Bm7b5 - E7alt)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #37 : 3: Jazz Extensions</h3>
+<div class='target-key'>Base Root: A</div>
+<div class='correct-ans'>Imaj9 - VI7alt - iim9 - V13<br/>(Amaj9 - F#7alt - Bm9 - E13)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ im9 - bVImaj9 - iiø7 - V7alt<br/>(Am9 - Fmaj9 - Bm7b5 - E7alt)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(A - F#m - D - E)</div>
+<div class='opt opt-correct'>✅ Imaj9 - VI7alt - iim9 - V13<br/>(Amaj9 - F#7alt - Bm9 - E13)</div>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(A - D - E - A)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #38 : 1: Basic Triads</h3>
+<div class='target-key'>Base Root: F</div>
+<div class='correct-ans'>im - ivm - V - im<br/>(Fm - Bbm - C - Fm)</div>
+<div class='opts'>
+<div class='opt opt-correct'>✅ im - ivm - V - im<br/>(Fm - Bbm - C - Fm)</div>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(F - Bb - C - F)</div>
+<div class='opt opt-wrong'>❌ im - VI - VII - im<br/>(Fm - Db - Eb - Fm)</div>
+<div class='opt opt-wrong'>❌ I - iim - V - I<br/>(F - Gm - C - F)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #39 : 3: Jazz Extensions</h3>
+<div class='target-key'>Base Root: D</div>
+<div class='correct-ans'>im9 - bVImaj9 - iiø7 - V7alt<br/>(Dm9 - Bbmaj9 - Em7b5 - A7alt)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ Imaj9 - VI7alt - iim9 - V13<br/>(Dmaj9 - B7alt - Em9 - A13)</div>
+<div class='opt opt-correct'>✅ im9 - bVImaj9 - iiø7 - V7alt<br/>(Dm9 - Bbmaj9 - Em7b5 - A7alt)</div>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(D - G - A - D)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(D - Bm - G - A)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #40 : 1: Basic Triads</h3>
+<div class='target-key'>Base Root: D</div>
+<div class='correct-ans'>im - ivm - V - im<br/>(Dm - Gm - A - Dm)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ im - VI - VII - im<br/>(Dm - Bb - C - Dm)</div>
+<div class='opt opt-wrong'>❌ I - iim - V - I<br/>(D - Em - A - D)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(D - Bm - G - A)</div>
+<div class='opt opt-correct'>✅ im - ivm - V - im<br/>(Dm - Gm - A - Dm)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #41 : 1: Basic Triads</h3>
+<div class='target-key'>Base Root: A</div>
+<div class='correct-ans'>I - iim - V - I<br/>(A - Bm - E - A)</div>
+<div class='opts'>
+<div class='opt opt-correct'>✅ I - iim - V - I<br/>(A - Bm - E - A)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(A - F#m - D - E)</div>
+<div class='opt opt-wrong'>❌ im - ivm - V - im<br/>(Am - Dm - E - Am)</div>
+<div class='opt opt-wrong'>❌ im - VI - VII - im<br/>(Am - F - G - Am)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #42 : 4: Advanced</h3>
+<div class='target-key'>Base Root: Bb</div>
+<div class='correct-ans'>V7/ii - iim7 - V7 - Imaj7<br/>(G7 - Cm7 - F7 - Bbmaj7)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ Imaj7 - bIII7 - bVImaj7 - subV7<br/>(Bbmaj7 - Db7 - Gbmaj7 - B7)</div>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(Bb - Eb - F - Bb)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(Bb - Gm - Eb - F)</div>
+<div class='opt opt-correct'>✅ V7/ii - iim7 - V7 - Imaj7<br/>(G7 - Cm7 - F7 - Bbmaj7)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #43 : 3: Jazz Extensions</h3>
+<div class='target-key'>Base Root: Eb</div>
+<div class='correct-ans'>im9 - bVImaj9 - iiø7 - V7alt<br/>(Ebm9 - Bmaj9 - Fm7b5 - Bb7alt)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(Eb - Cm - Ab - Bb)</div>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(Eb - Ab - Bb - Eb)</div>
+<div class='opt opt-wrong'>❌ Imaj9 - VI7alt - iim9 - V13<br/>(Ebmaj9 - C7alt - Fm9 - Bb13)</div>
+<div class='opt opt-correct'>✅ im9 - bVImaj9 - iiø7 - V7alt<br/>(Ebm9 - Bmaj9 - Fm7b5 - Bb7alt)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #44 : 3: Jazz Extensions</h3>
+<div class='target-key'>Base Root: D</div>
+<div class='correct-ans'>iiø7 - V7alt - im9<br/>(Em7b5 - A7alt - Dm9)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ iim9 - V13 - Imaj9<br/>(Em9 - A13 - Dmaj9)</div>
+<div class='opt opt-wrong'>❌ iim7 - V7 - Imaj7<br/>(Em7 - A7 - Dmaj7)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7 - im7<br/>(Em7b5 - A7 - Dm7)</div>
+<div class='opt opt-correct'>✅ iiø7 - V7alt - im9<br/>(Em7b5 - A7alt - Dm9)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #45 : 2: Seventh Chords</h3>
+<div class='target-key'>Base Root: Eb</div>
+<div class='correct-ans'>Imaj7 - vim7 - iim7 - V7<br/>(Ebmaj7 - Cm7 - Fm7 - Bb7)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ im7 - ivm7 - VII7 - IIImaj7<br/>(Ebm7 - G#m7 - Db7 - Gbmaj7)</div>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(Eb - Ab - Bb - Eb)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(Eb - Cm - Ab - Bb)</div>
+<div class='opt opt-correct'>✅ Imaj7 - vim7 - iim7 - V7<br/>(Ebmaj7 - Cm7 - Fm7 - Bb7)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #46 : 2: Seventh Chords</h3>
+<div class='target-key'>Base Root: D</div>
+<div class='correct-ans'>iiø7 - V7 - im7<br/>(Em7b5 - A7 - Dm7)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ iiø7 - V7alt - im9<br/>(Em7b5 - A7alt - Dm9)</div>
+<div class='opt opt-correct'>✅ iiø7 - V7 - im7<br/>(Em7b5 - A7 - Dm7)</div>
+<div class='opt opt-wrong'>❌ iim9 - V13 - Imaj9<br/>(Em9 - A13 - Dmaj9)</div>
+<div class='opt opt-wrong'>❌ iim7 - V7 - Imaj7<br/>(Em7 - A7 - Dmaj7)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #47 : 2: Seventh Chords</h3>
+<div class='target-key'>Base Root: G</div>
+<div class='correct-ans'>im7 - ivm7 - VII7 - IIImaj7<br/>(Gm7 - Cm7 - F7 - Bbmaj7)</div>
+<div class='opts'>
+<div class='opt opt-correct'>✅ im7 - ivm7 - VII7 - IIImaj7<br/>(Gm7 - Cm7 - F7 - Bbmaj7)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(G - Em - C - D)</div>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(G - C - D - G)</div>
+<div class='opt opt-wrong'>❌ Imaj7 - vim7 - iim7 - V7<br/>(Gmaj7 - Em7 - Am7 - D7)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #48 : 4: Advanced</h3>
+<div class='target-key'>Base Root: F</div>
+<div class='correct-ans'>V7/ii - iim7 - V7 - Imaj7<br/>(D7 - Gm7 - C7 - Fmaj7)</div>
+<div class='opts'>
+<div class='opt opt-correct'>✅ V7/ii - iim7 - V7 - Imaj7<br/>(D7 - Gm7 - C7 - Fmaj7)</div>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(F - Bb - C - F)</div>
+<div class='opt opt-wrong'>❌ Imaj7 - bIII7 - bVImaj7 - subV7<br/>(Fmaj7 - Ab7 - Dbmaj7 - Gb7)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(F - Dm - Bb - C)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #49 : 2: Seventh Chords</h3>
+<div class='target-key'>Base Root: A</div>
+<div class='correct-ans'>im7 - ivm7 - VII7 - IIImaj7<br/>(Am7 - Dm7 - G7 - Cmaj7)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ Imaj7 - vim7 - iim7 - V7<br/>(Amaj7 - F#m7 - Bm7 - E7)</div>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(A - D - E - A)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(A - F#m - D - E)</div>
+<div class='opt opt-correct'>✅ im7 - ivm7 - VII7 - IIImaj7<br/>(Am7 - Dm7 - G7 - Cmaj7)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #50 : 3: Jazz Extensions</h3>
+<div class='target-key'>Base Root: Eb</div>
+<div class='correct-ans'>im9 - bVImaj9 - iiø7 - V7alt<br/>(Ebm9 - Bmaj9 - Fm7b5 - Bb7alt)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ Imaj9 - VI7alt - iim9 - V13<br/>(Ebmaj9 - C7alt - Fm9 - Bb13)</div>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(Eb - Ab - Bb - Eb)</div>
+<div class='opt opt-correct'>✅ im9 - bVImaj9 - iiø7 - V7alt<br/>(Ebm9 - Bmaj9 - Fm7b5 - Bb7alt)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(Eb - Cm - Ab - Bb)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #51 : 1: Basic Triads</h3>
+<div class='target-key'>Base Root: G</div>
+<div class='correct-ans'>I - iim - V - I<br/>(G - Am - D - G)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ im - VI - VII - im<br/>(Gm - Eb - F - Gm)</div>
+<div class='opt opt-wrong'>❌ im - ivm - V - im<br/>(Gm - Cm - D - Gm)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(G - Em - C - D)</div>
+<div class='opt opt-correct'>✅ I - iim - V - I<br/>(G - Am - D - G)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #52 : 3: Jazz Extensions</h3>
+<div class='target-key'>Base Root: G</div>
+<div class='correct-ans'>iim9 - V13 - Imaj9<br/>(Am9 - D13 - Gmaj9)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ iiø7 - V7alt - im9<br/>(Am7b5 - D7alt - Gm9)</div>
+<div class='opt opt-wrong'>❌ iim7 - V7 - Imaj7<br/>(Am7 - D7 - Gmaj7)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7 - im7<br/>(Am7b5 - D7 - Gm7)</div>
+<div class='opt opt-correct'>✅ iim9 - V13 - Imaj9<br/>(Am9 - D13 - Gmaj9)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #53 : 1: Basic Triads</h3>
+<div class='target-key'>Base Root: Bb</div>
+<div class='correct-ans'>im - ivm - V - im<br/>(Bbm - Ebm - F - Bbm)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(Bb - Eb - F - Bb)</div>
+<div class='opt opt-wrong'>❌ I - iim - V - I<br/>(Bb - Cm - F - Bb)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(Bb - Gm - Eb - F)</div>
+<div class='opt opt-correct'>✅ im - ivm - V - im<br/>(Bbm - Ebm - F - Bbm)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #54 : 2: Seventh Chords</h3>
+<div class='target-key'>Base Root: Bb</div>
+<div class='correct-ans'>Imaj7 - vim7 - iim7 - V7<br/>(Bbmaj7 - Gm7 - Cm7 - F7)</div>
+<div class='opts'>
+<div class='opt opt-correct'>✅ Imaj7 - vim7 - iim7 - V7<br/>(Bbmaj7 - Gm7 - Cm7 - F7)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(Bb - Gm - Eb - F)</div>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(Bb - Eb - F - Bb)</div>
+<div class='opt opt-wrong'>❌ im7 - ivm7 - VII7 - IIImaj7<br/>(Bbm7 - Ebm7 - Ab7 - Dbmaj7)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #55 : 2: Seventh Chords</h3>
+<div class='target-key'>Base Root: Bb</div>
+<div class='correct-ans'>im7 - ivm7 - VII7 - IIImaj7<br/>(Bbm7 - Ebm7 - Ab7 - Dbmaj7)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(Bb - Gm - Eb - F)</div>
+<div class='opt opt-wrong'>❌ Imaj7 - vim7 - iim7 - V7<br/>(Bbmaj7 - Gm7 - Cm7 - F7)</div>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(Bb - Eb - F - Bb)</div>
+<div class='opt opt-correct'>✅ im7 - ivm7 - VII7 - IIImaj7<br/>(Bbm7 - Ebm7 - Ab7 - Dbmaj7)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #56 : 1: Basic Triads</h3>
+<div class='target-key'>Base Root: D</div>
+<div class='correct-ans'>im - ivm - V - im<br/>(Dm - Gm - A - Dm)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ I - iim - V - I<br/>(D - Em - A - D)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(D - Bm - G - A)</div>
+<div class='opt opt-wrong'>❌ im - VI - VII - im<br/>(Dm - Bb - C - Dm)</div>
+<div class='opt opt-correct'>✅ im - ivm - V - im<br/>(Dm - Gm - A - Dm)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #57 : 1: Basic Triads</h3>
+<div class='target-key'>Base Root: G</div>
+<div class='correct-ans'>im - ivm - V - im<br/>(Gm - Cm - D - Gm)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(G - Em - C - D)</div>
+<div class='opt opt-wrong'>❌ I - iim - V - I<br/>(G - Am - D - G)</div>
+<div class='opt opt-wrong'>❌ im - VI - VII - im<br/>(Gm - Eb - F - Gm)</div>
+<div class='opt opt-correct'>✅ im - ivm - V - im<br/>(Gm - Cm - D - Gm)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #58 : 4: Advanced</h3>
+<div class='target-key'>Base Root: C</div>
+<div class='correct-ans'>iim7 - subV7 - Imaj7<br/>(Dm7 - Db7 - Cmaj7)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ iim7 - V7 - Imaj7<br/>(Dm7 - G7 - Cmaj7)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7 - im7<br/>(Dm7b5 - G7 - Cm7)</div>
+<div class='opt opt-wrong'>❌ iim9 - V13 - Imaj9<br/>(Dm9 - G13 - Cmaj9)</div>
+<div class='opt opt-correct'>✅ iim7 - subV7 - Imaj7<br/>(Dm7 - Db7 - Cmaj7)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #59 : 2: Seventh Chords</h3>
+<div class='target-key'>Base Root: Bb</div>
+<div class='correct-ans'>iiø7 - V7 - im7<br/>(Cm7b5 - F7 - Bbm7)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ iim7 - V7 - Imaj7<br/>(Cm7 - F7 - Bbmaj7)</div>
+<div class='opt opt-wrong'>❌ iim9 - V13 - Imaj9<br/>(Cm9 - F13 - Bbmaj9)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7alt - im9<br/>(Cm7b5 - F7alt - Bbm9)</div>
+<div class='opt opt-correct'>✅ iiø7 - V7 - im7<br/>(Cm7b5 - F7 - Bbm7)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #60 : 2: Seventh Chords</h3>
+<div class='target-key'>Base Root: G</div>
+<div class='correct-ans'>iim7 - V7 - Imaj7<br/>(Am7 - D7 - Gmaj7)</div>
+<div class='opts'>
+<div class='opt opt-correct'>✅ iim7 - V7 - Imaj7<br/>(Am7 - D7 - Gmaj7)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7alt - im9<br/>(Am7b5 - D7alt - Gm9)</div>
+<div class='opt opt-wrong'>❌ iim9 - V13 - Imaj9<br/>(Am9 - D13 - Gmaj9)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7 - im7<br/>(Am7b5 - D7 - Gm7)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #61 : 3: Jazz Extensions</h3>
+<div class='target-key'>Base Root: Bb</div>
+<div class='correct-ans'>iim9 - V13 - Imaj9<br/>(Cm9 - F13 - Bbmaj9)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ iiø7 - V7alt - im9<br/>(Cm7b5 - F7alt - Bbm9)</div>
+<div class='opt opt-wrong'>❌ iim7 - V7 - Imaj7<br/>(Cm7 - F7 - Bbmaj7)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7 - im7<br/>(Cm7b5 - F7 - Bbm7)</div>
+<div class='opt opt-correct'>✅ iim9 - V13 - Imaj9<br/>(Cm9 - F13 - Bbmaj9)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #62 : 2: Seventh Chords</h3>
+<div class='target-key'>Base Root: F</div>
+<div class='correct-ans'>iiø7 - V7 - im7<br/>(Gm7b5 - C7 - Fm7)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ iiø7 - V7alt - im9<br/>(Gm7b5 - C7alt - Fm9)</div>
+<div class='opt opt-wrong'>❌ iim9 - V13 - Imaj9<br/>(Gm9 - C13 - Fmaj9)</div>
+<div class='opt opt-correct'>✅ iiø7 - V7 - im7<br/>(Gm7b5 - C7 - Fm7)</div>
+<div class='opt opt-wrong'>❌ iim7 - V7 - Imaj7<br/>(Gm7 - C7 - Fmaj7)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #63 : 4: Advanced</h3>
+<div class='target-key'>Base Root: C</div>
+<div class='correct-ans'>Imaj7 - bIII7 - bVImaj7 - subV7<br/>(Cmaj7 - Eb7 - Abmaj7 - Db7)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ V7/ii - iim7 - V7 - Imaj7<br/>(A7 - Dm7 - G7 - Cmaj7)</div>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(C - F - G - C)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(C - Am - F - G)</div>
+<div class='opt opt-correct'>✅ Imaj7 - bIII7 - bVImaj7 - subV7<br/>(Cmaj7 - Eb7 - Abmaj7 - Db7)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #64 : 1: Basic Triads</h3>
+<div class='target-key'>Base Root: Bb</div>
+<div class='correct-ans'>I - IV - V - I<br/>(Bb - Eb - F - Bb)</div>
+<div class='opts'>
+<div class='opt opt-correct'>✅ I - IV - V - I<br/>(Bb - Eb - F - Bb)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(Bb - Gm - Eb - F)</div>
+<div class='opt opt-wrong'>❌ im - ivm - V - im<br/>(Bbm - Ebm - F - Bbm)</div>
+<div class='opt opt-wrong'>❌ I - iim - V - I<br/>(Bb - Cm - F - Bb)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #65 : 2: Seventh Chords</h3>
+<div class='target-key'>Base Root: D</div>
+<div class='correct-ans'>iim7 - V7 - Imaj7<br/>(Em7 - A7 - Dmaj7)</div>
+<div class='opts'>
+<div class='opt opt-correct'>✅ iim7 - V7 - Imaj7<br/>(Em7 - A7 - Dmaj7)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7alt - im9<br/>(Em7b5 - A7alt - Dm9)</div>
+<div class='opt opt-wrong'>❌ iim9 - V13 - Imaj9<br/>(Em9 - A13 - Dmaj9)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7 - im7<br/>(Em7b5 - A7 - Dm7)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #66 : 1: Basic Triads</h3>
+<div class='target-key'>Base Root: G</div>
+<div class='correct-ans'>I - IV - V - I<br/>(G - C - D - G)</div>
+<div class='opts'>
+<div class='opt opt-correct'>✅ I - IV - V - I<br/>(G - C - D - G)</div>
+<div class='opt opt-wrong'>❌ I - iim - V - I<br/>(G - Am - D - G)</div>
+<div class='opt opt-wrong'>❌ im - ivm - V - im<br/>(Gm - Cm - D - Gm)</div>
+<div class='opt opt-wrong'>❌ im - VI - VII - im<br/>(Gm - Eb - F - Gm)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #67 : 3: Jazz Extensions</h3>
+<div class='target-key'>Base Root: A</div>
+<div class='correct-ans'>Imaj9 - VI7alt - iim9 - V13<br/>(Amaj9 - F#7alt - Bm9 - E13)</div>
+<div class='opts'>
+<div class='opt opt-correct'>✅ Imaj9 - VI7alt - iim9 - V13<br/>(Amaj9 - F#7alt - Bm9 - E13)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(A - F#m - D - E)</div>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(A - D - E - A)</div>
+<div class='opt opt-wrong'>❌ im9 - bVImaj9 - iiø7 - V7alt<br/>(Am9 - Fmaj9 - Bm7b5 - E7alt)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #68 : 3: Jazz Extensions</h3>
+<div class='target-key'>Base Root: Eb</div>
+<div class='correct-ans'>iiø7 - V7alt - im9<br/>(Fm7b5 - Bb7alt - Ebm9)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ iiø7 - V7 - im7<br/>(Fm7b5 - Bb7 - Ebm7)</div>
+<div class='opt opt-wrong'>❌ iim7 - V7 - Imaj7<br/>(Fm7 - Bb7 - Ebmaj7)</div>
+<div class='opt opt-correct'>✅ iiø7 - V7alt - im9<br/>(Fm7b5 - Bb7alt - Ebm9)</div>
+<div class='opt opt-wrong'>❌ iim9 - V13 - Imaj9<br/>(Fm9 - Bb13 - Ebmaj9)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #69 : 1: Basic Triads</h3>
+<div class='target-key'>Base Root: D</div>
+<div class='correct-ans'>im - ivm - V - im<br/>(Dm - Gm - A - Dm)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(D - Bm - G - A)</div>
+<div class='opt opt-wrong'>❌ I - iim - V - I<br/>(D - Em - A - D)</div>
+<div class='opt opt-correct'>✅ im - ivm - V - im<br/>(Dm - Gm - A - Dm)</div>
+<div class='opt opt-wrong'>❌ im - VI - VII - im<br/>(Dm - Bb - C - Dm)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #70 : 4: Advanced</h3>
+<div class='target-key'>Base Root: D</div>
+<div class='correct-ans'>iim7 - subV7 - Imaj7<br/>(Em7 - Eb7 - Dmaj7)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ iiø7 - V7 - im7<br/>(Em7b5 - A7 - Dm7)</div>
+<div class='opt opt-correct'>✅ iim7 - subV7 - Imaj7<br/>(Em7 - Eb7 - Dmaj7)</div>
+<div class='opt opt-wrong'>❌ iim7 - V7 - Imaj7<br/>(Em7 - A7 - Dmaj7)</div>
+<div class='opt opt-wrong'>❌ iim9 - V13 - Imaj9<br/>(Em9 - A13 - Dmaj9)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #71 : 1: Basic Triads</h3>
+<div class='target-key'>Base Root: F</div>
+<div class='correct-ans'>I - iim - V - I<br/>(F - Gm - C - F)</div>
+<div class='opts'>
+<div class='opt opt-correct'>✅ I - iim - V - I<br/>(F - Gm - C - F)</div>
+<div class='opt opt-wrong'>❌ im - ivm - V - im<br/>(Fm - Bbm - C - Fm)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(F - Dm - Bb - C)</div>
+<div class='opt opt-wrong'>❌ im - VI - VII - im<br/>(Fm - Db - Eb - Fm)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #72 : 3: Jazz Extensions</h3>
+<div class='target-key'>Base Root: Eb</div>
+<div class='correct-ans'>iiø7 - V7alt - im9<br/>(Fm7b5 - Bb7alt - Ebm9)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ iim9 - V13 - Imaj9<br/>(Fm9 - Bb13 - Ebmaj9)</div>
+<div class='opt opt-wrong'>❌ iim7 - V7 - Imaj7<br/>(Fm7 - Bb7 - Ebmaj7)</div>
+<div class='opt opt-correct'>✅ iiø7 - V7alt - im9<br/>(Fm7b5 - Bb7alt - Ebm9)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7 - im7<br/>(Fm7b5 - Bb7 - Ebm7)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #73 : 2: Seventh Chords</h3>
+<div class='target-key'>Base Root: A</div>
+<div class='correct-ans'>iim7 - V7 - Imaj7<br/>(Bm7 - E7 - Amaj7)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ iiø7 - V7 - im7<br/>(Bm7b5 - E7 - Am7)</div>
+<div class='opt opt-correct'>✅ iim7 - V7 - Imaj7<br/>(Bm7 - E7 - Amaj7)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7alt - im9<br/>(Bm7b5 - E7alt - Am9)</div>
+<div class='opt opt-wrong'>❌ iim9 - V13 - Imaj9<br/>(Bm9 - E13 - Amaj9)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #74 : 3: Jazz Extensions</h3>
+<div class='target-key'>Base Root: A</div>
+<div class='correct-ans'>iiø7 - V7alt - im9<br/>(Bm7b5 - E7alt - Am9)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ iiø7 - V7 - im7<br/>(Bm7b5 - E7 - Am7)</div>
+<div class='opt opt-correct'>✅ iiø7 - V7alt - im9<br/>(Bm7b5 - E7alt - Am9)</div>
+<div class='opt opt-wrong'>❌ iim7 - V7 - Imaj7<br/>(Bm7 - E7 - Amaj7)</div>
+<div class='opt opt-wrong'>❌ iim9 - V13 - Imaj9<br/>(Bm9 - E13 - Amaj9)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #75 : 3: Jazz Extensions</h3>
+<div class='target-key'>Base Root: Eb</div>
+<div class='correct-ans'>Imaj9 - VI7alt - iim9 - V13<br/>(Ebmaj9 - C7alt - Fm9 - Bb13)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(Eb - Cm - Ab - Bb)</div>
+<div class='opt opt-correct'>✅ Imaj9 - VI7alt - iim9 - V13<br/>(Ebmaj9 - C7alt - Fm9 - Bb13)</div>
+<div class='opt opt-wrong'>❌ im9 - bVImaj9 - iiø7 - V7alt<br/>(Ebm9 - Bmaj9 - Fm7b5 - Bb7alt)</div>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(Eb - Ab - Bb - Eb)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #76 : 2: Seventh Chords</h3>
+<div class='target-key'>Base Root: C</div>
+<div class='correct-ans'>iim7 - V7 - Imaj7<br/>(Dm7 - G7 - Cmaj7)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ iim9 - V13 - Imaj9<br/>(Dm9 - G13 - Cmaj9)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7alt - im9<br/>(Dm7b5 - G7alt - Cm9)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7 - im7<br/>(Dm7b5 - G7 - Cm7)</div>
+<div class='opt opt-correct'>✅ iim7 - V7 - Imaj7<br/>(Dm7 - G7 - Cmaj7)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #77 : 4: Advanced</h3>
+<div class='target-key'>Base Root: C</div>
+<div class='correct-ans'>iim7 - subV7 - Imaj7<br/>(Dm7 - Db7 - Cmaj7)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ iim7 - V7 - Imaj7<br/>(Dm7 - G7 - Cmaj7)</div>
+<div class='opt opt-correct'>✅ iim7 - subV7 - Imaj7<br/>(Dm7 - Db7 - Cmaj7)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7 - im7<br/>(Dm7b5 - G7 - Cm7)</div>
+<div class='opt opt-wrong'>❌ iim9 - V13 - Imaj9<br/>(Dm9 - G13 - Cmaj9)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #78 : 1: Basic Triads</h3>
+<div class='target-key'>Base Root: A</div>
+<div class='correct-ans'>im - VI - VII - im<br/>(Am - F - G - Am)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(A - D - E - A)</div>
+<div class='opt opt-wrong'>❌ I - iim - V - I<br/>(A - Bm - E - A)</div>
+<div class='opt opt-correct'>✅ im - VI - VII - im<br/>(Am - F - G - Am)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(A - F#m - D - E)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #79 : 4: Advanced</h3>
+<div class='target-key'>Base Root: D</div>
+<div class='correct-ans'>Imaj7 - bIII7 - bVImaj7 - subV7<br/>(Dmaj7 - F7 - Bbmaj7 - Eb7)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(D - G - A - D)</div>
+<div class='opt opt-wrong'>❌ V7/ii - iim7 - V7 - Imaj7<br/>(B7 - Em7 - A7 - Dmaj7)</div>
+<div class='opt opt-correct'>✅ Imaj7 - bIII7 - bVImaj7 - subV7<br/>(Dmaj7 - F7 - Bbmaj7 - Eb7)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(D - Bm - G - A)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #80 : 3: Jazz Extensions</h3>
+<div class='target-key'>Base Root: Bb</div>
+<div class='correct-ans'>iiø7 - V7alt - im9<br/>(Cm7b5 - F7alt - Bbm9)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ iim9 - V13 - Imaj9<br/>(Cm9 - F13 - Bbmaj9)</div>
+<div class='opt opt-wrong'>❌ iim7 - V7 - Imaj7<br/>(Cm7 - F7 - Bbmaj7)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7 - im7<br/>(Cm7b5 - F7 - Bbm7)</div>
+<div class='opt opt-correct'>✅ iiø7 - V7alt - im9<br/>(Cm7b5 - F7alt - Bbm9)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #81 : 4: Advanced</h3>
+<div class='target-key'>Base Root: A</div>
+<div class='correct-ans'>V7/ii - iim7 - V7 - Imaj7<br/>(F#7 - Bm7 - E7 - Amaj7)</div>
+<div class='opts'>
+<div class='opt opt-correct'>✅ V7/ii - iim7 - V7 - Imaj7<br/>(F#7 - Bm7 - E7 - Amaj7)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(A - F#m - D - E)</div>
+<div class='opt opt-wrong'>❌ Imaj7 - bIII7 - bVImaj7 - subV7<br/>(Amaj7 - C7 - Fmaj7 - Bb7)</div>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(A - D - E - A)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #82 : 2: Seventh Chords</h3>
+<div class='target-key'>Base Root: Bb</div>
+<div class='correct-ans'>iim7 - V7 - Imaj7<br/>(Cm7 - F7 - Bbmaj7)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ iiø7 - V7 - im7<br/>(Cm7b5 - F7 - Bbm7)</div>
+<div class='opt opt-wrong'>❌ iim9 - V13 - Imaj9<br/>(Cm9 - F13 - Bbmaj9)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7alt - im9<br/>(Cm7b5 - F7alt - Bbm9)</div>
+<div class='opt opt-correct'>✅ iim7 - V7 - Imaj7<br/>(Cm7 - F7 - Bbmaj7)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #83 : 2: Seventh Chords</h3>
+<div class='target-key'>Base Root: F</div>
+<div class='correct-ans'>im7 - ivm7 - VII7 - IIImaj7<br/>(Fm7 - Bbm7 - Eb7 - Abmaj7)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ Imaj7 - vim7 - iim7 - V7<br/>(Fmaj7 - Dm7 - Gm7 - C7)</div>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(F - Bb - C - F)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(F - Dm - Bb - C)</div>
+<div class='opt opt-correct'>✅ im7 - ivm7 - VII7 - IIImaj7<br/>(Fm7 - Bbm7 - Eb7 - Abmaj7)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #84 : 2: Seventh Chords</h3>
+<div class='target-key'>Base Root: F</div>
+<div class='correct-ans'>iiø7 - V7 - im7<br/>(Gm7b5 - C7 - Fm7)</div>
+<div class='opts'>
+<div class='opt opt-correct'>✅ iiø7 - V7 - im7<br/>(Gm7b5 - C7 - Fm7)</div>
+<div class='opt opt-wrong'>❌ iim7 - V7 - Imaj7<br/>(Gm7 - C7 - Fmaj7)</div>
+<div class='opt opt-wrong'>❌ iim9 - V13 - Imaj9<br/>(Gm9 - C13 - Fmaj9)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7alt - im9<br/>(Gm7b5 - C7alt - Fm9)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #85 : 4: Advanced</h3>
+<div class='target-key'>Base Root: D</div>
+<div class='correct-ans'>Imaj7 - bIII7 - bVImaj7 - subV7<br/>(Dmaj7 - F7 - Bbmaj7 - Eb7)</div>
+<div class='opts'>
+<div class='opt opt-correct'>✅ Imaj7 - bIII7 - bVImaj7 - subV7<br/>(Dmaj7 - F7 - Bbmaj7 - Eb7)</div>
+<div class='opt opt-wrong'>❌ V7/ii - iim7 - V7 - Imaj7<br/>(B7 - Em7 - A7 - Dmaj7)</div>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(D - G - A - D)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(D - Bm - G - A)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #86 : 1: Basic Triads</h3>
+<div class='target-key'>Base Root: A</div>
+<div class='correct-ans'>I - IV - V - I<br/>(A - D - E - A)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ I - iim - V - I<br/>(A - Bm - E - A)</div>
+<div class='opt opt-wrong'>❌ im - VI - VII - im<br/>(Am - F - G - Am)</div>
+<div class='opt opt-wrong'>❌ im - ivm - V - im<br/>(Am - Dm - E - Am)</div>
+<div class='opt opt-correct'>✅ I - IV - V - I<br/>(A - D - E - A)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #87 : 4: Advanced</h3>
+<div class='target-key'>Base Root: C</div>
+<div class='correct-ans'>iim7 - subV7 - Imaj7<br/>(Dm7 - Db7 - Cmaj7)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ iim7 - V7 - Imaj7<br/>(Dm7 - G7 - Cmaj7)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7 - im7<br/>(Dm7b5 - G7 - Cm7)</div>
+<div class='opt opt-correct'>✅ iim7 - subV7 - Imaj7<br/>(Dm7 - Db7 - Cmaj7)</div>
+<div class='opt opt-wrong'>❌ iim9 - V13 - Imaj9<br/>(Dm9 - G13 - Cmaj9)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #88 : 4: Advanced</h3>
+<div class='target-key'>Base Root: A</div>
+<div class='correct-ans'>V7/ii - iim7 - V7 - Imaj7<br/>(F#7 - Bm7 - E7 - Amaj7)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ Imaj7 - bIII7 - bVImaj7 - subV7<br/>(Amaj7 - C7 - Fmaj7 - Bb7)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(A - F#m - D - E)</div>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(A - D - E - A)</div>
+<div class='opt opt-correct'>✅ V7/ii - iim7 - V7 - Imaj7<br/>(F#7 - Bm7 - E7 - Amaj7)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #89 : 3: Jazz Extensions</h3>
+<div class='target-key'>Base Root: Bb</div>
+<div class='correct-ans'>iiø7 - V7alt - im9<br/>(Cm7b5 - F7alt - Bbm9)</div>
+<div class='opts'>
+<div class='opt opt-correct'>✅ iiø7 - V7alt - im9<br/>(Cm7b5 - F7alt - Bbm9)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7 - im7<br/>(Cm7b5 - F7 - Bbm7)</div>
+<div class='opt opt-wrong'>❌ iim7 - V7 - Imaj7<br/>(Cm7 - F7 - Bbmaj7)</div>
+<div class='opt opt-wrong'>❌ iim9 - V13 - Imaj9<br/>(Cm9 - F13 - Bbmaj9)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #90 : 2: Seventh Chords</h3>
+<div class='target-key'>Base Root: F</div>
+<div class='correct-ans'>iim7 - V7 - Imaj7<br/>(Gm7 - C7 - Fmaj7)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ iiø7 - V7alt - im9<br/>(Gm7b5 - C7alt - Fm9)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7 - im7<br/>(Gm7b5 - C7 - Fm7)</div>
+<div class='opt opt-correct'>✅ iim7 - V7 - Imaj7<br/>(Gm7 - C7 - Fmaj7)</div>
+<div class='opt opt-wrong'>❌ iim9 - V13 - Imaj9<br/>(Gm9 - C13 - Fmaj9)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #91 : 3: Jazz Extensions</h3>
+<div class='target-key'>Base Root: D</div>
+<div class='correct-ans'>im9 - bVImaj9 - iiø7 - V7alt<br/>(Dm9 - Bbmaj9 - Em7b5 - A7alt)</div>
+<div class='opts'>
+<div class='opt opt-correct'>✅ im9 - bVImaj9 - iiø7 - V7alt<br/>(Dm9 - Bbmaj9 - Em7b5 - A7alt)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(D - Bm - G - A)</div>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(D - G - A - D)</div>
+<div class='opt opt-wrong'>❌ Imaj9 - VI7alt - iim9 - V13<br/>(Dmaj9 - B7alt - Em9 - A13)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #92 : 2: Seventh Chords</h3>
+<div class='target-key'>Base Root: A</div>
+<div class='correct-ans'>iiø7 - V7 - im7<br/>(Bm7b5 - E7 - Am7)</div>
+<div class='opts'>
+<div class='opt opt-correct'>✅ iiø7 - V7 - im7<br/>(Bm7b5 - E7 - Am7)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7alt - im9<br/>(Bm7b5 - E7alt - Am9)</div>
+<div class='opt opt-wrong'>❌ iim9 - V13 - Imaj9<br/>(Bm9 - E13 - Amaj9)</div>
+<div class='opt opt-wrong'>❌ iim7 - V7 - Imaj7<br/>(Bm7 - E7 - Amaj7)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #93 : 4: Advanced</h3>
+<div class='target-key'>Base Root: F</div>
+<div class='correct-ans'>iim7 - subV7 - Imaj7<br/>(Gm7 - Gb7 - Fmaj7)</div>
+<div class='opts'>
+<div class='opt opt-correct'>✅ iim7 - subV7 - Imaj7<br/>(Gm7 - Gb7 - Fmaj7)</div>
+<div class='opt opt-wrong'>❌ iim9 - V13 - Imaj9<br/>(Gm9 - C13 - Fmaj9)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7 - im7<br/>(Gm7b5 - C7 - Fm7)</div>
+<div class='opt opt-wrong'>❌ iim7 - V7 - Imaj7<br/>(Gm7 - C7 - Fmaj7)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #94 : 3: Jazz Extensions</h3>
+<div class='target-key'>Base Root: G</div>
+<div class='correct-ans'>iiø7 - V7alt - im9<br/>(Am7b5 - D7alt - Gm9)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ iiø7 - V7 - im7<br/>(Am7b5 - D7 - Gm7)</div>
+<div class='opt opt-wrong'>❌ iim7 - V7 - Imaj7<br/>(Am7 - D7 - Gmaj7)</div>
+<div class='opt opt-correct'>✅ iiø7 - V7alt - im9<br/>(Am7b5 - D7alt - Gm9)</div>
+<div class='opt opt-wrong'>❌ iim9 - V13 - Imaj9<br/>(Am9 - D13 - Gmaj9)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #95 : 2: Seventh Chords</h3>
+<div class='target-key'>Base Root: Eb</div>
+<div class='correct-ans'>im7 - ivm7 - VII7 - IIImaj7<br/>(Ebm7 - G#m7 - Db7 - Gbmaj7)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(Eb - Cm - Ab - Bb)</div>
+<div class='opt opt-wrong'>❌ Imaj7 - vim7 - iim7 - V7<br/>(Ebmaj7 - Cm7 - Fm7 - Bb7)</div>
+<div class='opt opt-correct'>✅ im7 - ivm7 - VII7 - IIImaj7<br/>(Ebm7 - G#m7 - Db7 - Gbmaj7)</div>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(Eb - Ab - Bb - Eb)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #96 : 1: Basic Triads</h3>
+<div class='target-key'>Base Root: G</div>
+<div class='correct-ans'>im - ivm - V - im<br/>(Gm - Cm - D - Gm)</div>
+<div class='opts'>
+<div class='opt opt-correct'>✅ im - ivm - V - im<br/>(Gm - Cm - D - Gm)</div>
+<div class='opt opt-wrong'>❌ im - VI - VII - im<br/>(Gm - Eb - F - Gm)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(G - Em - C - D)</div>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(G - C - D - G)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #97 : 1: Basic Triads</h3>
+<div class='target-key'>Base Root: Eb</div>
+<div class='correct-ans'>I - IV - V - I<br/>(Eb - Ab - Bb - Eb)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ im - VI - VII - im<br/>(Ebm - B - Db - Ebm)</div>
+<div class='opt opt-wrong'>❌ im - ivm - V - im<br/>(Ebm - G#m - Bb - Ebm)</div>
+<div class='opt opt-wrong'>❌ I - iim - V - I<br/>(Eb - Fm - Bb - Eb)</div>
+<div class='opt opt-correct'>✅ I - IV - V - I<br/>(Eb - Ab - Bb - Eb)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #98 : 4: Advanced</h3>
+<div class='target-key'>Base Root: G</div>
+<div class='correct-ans'>iim7 - subV7 - Imaj7<br/>(Am7 - Ab7 - Gmaj7)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ iim7 - V7 - Imaj7<br/>(Am7 - D7 - Gmaj7)</div>
+<div class='opt opt-wrong'>❌ iiø7 - V7 - im7<br/>(Am7b5 - D7 - Gm7)</div>
+<div class='opt opt-wrong'>❌ iim9 - V13 - Imaj9<br/>(Am9 - D13 - Gmaj9)</div>
+<div class='opt opt-correct'>✅ iim7 - subV7 - Imaj7<br/>(Am7 - Ab7 - Gmaj7)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #99 : 2: Seventh Chords</h3>
+<div class='target-key'>Base Root: F</div>
+<div class='correct-ans'>Imaj7 - vim7 - iim7 - V7<br/>(Fmaj7 - Dm7 - Gm7 - C7)</div>
+<div class='opts'>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(F - Dm - Bb - C)</div>
+<div class='opt opt-wrong'>❌ im7 - ivm7 - VII7 - IIImaj7<br/>(Fm7 - Bbm7 - Eb7 - Abmaj7)</div>
+<div class='opt opt-wrong'>❌ I - IV - V - I<br/>(F - Bb - C - F)</div>
+<div class='opt opt-correct'>✅ Imaj7 - vim7 - iim7 - V7<br/>(Fmaj7 - Dm7 - Gm7 - C7)</div>
+</div></div>
+<div class='test-card'>
+<h3>Test #100 : 1: Basic Triads</h3>
+<div class='target-key'>Base Root: F</div>
+<div class='correct-ans'>I - IV - V - I<br/>(F - Bb - C - F)</div>
+<div class='opts'>
+<div class='opt opt-correct'>✅ I - IV - V - I<br/>(F - Bb - C - F)</div>
+<div class='opt opt-wrong'>❌ im - ivm - V - im<br/>(Fm - Bbm - C - Fm)</div>
+<div class='opt opt-wrong'>❌ I - iim - V - I<br/>(F - Gm - C - F)</div>
+<div class='opt opt-wrong'>❌ I - vim - IV - V<br/>(F - Dm - Bb - C)</div>
+</div></div>
+</body></html>

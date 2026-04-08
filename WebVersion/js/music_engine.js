@@ -151,10 +151,21 @@ class MusicEngine {
                         typeStr.startsWith('dim') || typeStr.startsWith('ø') || typeStr.startsWith('-');
         const always = { 'Cb': 'B', 'B#': 'C', 'E#': 'F', 'Fb': 'E' };
         if (always[rootStr]) return always[rootStr];
+
+        let preferFlat = false;
+        let preferSharp = false;
+        if (typeof window !== 'undefined' && window.currentKeyContext && window.currentKeyContext.root) {
+            let spell = this.getSpellingForRoot(window.currentKeyContext.root);
+            if (spell === 'flat') preferFlat = true;
+            if (spell === 'sharp') preferSharp = true;
+        }
+
         if (isMinor) {
+            if (preferFlat && ['Db', 'Gb', 'Ab'].includes(rootStr)) return rootStr;
             const minorFix = { 'Db': 'C#', 'Gb': 'F#', 'Ab': 'G#' };
             if (minorFix[rootStr]) return minorFix[rootStr];
         } else {
+            if (preferSharp && ['C#', 'G#', 'D#', 'A#'].includes(rootStr)) return rootStr;
             const majorFix = { 'C#': 'Db', 'G#': 'Ab', 'D#': 'Eb', 'A#': 'Bb' };
             if (majorFix[rootStr]) return majorFix[rootStr];
         }
