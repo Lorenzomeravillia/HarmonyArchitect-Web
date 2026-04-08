@@ -137,6 +137,10 @@
              } catch(err) { return null; }
         }
 
+        async getEnergy() {
+            return '∞'; // Infinite energy for Beta
+        }
+
         get client() {
             return supabase;
         }
