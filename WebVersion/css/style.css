@@ -907,3 +907,21 @@ canvas {
     .session-badge { font-size: 40px; }
     .session-title { font-size: 16px; }
 }
+
+/* ============================================================
+   DESKTOP / WIDE ( > 1024 px )
+   ============================================================ */
+@media (min-width: 1025px) {
+    .inline-feedback-controls {
+        flex-basis: 100%;
+        justify-content: center;
+        align-items: center;
+        padding-top: 16px;
+        gap: 20px;
+    }
+    .inline-fb-btn {
+        max-width: 280px;
+        padding: 14px 20px;
+        font-size: 18px;
+    }
+}
