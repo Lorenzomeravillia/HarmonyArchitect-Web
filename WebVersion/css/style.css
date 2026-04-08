@@ -303,7 +303,9 @@ body {
     padding: 6px 8px;
     flex: 1 1 0;
     min-height: 0;
-    overflow: hidden;
+    overflow: visible;
+    white-space: pre;
+    line-height: 1.3;
 }
 .answer-btn:hover { background-color: #4A5E7A; border-color: #6A7EA0; }
 
@@ -905,8 +907,8 @@ canvas {
     .staff-frame canvas { max-width: 100%; max-height: 100%; }
 
     /* Answers column on right */
-    .answers-frame { width: 130px; min-width: 100px; flex-shrink: 0; grid-template-columns: 1fr; }
-    .answer-btn    { font-size: 12px; padding: 4px 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.2; text-align: left; }
+    .answers-frame { width: 35%; min-width: 250px; flex-shrink: 0; display: flex; flex-direction: column; }
+    .answer-btn    { font-size: 12px; padding: 4px 6px; overflow: visible; white-space: pre; line-height: 1.2; text-align: center; }
 
     /* Reclaim feedback row gap and overlap answers */
     .inline-feedback-controls {
@@ -950,6 +952,12 @@ canvas {
    DESKTOP / WIDE ( > 1024 px )
    ============================================================ */
 @media (min-width: 1025px) {
+    .answers-frame {
+        width: 320px;
+    }
+    .answer-btn {
+        font-size: 14px;
+    }
     .inline-feedback-controls {
         flex-basis: 100%;
         justify-content: center;
