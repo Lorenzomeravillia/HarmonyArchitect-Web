@@ -65,7 +65,7 @@ class AudioEngine {
         this.PRESETS = {
             'Orchestra':    ["contrabass", "cello", "bassoon", "french-horn", "violin", "clarinet", "flute"],
             'Jazz Combo':   ["contrabass", "cello", "saxophone", "french-horn", "clarinet", "trumpet", "piano"],
-            'Clear Mix':    ["bass-electric", "organ", "trumpet", "harp", "bassoon", "flute", "violin"],
+            'Clear Mix':    ["bass-electric", "piano", "trumpet", "harp", "bassoon", "flute", "violin"],
         };
     }
 
