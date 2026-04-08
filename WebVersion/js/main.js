@@ -490,6 +490,7 @@ document.addEventListener("DOMContentLoaded", () => {
             b.dataset.answer = o;
 
             b.onclick = () => {
+              try {
                 if (b.dataset.answered) return;
                 answersFrame.querySelectorAll('.answer-btn').forEach(btn => btn.dataset.answered = '1');
 
@@ -553,6 +554,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (sessionTotal >= getSessionSize()) showSessionComplete();
                     else showNextPopup(correct);
                 }, 1000);
+              } catch (e) {
+                alert("CRASH IN ANSWER_BTN: " + e.message + "\n\n" + e.stack);
+              }
             };
             answersFrame.appendChild(b);
         });

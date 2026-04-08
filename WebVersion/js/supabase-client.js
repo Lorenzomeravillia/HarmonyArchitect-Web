@@ -141,6 +141,14 @@
             return '∞'; // Infinite energy for Beta
         }
 
+        async saveChallenge(payload) {
+            return this.safeWrite('challenges', 'insert', payload);
+        }
+
+        async saveSession(payload) {
+            return this.safeWrite('sessions', 'insert', payload);
+        }
+
         get client() {
             return supabase;
         }
