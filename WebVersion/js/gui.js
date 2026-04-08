@@ -135,6 +135,9 @@ class GUI {
             };
             selectContainer.appendChild(btn);
         });
+        
+        // Hard-sync the internal engine matrix to match the UI visual default immediately.
+        if (window.audioEngine) window.audioEngine.applyPreset(presetDefs[0].name);
 
         // ── Solo buttons ────────────────────────────────────────
         const solo_frame = document.getElementById("solo_buttons_frame");

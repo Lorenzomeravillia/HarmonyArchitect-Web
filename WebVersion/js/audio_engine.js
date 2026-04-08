@@ -55,8 +55,8 @@ class AudioEngine {
             'violin': { 'A3': 'A3.mp3', 'A4': 'A4.mp3', 'A5': 'A5.mp3', 'A6': 'A6.mp3', 'C4': 'C4.mp3', 'C5': 'C5.mp3', 'C6': 'C6.mp3', 'C7': 'C7.mp3', 'E4': 'E4.mp3', 'E5': 'E5.mp3', 'E6': 'E6.mp3', 'G4': 'G4.mp3', 'G5': 'G5.mp3', 'G6': 'G6.mp3' }
         };
 
-        // 7 voice channels mapped to instrument names Default: Orchestra
-        this.channels = ["contrabass", "cello", "bassoon", "french-horn", "violin", "clarinet", "flute"];
+        // 7 voice channels mapped to instrument names Default
+        this.channels = ["bass-electric", "piano", "trumpet", "harp", "bassoon", "flute", "violin"];
 
         // Per-voice volume balance
         this.voiceBalance = [1.0, 0.80, 0.76, 0.74, 0.76, 0.80, 0.90];
