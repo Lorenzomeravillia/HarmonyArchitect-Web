@@ -34,7 +34,7 @@ class AudioEngine {
         this.fallbackPrograms = {
             "contrabass": 43, "cello": 42, "bassoon": 70, "french-horn": 60, "viola": 41, 
             "clarinet": 71, "flute": 73, "piano": 0, "guitar-nylon": 24, "violin": 40, 
-            "trumpet": 56, "saxophone": 65, "organ": 19, "harp": 46
+            "trumpet": 56, "saxophone": 65, "organ": 19, "harp": 46, "bass-electric": 33
         };
 
         // Native Tonejs map for our specific requested instruments to avoid 404s
@@ -105,8 +105,10 @@ class AudioEngine {
         this.reverb.connect(eq);
         eq.toDestination();
 
-        // Preload current preset asynchronously
-        this.channels.forEach(inst => this.loadInstrument(inst));
+        // Preload current preset asynchronously and sequentially
+        for (let i = 0; i < this.channels.length; i++) {
+            await this.loadInstrument(this.channels[i]);
+        }
     }
 
     // ── FALLBACK WEBAUDIOFONT LOGIC ───────────────────────────────────────
@@ -195,11 +197,17 @@ class AudioEngine {
         });
     }
 
-    applyPreset(name) {
+    async applyPreset(name) {
         const progs = this.PRESETS[name];
         if (!progs) return;
         progs.forEach((prog, i) => { this.channels[i] = prog; });
-        if (this._unlocked) progs.forEach(prog => this.loadInstrument(prog));
+        if (this._unlocked) {
+            // iOS Safari severely bottlenecks parallel AudioBuffer.decodeAudioData triggers. 
+            // We MUST load the 7 instruments sequentially to guarantee memory resilience on mobile profiles.
+            for (let i = 0; i < progs.length; i++) {
+                await this.loadInstrument(progs[i]);
+            }
+        }
     }
 
     setChannelInstrument(channelIdx, instrumentName) {
