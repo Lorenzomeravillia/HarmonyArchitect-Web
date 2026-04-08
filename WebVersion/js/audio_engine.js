@@ -69,6 +69,18 @@ class AudioEngine {
         };
     }
 
+    _setLoading(isLoading) {
+        const toast = document.getElementById('loading_toast');
+        if (!toast) return;
+        if (isLoading) {
+            this._loadingCount = (this._loadingCount || 0) + 1;
+            if (this._loadingCount === 1) toast.classList.add('visible');
+        } else {
+            this._loadingCount = Math.max(0, (this._loadingCount || 0) - 1);
+            if (this._loadingCount === 0) toast.classList.remove('visible');
+        }
+    }
+
     // Proxy the raw context properties that main.js relies upon for resume checks on iOS
     get ctx() {
         if (!this._unlocked) {
@@ -106,9 +118,11 @@ class AudioEngine {
         eq.toDestination();
 
         // Preload current preset asynchronously and sequentially
+        this._setLoading(true);
         for (let i = 0; i < this.channels.length; i++) {
             await this.loadInstrument(this.channels[i]);
         }
+        this._setLoading(false);
     }
 
     // ── FALLBACK WEBAUDIOFONT LOGIC ───────────────────────────────────────
@@ -202,11 +216,13 @@ class AudioEngine {
         if (!progs) return;
         progs.forEach((prog, i) => { this.channels[i] = prog; });
         if (this._unlocked) {
+            this._setLoading(true);
             // iOS Safari severely bottlenecks parallel AudioBuffer.decodeAudioData triggers. 
             // We MUST load the 7 instruments sequentially to guarantee memory resilience on mobile profiles.
             for (let i = 0; i < progs.length; i++) {
                 await this.loadInstrument(progs[i]);
             }
+            this._setLoading(false);
         }
     }
 

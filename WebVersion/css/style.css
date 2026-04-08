@@ -500,6 +500,44 @@ canvas {
     100% { transform: scale(3.5); opacity: 0; }
 }
 
+/* ── Global Loading Toast ───────────────────────────────── */
+.loading-toast {
+    position: fixed;
+    top: -60px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(11, 19, 43, 0.95);
+    border: 1px solid rgba(46, 196, 182, 0.4);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.8);
+    color: #2EC4B6;
+    padding: 10px 24px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 10000;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    transition: top 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    pointer-events: none;
+    backdrop-filter: blur(8px);
+}
+.loading-toast.visible {
+    top: 25px;
+}
+.loading-toast .spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(46, 196, 182, 0.2);
+    border-top-color: #2EC4B6;
+    border-radius: 50%;
+    animation: spinToast 1s linear infinite;
+}
+@keyframes spinToast {
+    to { transform: rotate(360deg); }
+}
+
 /* ── Utility ───────────────────────────────────────────── */
 .modal-overlay {
     position: fixed;
