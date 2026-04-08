@@ -20,6 +20,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     document.documentElement.webkitRequestFullscreen();
                 }
             }
+            if (window._coachAutoStart) {
+                window._coachAutoStart();
+            }
         });
     }
 

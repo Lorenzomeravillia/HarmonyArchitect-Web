@@ -10,12 +10,7 @@
             text: "Different instruments for each voice help your brain separate the notes. Try 'High Contrast' for maximum separation.",
             pos: 'below'
         },
-        {
-            id: 'playBtn',
-            target: '#play_btn',
-            text: "Tap to hear the chord. You can replay as many times as you want — no penalty.",
-            pos: 'above'
-        },
+
         {
             id: 'arpeggioBtn',
             target: '#arpeggio_btn',
@@ -57,6 +52,12 @@
             target: '#session_size_menu',
             text: "Short sessions work better for focus. Start with 5.",
             pos: 'below'
+        },
+        {
+            id: 'playBtn',
+            target: '#play_btn',
+            text: "Tap to hear the chord. You can replay as many times as you want — no penalty.",
+            pos: 'above'
         },
     ];
 
@@ -218,12 +219,12 @@
         });
     }
 
-    // Auto-start on first load
-    window.addEventListener('load', () => {
+    // Avvio manuale post-splash screen
+    window._coachAutoStart = function() {
         const shown  = getShown();
         const anyNew = MARKS.some(m => !shown[m.id]);
-        if (anyNew) setTimeout(() => startTour(false), 2000);
-    });
+        if (anyNew) setTimeout(() => startTour(false), 500);
+    };
 
     // ? button: reset and replay all
     document.addEventListener('DOMContentLoaded', () => {

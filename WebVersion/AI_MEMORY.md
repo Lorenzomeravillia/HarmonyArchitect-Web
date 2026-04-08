@@ -15,6 +15,7 @@ Questo documento traccia le decisioni architetturali, i bug fix critici e le sce
 ## 3. Continuità di Stato (`_prevV`) (`main.js`)
 - Il loop responsabile della generazione della progressione armonica usa una variabile _mutabile_ `let _prevV = null;` che viene aggiornata col return di ogni ciclo per inanellare correttamente il voice leading senza spezzarlo. *(In passato venne introdotto un bug dove era perennemente passata come `null` bloccando l'orizzontalità melodica).*
 
-## 4. UI e Autoresizing (`main.js` & `gui.js`)
+## 4. UI e Autoresizing (`main.js`, `gui.js` & `coach.js`)
+- **App Onboarding / Tour**: Il tutorial iniziale (Gestito da `coach.js`) NON usa `window.onload`, in quanto scatenerebbe i tooltip dietro (o attraverso) lo Splash Screen. Invece, espone `window._coachAutoStart()` che viene chiamato in `main.js` solo quando l'utente chiude attivamente lo Splash Screen (`#start_overlay`).
 - **Pulsanti Troncati (Mobile Portrait)**: La funzione `createAnswers` analizza la stringa multiriga (divisa da `\n`) tenendo conto di _entrambe le righe_ per calcolare il `maxLen`, e scala agilmente il `font-size` a 10px / 12px con un `break-word` per impedire ai bottoni di overfloware sul display del telefono.
 - **Armatura di Chiave Scomparsa (Primo Esercizio)**: Quando il canvas viene ridimensionato (per l'ingresso dei tasti _Solo_ nel DOM o l'attivazione della modalità _FullScreen_), il `ResizeObserver` può entrare in race condition col canvas. Per questo motivo in `main.js -> startNewChallenge` il rendering iniziale della chiave usa `requestAnimationFrame` dopo tutte le modifiche visive, stabilizzando la corretta visualizzazione delle alterazioni dal primissimo accordo.
