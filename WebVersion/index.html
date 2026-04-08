@@ -3,7 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>ClearVoicing</title>
+    <title>ClearVoicing — Hear every voice inside the chord</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/cv-app-icon-32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="assets/icons/cv-app-icon-16.png">
+
+    <!-- Apple Touch Icon (per Add to Home Screen su iOS) -->
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/icons/cv-app-icon-180.png">
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.webmanifest">
+
+    <!-- Theme Color (colore barra browser su Android, status bar su iOS) -->
+    <meta name="theme-color" content="#2EC4B6">
+
+    <!-- Apple PWA Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ClearVoicing">
+
+    <!-- Open Graph (per condivisione link su social, Slack, WhatsApp, etc.) -->
+    <meta property="og:title" content="ClearVoicing — Hear every voice inside the chord.">
+    <meta property="og:description" content="Ear training with timbral voice separation. Different instruments for each voice. No timers, no pressure.">
+    <meta property="og:image" content="https://clearvoicing.vercel.app/assets/og/cv-opengraph.png">
+    <meta property="og:url" content="https://clearvoicing.vercel.app/">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="ClearVoicing">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="ClearVoicing — Hear every voice inside the chord.">
+    <meta name="twitter:description" content="Ear training with timbral voice separation. No timers, no pressure.">
+    <meta name="twitter:image" content="https://clearvoicing.vercel.app/assets/og/cv-opengraph.png">
+
+    <!-- General Meta -->
+    <meta name="description" content="Ear training reimagined. Different instruments for each voice make chords transparent. No timers, no pressure — learn at your pace.">
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Courier+Prime:wght@700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css?v=19">
@@ -190,8 +224,8 @@
 
     <!-- PWA Fullscreen Start Overlay -->
     <div id="start_overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg-main);z-index:9999;display:flex;align-items:center;justify-content:center;color:white;flex-direction:column;gap:28px;">
-        <span style="font-size:56px;">🎹</span>
-        <h1 style="font-size:clamp(22px,6vw,32px);font-weight:800;letter-spacing:0.03em;margin:0;text-align:center;">ClearVoicing</h1>
+        <img src="assets/icons/cv-app-icon.png" alt="ClearVoicing" width="80" height="80" style="border-radius: 18px; box-shadow: 0 4px 24px rgba(46, 196, 182, 0.2);" loading="eager">
+        <img src="assets/logos/cv-logo-full.svg" alt="ClearVoicing" height="32" style="margin-top: 16px;">
         <p style="color:#2EC4B6;font-size:12px;margin-top:-20px;font-family:monospace;">VERSION 1.4.3</p>
         <p style="color:#8899BB;font-size:15px;margin:0;text-align:center;">Start hearing every single voice.</p>
         <button style="background:linear-gradient(135deg,#4A65A5,#2EC4B6);color:white;border:none;border-radius:16px;font-size:20px;font-weight:700;padding:18px 44px;cursor:pointer;letter-spacing:0.04em;box-shadow:0 0 24px rgba(74,101,165,0.5);margin-top:12px;">▶ START TRAINING</button>

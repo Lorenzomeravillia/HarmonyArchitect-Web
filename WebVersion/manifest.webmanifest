@@ -1,0 +1,25 @@
+{
+  "name": "ClearVoicing",
+  "short_name": "ClearVoicing",
+  "description": "Ear training with timbral voice separation. Hear every voice inside the chord.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0A0E1A",
+  "theme_color": "#2EC4B6",
+  "orientation": "any",
+  "categories": ["education", "music"],
+  "icons": [
+    {
+      "src": "assets/icons/cv-app-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/icons/cv-app-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
