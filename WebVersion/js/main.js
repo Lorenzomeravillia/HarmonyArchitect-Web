@@ -10,8 +10,55 @@ let currentChallengeReplays = 0;
 let currentSessionReplayCount = 0;
 let currentSessionRevealCount = 0;
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
     if (window.dbClient) window.dbClient.init();
+
+    // [B2B MIGRATION] Class Join Interceptor
+    const urlParams = new URLSearchParams(window.location.search);
+    const joinCode = urlParams.get('join_class');
+    
+    if (joinCode) {
+        document.getElementById('start_overlay').style.display = 'none';
+        document.getElementById('join_class_modal').style.display = 'flex';
+        
+        document.getElementById('btn_confirm_join').onclick = async () => {
+            const name = document.getElementById('join_student_name').value.trim();
+            if (!name) return;
+            
+            document.getElementById('btn_confirm_join').innerText = 'Connessione Cloud...';
+            
+            let checks = 0;
+            while ((!window.dbClient || !window.dbClient.isReady) && checks < 50) {
+                await new Promise(r => setTimeout(r, 100));
+                checks++;
+            }
+            
+            if (window.dbClient && window.dbClient.isReady) {
+                const { data: cData } = await window.dbClient.supabase.schema('cv').from('classes').select('id, name').eq('invite_code', joinCode).single();
+                if (cData) {
+                    const uid = window.dbClient.getUserId();
+                    await window.dbClient.supabase.schema('cv').from('class_members').upsert({
+                        class_id: cData.id,
+                        user_id: uid,
+                        display_name: name
+                    });
+                    
+                    alert("Benvenuto nella classe: " + cData.name + "! Tutti i tuoi esercizi d'ora in poi genereranno report automatici per l'insegnante.");
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                } else {
+                    const e = document.getElementById('join_error_text');
+                    e.innerText = "Codice classe disattivato o inesistente.";
+                    e.style.display = 'block';
+                    return;
+                }
+            } else {
+                alert("Errore connettore DB offline.");
+            }
+            
+            document.getElementById('join_class_modal').style.display = 'none';
+            document.getElementById('start_overlay').style.display = 'flex';
+        };
+    }
 
     // Event Delegation tracking for Solos
     document.getElementById("solo_buttons_frame")?.addEventListener("click", () => currentSoloUsed = true, true);
@@ -90,16 +137,38 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Since dbClient initializes asynchronously inside DOMContentLoaded, we don't need a heavy callback observer. 
     // We just poll or wait for dbClient.isReady
-    setTimeout(async () => {
-        if (window.dbClient && window.dbClient.user) {
-            const isAnon = window.dbClient.user.app_metadata?.provider === 'anonymous';
-            if (!isAnon) {
-                authModal.classList.add('hidden');
-                document.getElementById('auth_msg').textContent = "Logged in as " + window.dbClient.user.email;
+    // Adaptive polling for dbClient readiness to avoid slow-network races
+    const dbPoller = setInterval(async () => {
+        if (window.dbClient && window.dbClient.isReady) {
+            clearInterval(dbPoller);
+            
+            if (window.dbClient.user) {
+                const isAnon = window.dbClient.user.app_metadata?.provider === 'anonymous';
+                if (!isAnon) {
+                    authModal.classList.add('hidden');
+                    document.getElementById('auth_msg').textContent = "Logged in as " + window.dbClient.user.email;
+                }
+                
+                // Tutti gli iscritti a una classe (anche Maestri in test) meritano di vedere il loro nome palesarsi
+                window.dbClient.supabase.schema('cv').from('class_members')
+                    .select('display_name')
+                    .eq('user_id', window.dbClient.user.id)
+                    .limit(1)
+                    .single()
+                    .then(({ data }) => {
+                        if (data && data.display_name) {
+                            const badgeName = document.getElementById('student_badge_name');
+                            const badgeContainer = document.getElementById('student_badge_container');
+                            if (badgeName && badgeContainer) {
+                                badgeName.innerText = data.display_name;
+                                badgeContainer.style.display = 'flex';
+                            }
+                        }
+                    }).catch(e => { /* Not a student, suppress error */ });
             }
+            await updateEnergyUI();
         }
-        await updateEnergyUI();
-    }, 1500);
+    }, 500);
 
     profileBtn?.addEventListener('click', () => {
         const user = window.dbClient?.user;

@@ -18,6 +18,7 @@
             this.user = null;
             this.isSyncing = false;
             this.isReady = false;
+            this.supabase = supabase;
         }
 
         async init() {

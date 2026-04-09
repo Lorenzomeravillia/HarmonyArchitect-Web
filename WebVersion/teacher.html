@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClearVoicing — Teacher Analytics</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/index.css"> <!-- Fallback, might not exist under css/, check paths. Actually it's index.css -->
+    <link rel="stylesheet" href="index.css">
+    <style>
+        body { background: var(--bg-main, #0a0e17); color: white; display: flex; height: 100vh; overflow: hidden; margin: 0; font-family: 'DM Sans', sans-serif;}
+        #sidebar { width: 250px; background: rgba(30,35,45,0.9); border-right: 1px solid rgba(255,255,255,0.1); padding: 20px; display: flex; flex-direction: column; }
+        #main-content { flex: 1; padding: 30px; overflow-y: auto; position: relative; }
+        .nav-link { padding: 12px; margin-bottom: 8px; border-radius: 8px; cursor: pointer; color: #8899BB; transition: all 0.2s; font-weight: 500; }
+        .nav-link:hover, .nav-link.active { background: rgba(255,255,255,0.05); color: white; }
+        
+        .card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
+        .stat-box { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; text-align: center; }
+        .stat-value { font-size: 24px; font-weight: 700; color: #2EC4B6; }
+        .stat-label { font-size: 12px; color: #8899BB; text-transform: uppercase; letter-spacing: 1px; margin-top: 5px; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        th { color: #8899BB; font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+        tr.clickable-row:hover { background: rgba(255,255,255,0.05); cursor: pointer; }
+        
+        .status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; vertical-align: middle; }
+        .status-critical { background: #FF4A4A; box-shadow: 0 0 8px rgba(255,74,74,0.5); }
+        .status-struggling { background: #FFE66D; box-shadow: 0 0 8px rgba(255,230,109,0.5); }
+        .status-mastered { background: #2EC4B6; box-shadow: 0 0 8px rgba(46,196,182,0.5); }
+        .status-inactive { background: #556688; }
+        
+        .btn { background: #2EC4B6; color: #0a0e17; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 700; cursor: pointer; transition: opacity 0.2s; font-family: inherit; }
+        .btn:hover { opacity: 0.9; }
+        .btn-outline { background: transparent; border: 1px solid rgba(255,255,255,0.2); color: white; }
+        .btn-outline:hover { border-color: white; background: rgba(255,255,255,0.05); }
+
+        #auth-screen { position: fixed; top:0; left:0; right:0; bottom:0; background: var(--bg-main, #0a0e17); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+        .auth-card { background: rgba(255,255,255,0.03); padding: 40px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); width: 350px; text-align: center; }
+        .auth-input { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.4); color: white; box-sizing: border-box; font-family: inherit; }
+        .auth-input:focus { outline: none; border-color: #2EC4B6; }
+        
+        .view { display: none; }
+        .view.active { display: block; }
+        .badge { background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 12px; font-size: 11px; margin-right: 5px; }
+
+        @media (max-width: 768px) { body { flex-direction: column; } #sidebar { width: 100%; height: auto; padding: 10px; flex-direction: row; justify-content: space-around; flex-wrap: wrap; } }
+    </style>
+</head>
+<body>
+
+    <div id="auth-screen">
+        <div class="auth-card">
+            <h1 style="font-family: 'DM Serif Display'; margin-bottom: 5px;">ClearVoicing</h1>
+            <p style="color: #2EC4B6; letter-spacing: 2px; font-size: 12px; font-weight: 700; margin-bottom: 30px;">TEACHER PORTAL</p>
+            <input type="text" id="auth-name" class="auth-input" placeholder="Display Name (Per Registrazione)">
+            <input type="email" id="auth-email" class="auth-input" placeholder="Teacher Email">
+            <input type="password" id="auth-password" class="auth-input" placeholder="Password">
+            <button id="btn-login" class="btn" style="width: 100%; margin-bottom: 10px;" onclick="teacherApp.login()">Log In</button>
+            <button id="btn-register" class="btn btn-outline" style="width: 100%;" onclick="teacherApp.register()">Sign Up (School Trial)</button>
+            <p id="auth-error" style="color: #FF4A4A; font-size: 13px; margin-top: 15px; display: none;"></p>
+        </div>
+    </div>
+
+    <div id="sidebar">
+        <div>
+            <h2 style="font-family: 'DM Serif Display'; font-size: 20px; margin-bottom: 4px;">ClearVoicing</h2>
+            <p style="color: #2EC4B6; font-size: 11px; font-weight: 700; letter-spacing: 1px; margin-top: 0; margin-bottom: 30px;">TEACHER DASHBOARD</p>
+        </div>
+        
+        <div class="nav-link active" onclick="teacherApp.navigate('classes')" id="nav-classes">👥 Class Overview</div>
+        <div class="nav-link" onclick="teacherApp.navigate('assignments')" id="nav-assignments">📝 Assignments</div>
+        
+        <div style="flex: 1;"></div>
+        <div style="font-size: 13px; color: #8899BB;">
+            <p id="teacher-profile-label">Loading...</p>
+            <button class="btn btn-outline" style="padding: 6px 12px; font-size: 11px; width: 100%;" onclick="teacherApp.logout()">Log Out</button>
+        </div>
+    </div>
+
+    <div id="main-content">
+        <div id="view-loading" class="view active">
+            <h2 style="color: #8899BB;">Connessione al database...</h2>
+        </div>
+
+        <div id="view-classes" class="view">
+            <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h1 style="margin: 0; font-family: 'DM Serif Display';">Class Overview</h1>
+                <select id="class-selector" class="auth-input" style="width: 250px; margin: 0;" onchange="teacherApp.loadClassOverview()"></select>
+            </div>
+            
+            <div class="card">
+                <h3 style="margin-top:0; color:#8899BB; font-weight: 500;">RIEPILOGO RAPIDO</h3>
+                <div class="grid-4">
+                    <div class="stat-box"><div class="stat-value" id="stat-total-students">0</div><div class="stat-label">Studenti</div></div>
+                    <div class="stat-box"><div class="stat-value" id="stat-avg-score">0%</div><div class="stat-label">Media Global</div></div>
+                    <div class="stat-box"><div class="stat-value" id="stat-inactive-students">0</div><div class="stat-label">Inattivi (>7d)</div></div>
+                    <div class="stat-box"><div class="stat-value" id="stat-critical-students">0</div><div class="stat-label">In Difficoltà</div></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="margin:0;">Registro Apprendimento</h3>
+                    <div>
+                        <button class="btn btn-outline" onclick="teacherApp.showCreateClassModal()" style="margin-right: 8px;">➕ Nuova Classe</button>
+                        <button class="btn btn-outline" onclick="teacherApp.showInviteModal()" id="btn-invite" style="display:none;">🔗 Link Invito</button>
+                    </div>
+                </div>
+                
+                <table id="students-table">
+                    <thead>
+                        <tr>
+                            <th>Stato</th>
+                            <th>Nome Allievo</th>
+                            <th>Score %</th>
+                            <th>Sessioni</th>
+                            <th>Alerts & Punti Deboli</th>
+                            <th>Ultimo Accesso</th>
+                        </tr>
+                    </thead>
+                    <tbody id="students-table-body">
+                        <!-- Filled by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="view-student" class="view">
+            <div style="margin-bottom: 20px;">
+                <button class="btn btn-outline" style="padding: 6px 12px; margin-bottom: 15px;" onclick="teacherApp.navigate('classes')">← Torna alla Classe</button>
+                <div style="display:flex; justify-content: space-between; align-items:flex-end;">
+                    <h1 style="margin: 0; font-family: 'DM Serif Display';" id="profile-student-name">...</h1>
+                    <div style="color:#8899BB; font-size: 14px;">Score: <span id="profile-score" style="color:white; font-weight:700;">-</span></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 style="margin-top:0; color:#8899BB;">Diagnostica Automatica (AI Narrative)</h3>
+                <p id="profile-narrative" style="color: #2EC4B6; font-size: 16px; line-height: 1.6; padding: 15px; background: rgba(46,196,182,0.1); border-left: 4px solid #2EC4B6; border-radius: 4px; margin:0;">
+                    Elaborazione diagnosi in corso...
+                </p>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div class="card">
+                    <h3 style="margin-top:0; color:#8899BB;">Metriche di Studio</h3>
+                    <ul style="list-style: none; padding: 0; margin: 0; line-height: 2.2;">
+                        <li><strong>Sessioni Eseguite:</strong> <span id="profile-sessions">0</span></li>
+                        <li><strong>Esercizi Affrontati:</strong> <span id="profile-challenges">0</span></li>
+                        <li><strong>Aiuti o Replay richiesti:</strong> <span id="profile-reveals">0</span></li>
+                        <li><strong>Giorni di assenza:</strong> <span id="profile-inactive">0</span></li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3 style="margin-top:0; color:#8899BB;">Weakness Matrix (Top Errori)</h3>
+                    <div style="max-height: 250px; overflow-y: auto; padding-bottom: 20px;">
+                        <table style="margin-top:0; font-size: 13px;">
+                            <thead><tr><th>Classificazione</th><th>Fattore Sonoro</th><th>Precisione</th></tr></thead>
+                            <tbody id="profile-weakspots-body">
+                                <tr><td colspan="3" style="text-align:center; color:#8899BB;">Nessun dato debole rilevato</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="view-assignments" class="view">
+            <h1 style="margin: 0; font-family: 'DM Serif Display';">Assignments Tracker</h1>
+            <div class="card">
+                <p style="color:#8899BB;">Il motore di assegnazione compiti personalizzato è in roll-out. Richiede l'estensione <strong>Fase 3</strong> per la pubblicazione B2B integrale.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="invite-modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); z-index:900; align-items:center; justify-content:center;">
+        <div class="auth-card" style="width:400px; padding: 30px;">
+            <h2 style="margin-top:0;">Invita Studenti</h2>
+            <p style="color:#8899BB; font-size:14px;">Condividi questo link con gli alunni della classe. Si uniranno automaticamente al primo tap.</p>
+            <div style="background:rgba(46,196,182,0.1); border: 1px solid #2EC4B6; padding: 15px; border-radius: 8px; margin: 20px 0; word-wrap: break-word; font-family: monospace; color: #2EC4B6;" id="invite-link-display">
+                Caricamento link...
+            </div>
+            <button class="btn" style="width:100%; margin-bottom:10px;" onclick="teacherApp.copyInviteLink()">Copia Link negli appunti</button>
+            <button class="btn btn-outline" style="width:100%;" onclick="document.getElementById('invite-modal').style.display='none'">Chiudi</button>
+        </div>
+    </div>
+
+    <div id="create-class-modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); z-index:900; align-items:center; justify-content:center;">
+        <div class="auth-card" style="width:350px;">
+            <h2 style="margin-top:0;">Crea Nuova Classe</h2>
+            <input type="text" id="new-class-name" class="auth-input" placeholder="Es: Armonia Jazz 1° Anno">
+            <button class="btn" style="width:100%; margin-bottom:10px;" onclick="teacherApp.createClass()">Salva ed Esegui</button>
+            <button class="btn btn-outline" style="width:100%;" onclick="document.getElementById('create-class-modal').style.display='none'">Annulla</button>
+        </div>
+    </div>
+
+    <!-- Core Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.js"></script>
+    <script src="js/supabase-client.js?v=69"></script>
+    <script src="js/teacher-dashboard.js?v=69"></script>
+</body>
+</html>
