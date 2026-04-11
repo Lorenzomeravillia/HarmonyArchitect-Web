@@ -20,18 +20,20 @@ const KEY_SIGNATURES = {
     'E':  {sharps:['F','C','G','D'], flats:[]},
     'B':  {sharps:['F','C','G','D','A'], flats:[]},
     'F#': {sharps:['F','C','G','D','A','E'], flats:[]},
+    'C#': {sharps:['F','C','G','D','A','E','B'], flats:[]},
     'F':  {sharps:[], flats:['B']},
     'Bb': {sharps:[], flats:['B','E']},
     'Eb': {sharps:[], flats:['B','E','A']},
     'Ab': {sharps:[], flats:['B','E','A','D']},
     'Db': {sharps:[], flats:['B','E','A','D','G']},
     'Gb': {sharps:[], flats:['B','E','A','D','G','C']},
+    'Cb': {sharps:[], flats:['B','E','A','D','G','C','F']},
 };
 
 // Minor key → relative major lookup
 const MINOR_TO_MAJOR = {
-    'A':'C','E':'G','B':'D','F#':'A','C#':'E','G#':'B','D#':'E','A#':'F#',
-    'D':'F','G':'Bb','C':'Eb','F':'Ab','Bb':'Db','Eb':'Gb',
+    'A':'C','E':'G','B':'D','F#':'A','C#':'E','G#':'B','D#':'F#','A#':'C#',
+    'D':'F','G':'Bb','C':'Eb','F':'Ab','Bb':'Db','Eb':'Gb','Ab':'Cb',
 };
 
 function getKeySignatureForContext(root, isMajor) {
