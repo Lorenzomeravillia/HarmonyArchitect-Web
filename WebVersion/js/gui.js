@@ -155,9 +155,12 @@ class GUI {
             
             let longPressTimer = null;
             let isLongPress = false;
+            let isTouch = false;
 
             const handleStart = (e) => {
-                if (e.type === 'touchstart') e.preventDefault();
+                if (e.type === 'touchstart') isTouch = true;
+                else if (isTouch) return;
+                
                 isLongPress = false;
                 longPressTimer = setTimeout(() => {
                     isLongPress = true;
@@ -167,17 +170,16 @@ class GUI {
             };
 
             const handleEnd = (e) => {
+                if (e.type !== 'touchend' && isTouch) return;
+                
                 if (longPressTimer) clearTimeout(longPressTimer);
                 if (!isLongPress && window.toggleSolo) {
                     window.toggleSolo(i);
                 }
             };
             
-            b.addEventListener('touchstart', handleStart, {passive: false});
-            b.addEventListener('touchend', (e) => { 
-                e.preventDefault(); 
-                handleEnd(e); 
-            }, {passive: false});
+            b.addEventListener('touchstart', handleStart, {passive: true});
+            b.addEventListener('touchend', handleEnd, {passive: true});
             b.addEventListener('mousedown', (e) => { 
                 if (e.button !== 0) return; 
                 handleStart(e); 
