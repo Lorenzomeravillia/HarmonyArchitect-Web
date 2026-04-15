@@ -712,12 +712,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             window.realProgressionLabel = parts[0].split("\n")[0] + " in " + currentRoot;
 
             // Determine key context for key signature rendering (Global Standard)
-            const progLabel = parts[0].toLowerCase();
-            const progIsMajor = !progLabel.startsWith('i') || progLabel.startsWith('im') === false && progLabel[0] === 'i' && progLabel[1] !== 'm'
-                ? !progLabel.startsWith('im') && !progLabel.startsWith('iø') && !progLabel.startsWith('ii') && !progLabel.startsWith('i -')
-                : true;
-            const levelIsMinor = /^i[^I]/.test(parts[0].trim()) && !parts[0].trim().startsWith('Im');
-            window.currentKeyContext = { root: currentRoot, isMajor: !levelIsMinor };
+            const isMinorProg = parts.slice(1).some(c => /^Cm([^a-zA-Z]|$)/.test(c));
+            window.currentKeyContext = { root: currentRoot, isMajor: !isMinorProg };
             window.gui.drawPitches([], window.currentKeyContext);
 
             let wrongOpts = [];
