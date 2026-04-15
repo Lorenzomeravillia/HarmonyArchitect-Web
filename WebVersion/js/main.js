@@ -66,10 +66,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     // ── PWA Start Overlay ──────────────────────────────────
     let startOverlay = document.getElementById("start_overlay");
     if (startOverlay) {
-        startOverlay.addEventListener("click", (e) => {
+        startOverlay.addEventListener("click", async (e) => {
             if (e.target.tagName.toLowerCase() === 'a') {
                 return; // Let the link work!
             }
+            
+            // Critical iOS Safari bypass: immediately resume Web Audio via Tone.js from absolute root
+            if (window.Tone && Tone.context.state !== 'running') {
+                try { await Tone.start(); } catch(e){}
+            }
+            
             startOverlay.style.display = "none";
             window.audioEngine.unlockAndLoad();
             // Pre-load first challenge so PLAY is ready immediately
@@ -256,9 +262,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // ── Gentle resume on first touchstart (iOS fallback) ───
     // ctx may be null if unlockAndLoad() hasn't fired yet — use optional chaining.
-    document.addEventListener('touchstart', function () {
-        if (window.audioEngine?.ctx?.state === 'suspended') {
-            window.audioEngine.ctx.resume().catch(() => {});
+    document.addEventListener('touchstart', async function () {
+        if (window.Tone && Tone.context.state === 'suspended') {
+            try { await Tone.start(); } catch(e){}
         }
     }, { once: true, passive: true });
 
