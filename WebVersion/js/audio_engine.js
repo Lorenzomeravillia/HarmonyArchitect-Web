@@ -290,7 +290,7 @@ class AudioEngine {
     async playChord(notesArray, durationOverride = null, chordIdx = null) {
         if (!this._unlocked) return;
 
-        const SPREAD_SEC = 0.12;
+        const SPREAD_SEC = 0;
         const dur = durationOverride !== null ? durationOverride : 1.87;
         const vol = this._getVolume();
 
@@ -381,7 +381,7 @@ class AudioEngine {
     async playChordWithVolumes(notesArray, volumeMap, durationOverride = null, chordIdx = null) {
         if (!this._unlocked) return;
 
-        const SPREAD_SEC = 0.12;
+        const SPREAD_SEC = 0;
         const dur = durationOverride !== null ? durationOverride : 1.87;
         const vol = this._getVolume();
 
