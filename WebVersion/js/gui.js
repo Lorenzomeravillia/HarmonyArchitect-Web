@@ -148,30 +148,46 @@ class GUI {
             let b = document.createElement("button");
             b.className = "btn solo-btn";
             b.innerText = s;
-            b.onclick = () => {
-                if (window.audioEngine.ctx?.state === 'suspended') window.audioEngine.ctx.resume();
-                if (!window.currentVoicings) return;
-                let cIdx = 0;
-                function solNext() {
-                    if (cIdx >= window.currentVoicings.length) return;
-                    let chord = window.currentVoicings[cIdx];
-                    if (chord) {
-                        let n = chord.find(c => c.voiceIdx === i);
-                        if (n) {
-                            window.audioEngine.playPitch(n.voiceIdx, n.frequency, 1.2, cIdx);
-                            b.classList.add('flash-active');
-                            setTimeout(() => b.classList.remove('flash-active'), 250);
-                        } else {
-                            b.classList.add('flash-missing');
-                            setTimeout(() => b.classList.remove('flash-missing'), 250);
-                        }
-                    }
-                    cIdx++;
-                    let isoTempo = parseInt((document.getElementById('tempo_menu') || {}).value) || 1560;
-                    if (cIdx < window.currentVoicings.length) setTimeout(solNext, isoTempo);
-                }
-                solNext();
+            
+            b.style.userSelect = "none";
+            b.style.webkitUserSelect = "none";
+            b.style.webkitTouchCallout = "none";
+            
+            let longPressTimer = null;
+            let isLongPress = false;
+
+            const handleStart = (e) => {
+                if (e.type === 'touchstart') e.preventDefault();
+                isLongPress = false;
+                longPressTimer = setTimeout(() => {
+                    isLongPress = true;
+                    if (navigator.vibrate) navigator.vibrate(50);
+                    if (window.startGraduatedBlend) window.startGraduatedBlend(i);
+                }, 800);
             };
+
+            const handleEnd = (e) => {
+                if (longPressTimer) clearTimeout(longPressTimer);
+                if (!isLongPress && window.toggleSolo) {
+                    window.toggleSolo(i);
+                }
+            };
+            
+            b.addEventListener('touchstart', handleStart, {passive: false});
+            b.addEventListener('touchend', (e) => { 
+                e.preventDefault(); 
+                handleEnd(e); 
+            }, {passive: false});
+            b.addEventListener('mousedown', (e) => { 
+                if (e.button !== 0) return; 
+                handleStart(e); 
+            });
+            b.addEventListener('mouseup', handleEnd);
+            b.addEventListener('mouseleave', () => { 
+                if (longPressTimer) clearTimeout(longPressTimer); 
+            });
+            b.addEventListener('contextmenu', e => e.preventDefault());
+            
             b.style.display = 'none';
             solo_frame.appendChild(b);
         });

@@ -340,6 +340,88 @@ class AudioEngine {
             }
         });
     }
+
+    playClick(duration = 0.02) {
+        try {
+            const ctx = this.ctx;
+            if (!ctx || ctx.state === 'suspended' || !ctx.createOscillator) return;
+            const now = ctx.currentTime;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = 1000;
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now);
+            osc.stop(now + duration);
+        } catch (e) {}
+    }
+
+    async playChordWithVolumes(notesArray, volumeMap, durationOverride = null, chordIdx = null) {
+        if (!this._unlocked) return;
+
+        const SPREAD_SEC = 0.12;
+        const dur = durationOverride !== null ? durationOverride : 1.87;
+        const vol = this._getVolume();
+
+        if (this.useFallback) {
+            this.fallbackCtx.resume();
+            const lead = this.fallbackCtx.state === 'running' ? 0.1 : 0.4;
+            const now = this.fallbackCtx.currentTime;
+            
+            notesArray.forEach((item, idx) => {
+                const volMult = volumeMap[item.voiceIdx] ?? 1.0;
+                if (volMult <= 0) return;
+                
+                const freq   = item.frequency || item.freq;
+                const midi   = Math.round(69 + 12 * Math.log2(freq / 440));
+                const preset = this._getFallbackPreset(item.voiceIdx);
+                if (!preset || !this.player) return;
+                const balance = this.voiceBalance[item.voiceIdx] ?? 1.0;
+
+                this.player.queueWaveTable(this.fallbackCtx, this.masterBus, preset,
+                    now + lead + idx * SPREAD_SEC, midi, dur, vol * balance * volMult);
+
+                if (window.gui?.highlight) {
+                    setTimeout(() => window.gui.highlight(item.voiceIdx, freq, dur * 800, chordIdx), (0.1 + idx * SPREAD_SEC) * 1000);
+                }
+            });
+            return;
+        }
+
+        if (Tone.context.state !== 'running') await Tone.start();
+        
+        const lead = Tone.context.state === 'running' ? 0.1 : 0.4;
+        const startTime = Tone.now() + lead;
+        
+        notesArray.forEach(async (item, idx) => {
+            const volMult = volumeMap[item.voiceIdx] ?? 1.0;
+            if (volMult <= 0) return;
+            
+            const freq = item.frequency || item.freq;
+            const midi = Math.round(69 + 12 * Math.log2(freq / 440));
+            const instName = this.channels[item.voiceIdx];
+            if (!instName) return;
+            
+            const sampler = await this.loadInstrument(instName);
+            if (!sampler || !sampler.loaded) return;
+            
+            const balance = this.voiceBalance[item.voiceIdx] ?? 1.0;
+            const noteObj = Tone.Frequency(midi, "midi").toNote();
+            
+            const triggerTime = startTime + idx * SPREAD_SEC;
+            sampler.triggerAttackRelease(noteObj, dur, triggerTime, vol * balance * volMult);
+            
+            if (window.gui?.highlight) {
+                setTimeout(
+                    () => window.gui.highlight(item.voiceIdx, freq, dur * 800, chordIdx),
+                    (lead + idx * SPREAD_SEC) * 1000
+                );
+            }
+        });
+    }
 }
 
 window.audioEngine = new AudioEngine();

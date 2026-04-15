@@ -903,3 +903,7 @@ Answers Array    :
    3. [XX] I - IV - V - I in E (E - A - B - E)
    4. [XX] Imaj7 - vim7 - iim7 - V7 in E (Emaj7 - C#m7 - F#m7 - B7)
 -----------------------------------------------------------
+
+
+
+NUOVOCLIENTEVP

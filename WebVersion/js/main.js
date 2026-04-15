@@ -875,4 +875,195 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
         arpNext();
     });
+
+    // ── GRADUATED BLEND MODE ────────────────────────────────
+    let blendCancelled = true;
+    let currentBlendTimeout = null;
+
+    window.cancelGraduatedBlend = function() {
+        if (blendCancelled) return;
+        blendCancelled = true;
+        if (currentBlendTimeout) clearTimeout(currentBlendTimeout);
+        resetBlendMode();
+    };
+
+    window.toggleSolo = function(voiceIndex) {
+        if (window.audioEngine.ctx?.state === 'suspended') window.audioEngine.ctx.resume();
+        if (!window.currentVoicings) return;
+        
+        window.cancelGraduatedBlend();
+        
+        let count = parseInt(localStorage.getItem('soloUsesCount') || '0');
+        if (count < 2) {
+            count++;
+            localStorage.setItem('soloUsesCount', count.toString());
+            if (count === 2) {
+                window.coachInstance?.showCoachMark(
+                    "Tip: press and hold any Solo button to hear the voice gradually blend into the full mix.", 
+                    6000
+                );
+            }
+        }
+        
+        const b = document.querySelectorAll('#solo_buttons_frame .solo-btn')[voiceIndex] || null;
+        let cIdx = 0;
+        function solNext() {
+            if (cIdx >= window.currentVoicings.length) return;
+            let chord = window.currentVoicings[cIdx];
+            if (chord) {
+                let n = chord.find(c => c.voiceIdx === voiceIndex);
+                if (n) {
+                    window.audioEngine.playPitch(n.voiceIdx, n.frequency, 1.2, cIdx);
+                    if (b) {
+                        b.classList.add('flash-active');
+                        setTimeout(() => b.classList.remove('flash-active'), 250);
+                    }
+                } else {
+                    if (b) {
+                        b.classList.add('flash-missing');
+                        setTimeout(() => b.classList.remove('flash-missing'), 250);
+                    }
+                }
+            }
+            cIdx++;
+            let isoTempo = parseInt((document.getElementById('tempo_menu') || {}).value) || 1560;
+            if (cIdx < window.currentVoicings.length) setTimeout(solNext, isoTempo);
+        }
+        solNext();
+    };
+
+    window.startGraduatedBlend = async function(targetVoiceIndex, totalSteps = 5) {
+        if (!window.currentVoicings) return;
+        if (window.audioEngine.ctx?.state === 'suspended') window.audioEngine.ctx.resume();
+        
+        // Let UI know we used solo in this challenge
+        currentSoloUsed = true;
+        
+        window.cancelGraduatedBlend();
+        blendCancelled = false;
+        
+        const voicings = window.currentVoicings;
+        let isoTempo = parseInt((document.getElementById('tempo_menu') || {}).value) || 1560;
+        const dur = (isoTempo / 1000) * 0.82;
+        
+        const soloBtn = document.querySelectorAll('#solo_buttons_frame .solo-btn')[targetVoiceIndex] || null;
+        const baseHtml = soloBtn ? soloBtn.innerHTML.replace(/<span.*span>/g, '').trim() : '';
+        
+        const stepLoop = async (step) => {
+            if (blendCancelled) return;
+            
+            if (step >= totalSteps) {
+                resetBlendMode();
+                if (!localStorage.getItem('coachMarksShown.graduatedBlend')) {
+                    localStorage.setItem('coachMarksShown.graduatedBlend', 'true');
+                    window.coachInstance?.showCoachMark(
+                        "You just heard the voice emerge from silence to full mix. Try singing it next time — your brain locks onto a voice you can produce.", 
+                        6000
+                    );
+                }
+                return;
+            }
+
+            if (soloBtn) {
+                soloBtn.classList.add('blend-active');
+                soloBtn.innerHTML = `${baseHtml} <span style="font-size: 10px; opacity: 0.7;">[${step + 1}/${totalSteps}]</span>`;
+            }
+            
+            const contextVolume = step / (totalSteps - 1);
+            const volumeMap = {};
+            for (let i = 0; i < 7; i++) {
+                volumeMap[i] = (i === targetVoiceIndex) ? 1.0 : contextVolume;
+            }
+
+            const tickDur = isoTempo / 2;
+            
+            window.audioEngine.playClick(0.015);
+            drawCountdownNumber("2");
+            
+            await new Promise(r => {
+                currentBlendTimeout = setTimeout(r, tickDur);
+            });
+            if (blendCancelled) { clearCountdown(); return; }
+
+            window.audioEngine.playClick(0.015);
+            drawCountdownNumber("1");
+            setTimeout(clearCountdown, 150);
+            
+            voicings.forEach((v, i) => {
+                const triggerDelay = i * isoTempo;
+                if (!blendCancelled) {
+                    setTimeout(() => {
+                        if (!blendCancelled) {
+                            window.audioEngine.playChordWithVolumes(v, volumeMap, dur, i);
+                        }
+                    }, triggerDelay);
+                }
+            });
+
+            const pauseTime = isoTempo;
+            await new Promise(r => {
+                currentBlendTimeout = setTimeout(r, (voicings.length * isoTempo) + pauseTime);
+            });
+            
+            stepLoop(step + 1);
+        };
+        
+        stepLoop(0);
+    };
+
+    function resetBlendMode() {
+        document.querySelectorAll('#solo_buttons_frame .solo-btn').forEach(btn => {
+            btn.classList.remove('blend-active');
+            btn.innerHTML = btn.innerHTML.replace(/<span.*span>/g, '').trim();
+        });
+        clearCountdown();
+    }
+
+    function drawCountdownNumber(numStr) {
+        let overlay = document.getElementById("countdown_overlay");
+        if (!overlay) {
+            overlay = document.createElement("div");
+            overlay.id = "countdown_overlay";
+            overlay.style.position = "absolute";
+            overlay.style.top = "50%";
+            overlay.style.left = "50%";
+            overlay.style.transform = "translate(-50%, -50%)";
+            overlay.style.fontSize = "72px";
+            overlay.style.color = "white";
+            overlay.style.fontWeight = "bold";
+            overlay.style.pointerEvents = "none";
+            overlay.style.zIndex = "100";
+            overlay.style.transition = "opacity 0.15s ease";
+            
+            const staffFrame = document.querySelector(".staff-frame");
+            if (staffFrame) {
+                if (window.getComputedStyle(staffFrame).position === "static") {
+                    staffFrame.style.position = "relative";
+                }
+                staffFrame.appendChild(overlay);
+            }
+        }
+        overlay.innerText = numStr;
+        overlay.style.opacity = "0.4";
+    }
+
+    function clearCountdown() {
+        const overlay = document.getElementById("countdown_overlay");
+        if (overlay) {
+            overlay.style.opacity = "0";
+        }
+    }
+    
+    // Tap anywhere to cancel blend mode
+    const cancelIfOutside = (e) => {
+        if (!blendCancelled && window.cancelGraduatedBlend) {
+            if (!e.target.closest('.solo-btn')) {
+                window.cancelGraduatedBlend();
+            }
+        }
+    };
+    
+    document.addEventListener('touchstart', cancelIfOutside, {passive: true});
+    document.addEventListener('mousedown', cancelIfOutside);
+
 });
