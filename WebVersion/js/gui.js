@@ -160,6 +160,11 @@ class GUI {
             const handleStart = (e) => {
                 if (e.type === 'touchstart') isTouch = true;
                 else if (isTouch) return;
+
+                // INSTANT iOS Safeback: context must resume in the sync gesture window BEFORE the async timeout starts
+                if (window.audioEngine && window.audioEngine.ctx && window.audioEngine.ctx.state === 'suspended') {
+                    window.audioEngine.ctx.resume().catch(() => {});
+                }
                 
                 isLongPress = false;
                 longPressTimer = setTimeout(() => {
