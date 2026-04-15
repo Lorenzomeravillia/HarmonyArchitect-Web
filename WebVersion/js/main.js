@@ -796,7 +796,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     document.getElementById("next_btn")?.addEventListener("click", startNewChallenge);
 
-    // ── PLAY button ─────────────────────────────────────────
     document.getElementById("play_btn").addEventListener("click", async () => {
       try {
         if (!currentChallengeStart) currentChallengeStart = Date.now();
@@ -804,7 +803,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         currentChallengeReplays++;
         currentSessionReplayCount++;
 
-        if (window.audioEngine.ctx.state === 'suspended') window.audioEngine.ctx.resume();
+        if (window.Tone && Tone.context.state === 'suspended') await Tone.start();
         // Guard: if somehow no challenge loaded yet, start one
         if (!window.currentSymbol && !window.currentProgression) {
             let started = await startNewChallenge();
@@ -888,7 +887,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     };
 
     window.toggleSolo = function(voiceIndex) {
-        if (window.audioEngine.ctx?.state === 'suspended') window.audioEngine.ctx.resume();
+        if (window.Tone && Tone.context.state === 'suspended') { try { Tone.start(); } catch(e){} }
         if (!window.currentVoicings) return;
         
         window.cancelGraduatedBlend();
@@ -934,7 +933,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     window.startGraduatedBlend = async function(targetVoiceIndex, totalSteps = 5) {
         if (!window.currentVoicings) return;
-        if (window.audioEngine.ctx?.state === 'suspended') window.audioEngine.ctx.resume();
+        if (window.Tone && Tone.context.state === 'suspended') await Tone.start();
         
         // Let UI know we used solo in this challenge
         currentSoloUsed = true;
