@@ -10,6 +10,12 @@ let currentChallengeReplays = 0;
 let currentSessionReplayCount = 0;
 let currentSessionRevealCount = 0;
 
+window._playbackSessionId = 0;
+window.cancelActivePlaybacks = function() {
+    window._playbackSessionId++;
+    if (window.audioEngine && window.audioEngine.stopAll) window.audioEngine.stopAll();
+};
+
 document.addEventListener("DOMContentLoaded", async () => {
     if (window.dbClient) window.dbClient.init();
 
@@ -804,6 +810,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         currentSessionReplayCount++;
 
         if (window.audioEngine.ctx.state === 'suspended') window.audioEngine.ctx.resume();
+        window.cancelActivePlaybacks();
+        
         // Guard: if somehow no challenge loaded yet, start one
         if (!window.currentSymbol && !window.currentProgression) {
             let started = await startNewChallenge();
@@ -825,6 +833,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         const tempoMs     = parseInt((document.getElementById("tempo_menu") || {}).value) || 1560;
         const cutDuration = (tempoMs / 1000) * 0.82;
 
+        const currentSession = window._playbackSessionId;
+
         if (window.currentProgression) {
             let prevV = null;
             let voicings = window.currentProgression.map(s => {
@@ -837,7 +847,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             // UI Fix: Aggiorna i bottoni usando il voicing più denso della progressione appena generata
             const maxV = voicings.reduce((max, v) => v.length > max.length ? v : max, voicings[0]);
             window.gui.updateSoloButtons(maxV);
-            voicings.forEach((v, i) => setTimeout(() => window.audioEngine.playChord(v, cutDuration, i), i * tempoMs));
+            voicings.forEach((v, i) => setTimeout(() => {
+                if (window._playbackSessionId !== currentSession) return;
+                window.audioEngine.playChord(v, cutDuration, i);
+            }, i * tempoMs));
             window.gui.setInsight("Progression (" + tempoMs + "ms). Drop-2: " + (isOptimized ? "ON" : "OFF"));
         } else {
             let sym = window.currentSymbol;
@@ -845,7 +858,9 @@ document.addEventListener("DOMContentLoaded", async () => {
             window.currentVoicings = [targetVoicing];
             window.gui.drawPitches([targetVoicing], null);  // No key sig for single chord
             window.gui.updateSoloButtons(targetVoicing);
-            window.audioEngine.playChord(targetVoicing, cutDuration, 0);
+            if (window._playbackSessionId === currentSession) {
+                window.audioEngine.playChord(targetVoicing, cutDuration, 0);
+            }
             window.gui.setInsight(`Base: C3 | Voicing: ${isOptimized ? "Opt. (Drop-2)" : "Root"}`);
         }
       } catch (err) {
@@ -857,9 +872,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("arpeggio_btn").addEventListener("click", () => {
         if (window.audioEngine.ctx.state === 'suspended') window.audioEngine.ctx.resume();
         if (!window.currentVoicings) return;
+        
+        window.cancelActivePlaybacks();
+        const currentSession = window._playbackSessionId;
+        
         const tempoMs = parseInt((document.getElementById("tempo_menu") || {}).value) || 1560;
         let cIdx = 0, pIdx = 0;
         function arpNext() {
+            if (window._playbackSessionId !== currentSession) return;
             if (cIdx >= window.currentVoicings.length) return;
             let chord = window.currentVoicings[cIdx];
             if (pIdx >= chord.length) {
@@ -890,6 +910,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (window.audioEngine.ctx?.state === 'suspended') window.audioEngine.ctx.resume();
         if (!window.currentVoicings) return;
         
+        window.cancelActivePlaybacks();
         window.cancelGraduatedBlend();
         
         let count = parseInt(localStorage.getItem('soloUsesCount') || '0');
@@ -906,7 +927,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         
         const b = document.querySelectorAll('#solo_buttons_frame .solo-btn')[voiceIndex] || null;
         let cIdx = 0;
+        const currentSession = window._playbackSessionId;
         function solNext() {
+            if (window._playbackSessionId !== currentSession) return;
             if (cIdx >= window.currentVoicings.length) return;
             let chord = window.currentVoicings[cIdx];
             if (chord) {
@@ -938,6 +961,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         // Let UI know we used solo in this challenge
         currentSoloUsed = true;
         
+        window.cancelActivePlaybacks();
         window.cancelGraduatedBlend();
         blendCancelled = false;
         
@@ -948,8 +972,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         const soloBtn = document.querySelectorAll('#solo_buttons_frame .solo-btn')[targetVoiceIndex] || null;
         const baseHtml = soloBtn ? soloBtn.innerHTML.replace(/<span.*span>/g, '').trim() : '';
         
+        const currentSession = window._playbackSessionId;
+        
         const stepLoop = async (step) => {
-            if (blendCancelled) return;
+            if (blendCancelled || window._playbackSessionId !== currentSession) return;
             
             if (step >= totalSteps) {
                 resetBlendMode();
@@ -968,7 +994,9 @@ document.addEventListener("DOMContentLoaded", async () => {
                 soloBtn.innerHTML = `${baseHtml} <span style="font-size: 10px; opacity: 0.7;">[${step + 1}/${totalSteps}]</span>`;
             }
             
-            const contextVolume = step / (totalSteps - 1);
+            const linearProgress = step / (totalSteps - 1);
+            const contextVolume = Math.pow(linearProgress, 2.5); // Steep power curve for subtle build
+            
             const volumeMap = {};
             for (let i = 0; i < 7; i++) {
                 volumeMap[i] = (i === targetVoiceIndex) ? 1.0 : contextVolume;
@@ -982,7 +1010,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             await new Promise(r => {
                 currentBlendTimeout = setTimeout(r, tickDur);
             });
-            if (blendCancelled) { clearCountdown(); return; }
+            if (blendCancelled || window._playbackSessionId !== currentSession) { clearCountdown(); return; }
 
             window.audioEngine.playClick(0.015);
             drawCountdownNumber("1");
@@ -992,7 +1020,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 const triggerDelay = i * isoTempo;
                 if (!blendCancelled) {
                     setTimeout(() => {
-                        if (!blendCancelled) {
+                        if (!blendCancelled && window._playbackSessionId === currentSession) {
                             window.audioEngine.playChordWithVolumes(v, volumeMap, dur, i);
                         }
                     }, triggerDelay);

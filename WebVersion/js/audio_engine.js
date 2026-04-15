@@ -65,7 +65,7 @@ class AudioEngine {
         this.PRESETS = {
             'Orchestra':    ["contrabass", "cello", "bassoon", "french-horn", "violin", "clarinet", "flute"],
             'Jazz Combo':   ["contrabass", "cello", "saxophone", "french-horn", "clarinet", "trumpet", "piano"],
-            'Clear Mix':    ["bass-electric", "piano", "trumpet", "harp", "bassoon", "flute", "violin"],
+            'Clear Mix':    ["bass-electric", "piano", "trumpet", "harp", "bassoon", "flute", "piano"],
         };
     }
 
@@ -339,6 +339,19 @@ class AudioEngine {
                 );
             }
         });
+    }
+
+    stopAll() {
+        if (!this._unlocked) return;
+        if (this.useFallback) {
+            if (this.player && this.fallbackCtx) this.player.cancelQueue(this.fallbackCtx);
+        } else {
+            Object.values(this.samplers).forEach(s => {
+                if (s && s.loaded) {
+                    try { s.releaseAll(); } catch(e){}
+                }
+            });
+        }
     }
 
     playClick(duration = 0.02) {
