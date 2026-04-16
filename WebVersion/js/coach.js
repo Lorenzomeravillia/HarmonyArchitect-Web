@@ -194,7 +194,11 @@
         currentTimeout = setTimeout(done, DURATION_MS);
 
         // Dismiss on any tap/click outside the tooltip itself
+        // IMPORTANT: use capture:true but exclude the coach_btn itself —
+        // clicking ? must not trigger dismissal (it calls startTour directly).
         dismissHandler = function (e) {
+            const coachBtn = document.getElementById('coach_btn');
+            if (coachBtn && (e.target === coachBtn || coachBtn.contains(e.target))) return;
             if (el.contains(e.target)) return;
             done();
         };
@@ -207,10 +211,8 @@
     // ── Queue ─────────────────────────────────────────────────────────────────────
     function runQueue() {
         if (queue.length === 0) {
-            const settingsPanel = document.getElementById('settings_collapsible');
-            if (settingsPanel && settingsPanel.classList.contains('open')) {
-                settingsPanel.classList.remove('open');
-            }
+            // NON chiudiamo il settings panel qui: l'utente potrebbe averlo aperto
+            // intenzionalmente e il tour non deve alterarne lo stato.
             const shown = getShown();
             if (!shown['userProfile']) {
                 setTimeout(() => {

@@ -351,7 +351,7 @@ class GUI {
         [59, 93, 127, 161, 195].forEach(y => {
             this.ctx.beginPath(); this.ctx.moveTo(30, y); this.ctx.lineTo(w - 30, y); this.ctx.stroke();
         });
-        this.ctx.font = "normal 120px serif";
+        this.ctx.font = "normal 140px serif";
         this.ctx.fillText("𝄞", 30, 189);
         // Bass staff lines (Shifted +20px down)
         [263, 297, 331, 365, 399].forEach(y => {
