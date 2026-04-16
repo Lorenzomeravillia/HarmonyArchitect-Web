@@ -229,7 +229,15 @@
 
 
     function startTour(resetAll) {
-        // Forza l'apertura del pannello impostazioni per garantire che gli elementi abbiano dimensioni valide
+        // ── Interrompi immediatamente qualsiasi tour in corso ────────────────
+        queue = [];  // svuota la coda esistente: runQueue non andrà avanti
+        if (currentTimeout)  { clearTimeout(currentTimeout); currentTimeout = null; }
+        if (dismissHandler)  {
+            document.removeEventListener('click',      dismissHandler, true);
+            document.removeEventListener('touchstart', dismissHandler, true);
+            dismissHandler = null;
+        }
+        // ── Apri il pannello impostazioni per dare dimensioni valide agli elementi ─
         const settingsPanel = document.getElementById('settings_collapsible');
         if (settingsPanel && !settingsPanel.classList.contains('open')) {
             settingsPanel.classList.add('open');
