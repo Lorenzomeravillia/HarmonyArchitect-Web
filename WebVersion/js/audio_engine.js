@@ -100,15 +100,7 @@ class AudioEngine {
             console.warn("Tone.js unavailable. Falling back to WebAudioFont.");
             this.useFallback = true;
             this._setupFallbackContext();
-            if (window.unmute && this.fallbackCtx) {
-                try { window.unmute(this.fallbackCtx, false, false); } catch(e) {}
-            }
             return;
-        }
-
-        // SYNCHRONOUS UNMUTE BINDING: MUST happen before ANY await, otherwise Safari kills the trusted gesture!
-        if (window.unmute && Tone.context && Tone.context.rawContext) {
-            try { window.unmute(Tone.context.rawContext, false, false); } catch(e){}
         }
 
         await Tone.start();
@@ -271,7 +263,7 @@ class AudioEngine {
         }
 
         // Tone.js Standard Execution
-        // (AudioContext is already resumed synchronously inside gesture handlers)
+        if (Tone.context.state !== 'running') Tone.context.resume();
         
         const instName = this.channels[channelIdx];
         if (!instName) return;
@@ -320,7 +312,7 @@ class AudioEngine {
             return;
         }
 
-        // (AudioContext is already resumed synchronously inside gesture handlers)
+        if (Tone.context.state !== 'running') Tone.context.resume();
         
         const lead = Tone.context.state === 'running' ? 0.1 : 0.4;
         const startTime = Tone.now() + lead;
@@ -412,7 +404,7 @@ class AudioEngine {
             return;
         }
 
-        // (AudioContext is already resumed synchronously inside gesture handlers)
+        if (Tone.context.state !== 'running') Tone.context.resume();
         
         const lead = Tone.context.state === 'running' ? 0.1 : 0.4;
         const startTime = Tone.now() + lead;
