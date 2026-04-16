@@ -1012,13 +1012,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             drawCountdownNumber("1");
             setTimeout(clearCountdown, 150);
 
-            // Wait for the '1' beat to complete (t=780 -> t=1560)
-            await new Promise(r => {
-                currentBlendTimeout = setTimeout(r, tickDur);
-            });
-            if (blendCancelled || window._playbackSessionId !== currentSession) { clearCountdown(); return; }
-
-            // Silence / 'Levare' beat (t=1560 -> t=2340)
+            // Wait for the '1' beat to complete ('levare' before music starts)
             await new Promise(r => {
                 currentBlendTimeout = setTimeout(r, tickDur);
             });
