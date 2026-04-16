@@ -103,9 +103,7 @@ class AudioEngine {
             return;
         }
 
-        if (Tone.context.state !== 'running') {
-            try { await Tone.context.resume(); } catch(e){}
-        }
+        await Tone.start();
 
         // High quality Reverb setup
         this.reverb = new Tone.Reverb({
@@ -265,9 +263,7 @@ class AudioEngine {
         }
 
         // Tone.js Standard Execution
-        if (Tone.context.state !== 'running') {
-            try { await Tone.context.resume(); } catch(e){}
-        }
+        // (AudioContext is already resumed synchronously inside gesture handlers)
         
         const instName = this.channels[channelIdx];
         if (!instName) return;
@@ -316,9 +312,7 @@ class AudioEngine {
             return;
         }
 
-        if (Tone.context.state !== 'running') {
-            try { await Tone.context.resume(); } catch(e){}
-        }
+        // (AudioContext is already resumed synchronously inside gesture handlers)
         
         const lead = Tone.context.state === 'running' ? 0.1 : 0.4;
         const startTime = Tone.now() + lead;
@@ -410,9 +404,7 @@ class AudioEngine {
             return;
         }
 
-        if (Tone.context.state !== 'running') {
-            try { await Tone.context.resume(); } catch(e){}
-        }
+        // (AudioContext is already resumed synchronously inside gesture handlers)
         
         const lead = Tone.context.state === 'running' ? 0.1 : 0.4;
         const startTime = Tone.now() + lead;
