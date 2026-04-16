@@ -106,10 +106,12 @@ class AudioEngine {
             return;
         }
 
-        await Tone.start();
+        // SYNCHRONOUS UNMUTE BINDING: MUST happen before ANY await, otherwise Safari kills the trusted gesture!
         if (window.unmute && Tone.context && Tone.context.rawContext) {
             try { window.unmute(Tone.context.rawContext, false, false); } catch(e){}
         }
+
+        await Tone.start();
 
         // High quality Reverb setup
         this.reverb = new Tone.Reverb({
