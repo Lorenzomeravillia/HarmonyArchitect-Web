@@ -2,5 +2,31 @@
   "rewrites": [
     { "source": "/", "destination": "/WebVersion/index.html" },
     { "source": "/(.*)", "destination": "/WebVersion/$1" }
+  ],
+  "headers": [
+    {
+      "source": "/WebVersion/index.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/WebVersion/js/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/WebVersion/css/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    }
   ]
 }

@@ -49,17 +49,17 @@
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <!-- iOS AVAudioSession Activator (v87)
-         Un <video autoplay muted playsinline> forza iOS a passare AVAudioSession dalla 
-         categoria soloAmbient a playback PRIMA di qualsiasi gesture utente. Senza questo, 
-         il WebAudio viene instradato verso un bus silenzioso al cold start, e l'audio parte 
-         solo dopo il toggle della levetta fisica mute. Pattern documentato da Apple per WebAudio PWA.
+    <!-- iOS AVAudioSession Activator (v88)
+         Un <audio> reale servito dal server forza iOS a passare AVAudioSession dalla
+         categoria soloAmbient a playback. Il file silence.wav contiene 0.1s di silenzio
+         a 22050Hz — pesa ~4KB ed è sufficiente per attivare il routing audio su iOS.
+         NOTA: muted=false è intenzionale (l'audio è silenzioso per definizione).
     -->
-    <video id="ios_audio_activator"
-           autoplay muted playsinline loop
-           style="position:fixed;width:1px;height:1px;top:-2px;left:-2px;opacity:0;pointer-events:none;z-index:-1;"
-           src="data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28ybXA0MQAAAAhmcmVlAAAAGG1kYXQ=">
-    </video>
+    <audio id="ios_audio_activator"
+           autoplay loop
+           style="display:none;"
+           src="assets/silence.wav">
+    </audio>
 
     <!-- Global Loading Toast -->
     <div id="loading_toast" class="loading-toast">
@@ -252,7 +252,7 @@
     <div id="start_overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg-main);z-index:9999;display:flex;align-items:center;justify-content:center;color:white;flex-direction:column;gap:28px;">
         <img src="assets/icons/cv-app-icon.png" alt="ClearVoicing" width="80" height="80" style="border-radius: 18px; box-shadow: 0 4px 24px rgba(46, 196, 182, 0.2);" loading="eager">
         <img src="assets/logos/cv-logo-full.svg" alt="ClearVoicing" height="32" style="margin-top: 16px;">
-        <p style="color:#2EC4B6;font-size:12px;margin-top:-20px;font-family:monospace;">VERSION 1.6.24 (v87) - SCHOOL B2B</p>
+        <p style="color:#2EC4B6;font-size:12px;margin-top:-20px;font-family:monospace;">VERSION 1.6.24 (v88) - SCHOOL B2B</p>
         <p style="color:#8899BB;font-size:15px;margin:0;text-align:center;">Start hearing every single voice.</p>
         <button style="background:linear-gradient(135deg,#4A65A5,#2EC4B6);color:white;border:none;border-radius:16px;font-size:20px;font-weight:700;padding:18px 44px;cursor:pointer;letter-spacing:0.04em;box-shadow:0 0 24px rgba(74,101,165,0.5);margin-top:12px;">▶ START TRAINING</button>
         

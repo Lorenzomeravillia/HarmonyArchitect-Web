@@ -827,7 +827,20 @@ document.addEventListener("DOMContentLoaded", async () => {
         currentChallengeReplays++;
         currentSessionReplayCount++;
 
-        if (window.audioEngine.ctx.state === 'suspended') window.audioEngine.ctx.resume();
+        // ── iOS AudioContext resume (MUST be awaited in gesture handler) ──
+        // On iOS, AudioContext.resume() must complete BEFORE scheduling notes.
+        // We are still inside the trusted gesture window here, so await is valid.
+        if (window.Tone && Tone.context.state !== 'running') {
+            try { await Tone.context.resume(); } catch(e) {}
+            // Safety: wait up to 300ms for the state to actually flip to 'running'
+            let waited = 0;
+            while (Tone.context.state !== 'running' && waited < 300) {
+                await new Promise(r => setTimeout(r, 30));
+                waited += 30;
+            }
+        } else if (window.audioEngine?.fallbackCtx?.state === 'suspended') {
+            try { window.audioEngine.fallbackCtx.resume(); } catch(e) {}
+        }
         window.cancelActivePlaybacks();
         
         // Guard: if somehow no challenge loaded yet, start one
