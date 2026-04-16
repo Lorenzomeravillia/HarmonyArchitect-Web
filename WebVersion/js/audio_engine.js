@@ -105,6 +105,21 @@ class AudioEngine {
 
         await Tone.start();
 
+        // ── iOS: wait for AudioContext to be actually running ─────────────────
+        // decodeAudioData (called internally by Tone.Sampler) hangs indefinitely
+        // if the AudioContext is still suspended. On iOS this can take >100ms after
+        // Tone.start() returns. We poll for up to 2s before loading instruments.
+        if (Tone.context.state !== 'running') {
+            try { await Tone.context.resume(); } catch(e) {}
+        }
+        let waited = 0;
+        while (Tone.context.state !== 'running' && waited < 2000) {
+            await new Promise(r => setTimeout(r, 50));
+            waited += 50;
+        }
+        console.log(`[AudioEngine] context state after wait: ${Tone.context.state} (${waited}ms)`);
+        // ─────────────────────────────────────────────────────────────────────
+
         // High quality Reverb setup
         this.reverb = new Tone.Reverb({
             decay: 1.8,
@@ -118,11 +133,16 @@ class AudioEngine {
         eq.toDestination();
 
         // Preload current preset asynchronously and sequentially
-        this._setLoading(true);
-        for (let i = 0; i < this.channels.length; i++) {
-            await this.loadInstrument(this.channels[i]);
+        // (only if context is running — otherwise skip to avoid infinite hang)
+        if (Tone.context.state === 'running') {
+            this._setLoading(true);
+            for (let i = 0; i < this.channels.length; i++) {
+                await this.loadInstrument(this.channels[i]);
+            }
+            this._setLoading(false);
+        } else {
+            console.warn('[AudioEngine] Context never reached running — skipping sample preload');
         }
-        this._setLoading(false);
     }
 
     // ── FALLBACK WEBAUDIOFONT LOGIC ───────────────────────────────────────
@@ -216,6 +236,19 @@ class AudioEngine {
         if (!progs) return;
         progs.forEach((prog, i) => { this.channels[i] = prog; });
         if (this._unlocked) {
+            // Guard: don't start loading if context is suspended — decodeAudioData would hang.
+            if (window.Tone && Tone.context.state !== 'running') {
+                try { await Tone.context.resume(); } catch(e) {}
+                let waited = 0;
+                while (Tone.context.state !== 'running' && waited < 1000) {
+                    await new Promise(r => setTimeout(r, 50));
+                    waited += 50;
+                }
+                if (Tone.context.state !== 'running') {
+                    console.warn('[AudioEngine] applyPreset: context suspended, skipping load');
+                    return;
+                }
+            }
             this._setLoading(true);
             // iOS Safari severely bottlenecks parallel AudioBuffer.decodeAudioData triggers. 
             // We MUST load the 7 instruments sequentially to guarantee memory resilience on mobile profiles.
