@@ -7,7 +7,7 @@
         {
             id: 'timbrePresets',
             target: '#voice_instruments_frame',
-            text: "Different instruments for each voice help your brain separate the notes. Try 'High Contrast' for maximum separation.",
+            text: "Different instruments for each voice help your brain separate the notes. Try 'Clear Mix' for maximum separation.",
             pos: 'below'
         },
 
@@ -26,7 +26,7 @@
         {
             id: 'soloFrame',
             target: '#solo_buttons_frame',
-            text: "Isolate a single voice to hear it clearly. Tap again to un-solo.",
+            text: "Isolate a single voice to hear it clearly. It's one-shot: Solo deactivates automatically after each playback.",
             pos: 'above'
         },
         {

@@ -78,31 +78,24 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
             startOverlay.style.display = "none";
 
-            // ── iOS Audio Session Kick ──────────────────────────
-            // iOS Safari won't route WebAudio to speakers until an 
-            // HTML5 Audio element is played synchronously inside a
-            // user gesture. Without this, audio is dead until the 
-            // hardware mute switch is toggled (which forces iOS to 
-            // re-evaluate its audio routing).
+            // ── iOS Audio Session Kick (v87) ────────────────────
+            // Il <video autoplay muted playsinline> nell'HTML fa il lavoro pesante:
+            // forza iOS a portare AVAudioSession da soloAmbient a playback PRIMA
+            // di qualsiasi gesture (fix per il bug audio silenzioso al cold start).
+            // Qui usiamo solo MediaSession API per dichiarare l'intent "music playback"
+            // e rafforzare il segnale OS-level durante la gesture utente.
             try {
-                // 1) Play a tiny silent MP3 via HTML5 Audio (activates iOS media session)
-                const silentDataUri = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAAYYoRBqpAAAAAAD/+1DEAAAGAAGn9AAAIiMfM/80AAQAAADSAR8/BAQEHP5c6DkIOf/U6AQBBwEHQcuf/85znOc5yDv8uf/lwfB8HwfP/6gAAAAGW0FNZimaZfFAGCYB0HAfBMEyjKw/4PiYGBma5OgoC0NBTU1NAYqK67axs0YJhGMbygGH/olBkGH/BjKGOeY0poAMAAABFDrBhUDCSMKwzNGqwzf/7UMQJgApU+af5lYAhI5c1/x7QBNPiVMnMjuMNkGPTAjMBEwZTABAJhgwGLmHSZjoFJm9EomCsAsYMICxgtgSmA+AOYAAAZQHGVGEBqX2YWPGWn5lhSYqFmFgxjICYoGGBAZhYCYEBCxLYmWMMNmTYxowMYuRkwBYGENMFByqA2MIghUwMBMzJxkzFtNDA2M2AFAwGhACmBgABAphQUYyDiEjYEJmv/7UMQTAAoQ2bH49IABNxWuf0+gAAAAIkFGnL0ioRMaFTS4YzhWc0xlMFFjIxgyYHMCGDEzMwMvMeFTOF42ERBwBQMxQaMLBzBQQwQLIAAzEBA1cIN0LSkG0hgY7OMBQRGAwIGYKERhIaBoJiDmCh5go2YEMH0jBmBqYEMCoCJcMFmjDRA0sFNmPjTTw0UbM1EAEQMHHDMC7YmYGRGID/+1DEHoAJ0K1j+niAAToVrH9PoABBiYIZqBmJCpk4IYIJGMiJn4EYQLGYgJj4mYMMGPloCBJc0MrNrCApExs0MjLjBTEFNGDBYxs/NvQwMAIjKhw5ow1DIOJUMnNjBQIwMFGSAxgCMZBTMBU0cLAhcxsYMxDwIjMqJjbkAzAnMyQaM+FDFB80sMFCAIGBgoBIjBwkBEjCgQxQGMMMTKwowg2JgYB8ABMcMTEf/7UMQvAAl8nVv6eIABKRWrf09QADABEwsCERiIGBAJi4SdGAGcHJl5qYIOmCBZnoGYeHiIgcXMzETCgMzoiMPBioAwSYA3mRgxhIQY4AGSBxg4GYOBGCgphYGYOCAQQDAjEtM3MHBzGgcxsLFCcx0EMgBDMhA2QDM+IToRU04SKAGDgRgICBAAaY0DGOIBsIiZqFkRigGbMIm4CRjAGY6Bgf/7UMQ+AAkkmVf6eQABIpOrP0+gAIkZgSGJmJg4CYqFmEA5mIaYOXj4gR0JIYSGGRgBkYKYOKGmgxhJmYsCGbKJoIyZUEn0gBqhiTBJoIOYWDjJCQYKAmQBxkYWYYXm0BZ0RKcCSGkAJth2rDB+I4ZWJH1IhqYYYyHmDB4YAIFBRSYWPGUC5gIeZ0BmEhxbgOBjABExcFNHCgIv/+1DEUYAJ6K1X+nyAAToVq39PkADABYxMgC5cYYaGJDwCAGKg5gReYSGmOAY4bmqmBuosZqLGfghj4eYICmHi5lQ6aWhmJEJsIqaSEmdB5loidOdGklJjpaYeJmInhiAMYaBGVApth2eyBm0EJ6YKbyGHYgxnQGaQVmFHpsRyZUBiQgaDfmDAJiwSYyBnmgp6RQa0BG8hBmAAagBGKCQ//tQxF6ACiSxW/p8gAE1Fav/T6AAYCAAYN3mJhxkYgZODGbiJpR0aOaGxh41DGPi5gpOYKCmRiJjoyZYYmVhJ';
-                const snd = new Audio(silentDataUri);
-                snd.play().catch(() => {});
-                
-                // 2) Also create + resume a raw AudioContext synchronously
-                const tempCtx = new (window.AudioContext || window.webkitAudioContext)();
-                if (tempCtx.state === 'suspended') tempCtx.resume();
-                // Create a silent oscillator to force output activation
-                const osc = tempCtx.createOscillator();
-                const gain = tempCtx.createGain();
-                gain.gain.value = 0;
-                osc.connect(gain);
-                gain.connect(tempCtx.destination);
-                osc.start(0);
-                osc.stop(tempCtx.currentTime + 0.01);
-                // Close temp context after a short delay
-                setTimeout(() => { try { tempCtx.close(); } catch(e){} }, 500);
+                if ('mediaSession' in navigator) {
+                    navigator.mediaSession.metadata = new MediaMetadata({
+                        title: 'ClearVoicing',
+                        artist: 'Ear Training',
+                        album: 'ClearVoicing'
+                    });
+                    navigator.mediaSession.playbackState = 'playing';
+                }
+                // Ensure the video activator is playing (may have been paused by browser)
+                const videoEl = document.getElementById('ios_audio_activator');
+                if (videoEl && videoEl.paused) videoEl.play().catch(() => {});
             } catch(e) {}
             // ── End iOS Audio Session Kick ───────────────────────
 
