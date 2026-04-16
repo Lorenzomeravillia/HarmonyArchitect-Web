@@ -100,10 +100,16 @@ class AudioEngine {
             console.warn("Tone.js unavailable. Falling back to WebAudioFont.");
             this.useFallback = true;
             this._setupFallbackContext();
+            if (window.unmute && this.fallbackCtx) {
+                try { window.unmute(this.fallbackCtx, false, false); } catch(e) {}
+            }
             return;
         }
 
         await Tone.start();
+        if (window.unmute && Tone.context && Tone.context.rawContext) {
+            try { window.unmute(Tone.context.rawContext, false, false); } catch(e){}
+        }
 
         // High quality Reverb setup
         this.reverb = new Tone.Reverb({
