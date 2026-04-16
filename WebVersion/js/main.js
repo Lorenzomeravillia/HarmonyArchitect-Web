@@ -601,7 +601,8 @@ document.addEventListener("DOMContentLoaded", async () => {
                 if (window.dbClient && window.dbClient.isReady) {
                     const payload = {
                         user_id: window.dbClient.getUserId(),
-                        session_id: currentSessionId,
+                        // session_id omesso: viene inserito nel DB solo alla fine della sessione,
+                        // quindi il FK su cv.sessions.id fallirebbe silenziosamente se passato qui.
                         challenge_index: sessionTotal,
                         chord_type: window.realProgressionLabel || window.currentSymbol,
                         chord_root: window.currentKeyContext ? window.currentKeyContext.root : (window.currentSymbol ? window.currentSymbol.substring(0, window.currentSymbol.length - (window.currentSymbol.match(/m|7|dim|aug|sus|M.*/) || [''])[0].length) : 'C'),
