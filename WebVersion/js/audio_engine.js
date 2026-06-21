@@ -60,7 +60,7 @@ class AudioEngine {
 
         // 7 voice channels mapped to instrument names. Default matches 'Clear Mix'
         // below; applyPreset() overwrites this as soon as a preset is selected.
-        this.channels = ["organ", "bassoon", "french-horn", "clarinet", "saxophone", "trumpet", "flute"];
+        this.channels = ["contrabass", "bassoon", "french-horn", "clarinet", "saxophone", "trumpet", "flute"];
 
         // Per-voice volume balance
         this.voiceBalance = [1.0, 0.80, 0.76, 0.74, 0.76, 0.80, 0.90];
@@ -77,11 +77,11 @@ class AudioEngine {
             'Orchestra':    ["contrabass", "cello", "bassoon", "french-horn", "violin", "clarinet", "flute"],
             'Jazz Combo':   ["contrabass", "cello", "saxophone", "french-horn", "clarinet", "trumpet", "piano"],
             // Clear Mix is the timbral-separation showcase preset, so it's reserved
-            // for sustained instruments only (winds + organ as a synth stand-in).
+            // for sustained instruments only (winds + contrabass as a synth stand-in).
             // Plucked/percussive instruments (piano, harp, bass-electric) decay too
             // fast and disappear against the others while they're still ringing —
             // a real mixing concern we keep elsewhere, but avoid here on purpose.
-            'Clear Mix':    ["organ", "bassoon", "french-horn", "clarinet", "saxophone", "trumpet", "flute"],
+            'Clear Mix':    ["contrabass", "bassoon", "french-horn", "clarinet", "saxophone", "trumpet", "flute"],
         };
 
         this._bindLifecycleEvents();
@@ -423,6 +423,28 @@ class AudioEngine {
 
     // ── TONE.JS SAMPLER LOGIC ─────────────────────────────────────────────
 
+    // Some iOS WebKit builds throw inside sampler.connect() when called
+    // from a Tone.Sampler onload/onerror callback (the offending node isn't
+    // a fully-fledged object yet). Tone.js then swallows that throw and
+    // re-invokes onerror, even though the buffers loaded fine. Wrap the
+    // connect so a graph failure doesn't get mislabeled as a load failure.
+    _connectSampler(sampler, name) {
+        try {
+            sampler.connect(this.reverb);
+            return true;
+        } catch (e) {
+            this.logEvent('loadInstrument(' + name + '): connect to reverb THREW — ' + (e && e.message ? e.message : e));
+            try {
+                sampler.toDestination();
+                this.logEvent('loadInstrument(' + name + '): fell back to toDestination()');
+                return true;
+            } catch (e2) {
+                this.logEvent('loadInstrument(' + name + '): toDestination() ALSO THREW — ' + (e2 && e2.message ? e2.message : e2));
+                return false;
+            }
+        }
+    }
+
     async loadInstrument(name) {
         if (this.useFallback) {
             this._loadFallbackProg(this.fallbackPrograms[name]);
@@ -452,18 +474,23 @@ class AudioEngine {
                     clearTimeout(timeoutId);
                     this.logEvent('loadInstrument(' + name + '): onload OK');
                     this.samplers[name] = sampler;
-                    sampler.connect(this.reverb);
+                    this._connectSampler(sampler, name);
                     resolve(sampler);
                 },
                 onerror: (err) => {
                     settled = true;
                     clearTimeout(timeoutId);
-                    // Fail gracefully, but record it so the on-device status can
-                    // surface a sample/network problem (e.g. blocked CDN host).
-                    this.lastAudioError = 'sample-load-failed: ' + name;
-                    this.logEvent('loadInstrument(' + name + '): onerror — ' + (err && err.message ? err.message : err));
+                    // This can fire either because the buffers genuinely failed to
+                    // load, or because connect() threw inside a prior onload call
+                    // (see _connectSampler). Only tag it as a load failure if the
+                    // sampler doesn't actually have its buffers ready.
+                    const buffersReady = sampler.loaded;
+                    if (!buffersReady) {
+                        this.lastAudioError = 'sample-load-failed: ' + name;
+                    }
+                    this.logEvent('loadInstrument(' + name + '): onerror (buffersReady=' + buffersReady + ') — ' + (err && err.message ? err.message : err));
                     this.samplers[name] = sampler;
-                    sampler.connect(this.reverb);
+                    this._connectSampler(sampler, name);
                     resolve(sampler);
                 }
             });
