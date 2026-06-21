@@ -58,23 +58,30 @@ class AudioEngine {
             'violin': { 'A3': 'A3.mp3', 'A4': 'A4.mp3', 'A5': 'A5.mp3', 'A6': 'A6.mp3', 'C4': 'C4.mp3', 'C5': 'C5.mp3', 'C6': 'C6.mp3', 'C7': 'C7.mp3', 'E4': 'E4.mp3', 'E5': 'E5.mp3', 'E6': 'E6.mp3', 'G4': 'G4.mp3', 'G5': 'G5.mp3', 'G6': 'G6.mp3' }
         };
 
-        // 7 voice channels mapped to instrument names Default
-        this.channels = ["bass-electric", "piano", "trumpet", "harp", "bassoon", "flute", "violin"];
+        // 7 voice channels mapped to instrument names. Default matches 'Clear Mix'
+        // below; applyPreset() overwrites this as soon as a preset is selected.
+        this.channels = ["organ", "bassoon", "french-horn", "clarinet", "saxophone", "trumpet", "flute"];
 
         // Per-voice volume balance
         this.voiceBalance = [1.0, 0.80, 0.76, 0.74, 0.76, 0.80, 0.90];
 
         // Per-instrument gain correction, applied on top of voiceBalance regardless
-        // of which channel slot the instrument lands in. The harp's plucked/decaying
-        // timbre reads as much quieter than sustained instruments at equal velocity,
-        // so it gets boosted in every preset that uses it (currently 'Clear Mix').
-        this.instrumentBoost = { harp: 1.7 };
+        // of which channel slot the instrument lands in. Plucked/percussive
+        // instruments (short attack, fast decay) read as much quieter than
+        // sustained instruments at equal velocity once the sustained voices are
+        // still ringing — boosted here so they don't disappear in the mix.
+        this.instrumentBoost = { harp: 1.7, piano: 1.35, 'guitar-nylon': 1.4, 'bass-electric': 1.2 };
 
         // Presets [Bass, V2, V3, V4, V5, V6, Top]
         this.PRESETS = {
             'Orchestra':    ["contrabass", "cello", "bassoon", "french-horn", "violin", "clarinet", "flute"],
             'Jazz Combo':   ["contrabass", "cello", "saxophone", "french-horn", "clarinet", "trumpet", "piano"],
-            'Clear Mix':    ["bass-electric", "piano", "trumpet", "harp", "bassoon", "flute", "piano"],
+            // Clear Mix is the timbral-separation showcase preset, so it's reserved
+            // for sustained instruments only (winds + organ as a synth stand-in).
+            // Plucked/percussive instruments (piano, harp, bass-electric) decay too
+            // fast and disappear against the others while they're still ringing —
+            // a real mixing concern we keep elsewhere, but avoid here on purpose.
+            'Clear Mix':    ["organ", "bassoon", "french-horn", "clarinet", "saxophone", "trumpet", "flute"],
         };
 
         this._bindLifecycleEvents();
