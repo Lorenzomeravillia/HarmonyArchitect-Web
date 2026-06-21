@@ -112,6 +112,15 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (window._coachAutoStart) {
                 window._coachAutoStart();
             }
+
+            // Frictionless start: open → one tap → sound. The hardest moment for
+            // an ADHD brain is *starting*, so we remove the extra "now press Play"
+            // step and let the first chord play itself right after START. The
+            // playChord path awaits sample loading, so a short delay is enough.
+            setTimeout(() => {
+                const pb = document.getElementById('play_btn');
+                if (pb && !window.hasPlayedCurrentChallenge) pb.click();
+            }, 700);
         });
     }
 
@@ -303,32 +312,106 @@ document.addEventListener("DOMContentLoaded", async () => {
         "4: Advanced":        ["A7alt", "Db7", "E7#9", "B13b9", "F#7b9"]
     };
 
-    const LEVEL_POOLS_PROG = {
-        "1: Basic Triads": [
-            "I - IV - V - I|C|F|G|C",
-            "I - vim - IV - V|C|Am|F|G",
-            "im - ivm - V - im|Cm|Fm|G|Cm",
-            "im - VI - VII - im|Cm|Ab|Bb|Cm",
-            "I - iim - V - I|C|Dm|G|C"
-        ],
-        "2: Seventh Chords": [
-            "iim7 - V7 - Imaj7|Dm7|G7|Cmaj7",
-            "iiø7 - V7 - im7|Dm7b5|G7|Cm7",
-            "Imaj7 - vim7 - iim7 - V7|Cmaj7|Am7|Dm7|G7",
-            "im7 - ivm7 - VII7 - IIImaj7|Cm7|Fm7|Bb7|Ebmaj7"
-        ],
-        "3: Jazz Extensions": [
-            "iim9 - V13 - Imaj9|Dm9|G13|Cmaj9",
-            "iiø7 - V7alt - im9|Dm7b5|G7alt|Cm9",
-            "Imaj9 - VI7alt - iim9 - V13|Cmaj9|A7alt|Dm9|G13",
-            "im9 - bVImaj9 - iiø7 - V7alt|Cm9|Abmaj9|Dm7b5|G7alt"
-        ],
-        "4: Advanced": [
-            "iim7 - subV7 - Imaj7|Dm7|Db7|Cmaj7",
-            "V7/ii - iim7 - V7 - Imaj7|A7|Dm7|G7|Cmaj7",
-            "Imaj7 - bIII7 - bVImaj7 - subV7|Cmaj7|Eb7|Abmaj7|Db7"
-        ]
+    // ── Progression content, organized by STYLE → lesson ────────────────────
+    // Style keeps each session inside one coherent idiom, so progressions feel
+    // curated (you recognize a named pattern) instead of random. Lesson keys
+    // carry a numeric prefix for difficulty ordering. Templates are written in
+    // C major / C minor and transposed at runtime.
+    const PROG_STYLES = {
+        "Classical": {
+            "1: Cadences": [
+                "Authentic V–I|G|C",
+                "Plagal IV–I|F|C",
+                "Deceptive V–vi|G|Am",
+                "Half Cadence ii–V|Dm|G"
+            ],
+            "2: Diatonic Major": [
+                "I – IV – V – I|C|F|G|C",
+                "I – ii – V – I|C|Dm|G|C",
+                "Pachelbel I–V–vi–IV|C|G|Am|F",
+                "Circle vi–ii–V–I|Am|Dm|G|C"
+            ],
+            "3: Minor & Baroque": [
+                "Minor i – iv – V – i|Cm|Fm|G|Cm",
+                "Lament i – VII – VI – V|Cm|Bb|Ab|G",
+                "Folia i – V – VII – III|Cm|G|Bb|Eb",
+                "Romanesca I–V–vi–iii|C|G|Am|Em"
+            ]
+        },
+        "Jazz": {
+            "1: ii–V–I": [
+                "iim7 - V7 - Imaj7|Dm7|G7|Cmaj7",
+                "iiø7 - V7 - im7|Dm7b5|G7|Cm7",
+                "Imaj7 - vim7 - iim7 - V7|Cmaj7|Am7|Dm7|G7",
+                "im7 - ivm7 - VII7 - IIImaj7|Cm7|Fm7|Bb7|Ebmaj7"
+            ],
+            "2: Extensions": [
+                "iim9 - V13 - Imaj9|Dm9|G13|Cmaj9",
+                "iiø7 - V7alt - im9|Dm7b5|G7alt|Cm9",
+                "Imaj9 - VI7alt - iim9 - V13|Cmaj9|A7alt|Dm9|G13",
+                "im9 - bVImaj9 - iiø7 - V7alt|Cm9|Abmaj9|Dm7b5|G7alt"
+            ],
+            "3: Advanced": [
+                "iim7 - subV7 - Imaj7|Dm7|Db7|Cmaj7",
+                "V7/ii - iim7 - V7 - Imaj7|A7|Dm7|G7|Cmaj7",
+                "Imaj7 - bIII7 - bVImaj7 - subV7|Cmaj7|Eb7|Abmaj7|Db7"
+            ]
+        },
+        "Pop": {
+            "1: Three-Chord": [
+                "I – IV – V|C|F|G",
+                "I – V – IV|C|G|F",
+                "i – VI – VII|Cm|Ab|Bb",
+                "I – vi – IV|C|Am|F"
+            ],
+            "2: Four-Chord": [
+                "I – V – vi – IV|C|G|Am|F",
+                "vi – IV – I – V|Am|F|C|G",
+                "I – vi – IV – V|C|Am|F|G",
+                "I – IV – vi – V|C|F|Am|G"
+            ]
+        }
     };
+
+    const PROG_STYLE_KEY = 'cv_prog_style';
+    function getProgStyle() {
+        const sel = document.getElementById('style_menu');
+        if (sel && sel.value && PROG_STYLES[sel.value]) return sel.value;
+        const saved = localStorage.getItem(PROG_STYLE_KEY);
+        return (saved && PROG_STYLES[saved]) ? saved : 'Classical';
+    }
+    function getProgPool(style, level) {
+        const lessons = PROG_STYLES[style] || PROG_STYLES['Classical'];
+        return lessons[level] || lessons[Object.keys(lessons)[0]];
+    }
+
+    // ── Familiarity map (local, no login needed) ────────────────────────────
+    // A lightweight per-item tally in localStorage that fills up as you play,
+    // so progress is *visible* and accumulates over time. Works offline and for
+    // anonymous users (the cloud SM-2 data only exists once logged in), which is
+    // exactly the moment that matters: the first sessions on a fresh install.
+    const FAM_KEY = 'cv_familiarity';
+    function loadFam() {
+        try { return JSON.parse(localStorage.getItem(FAM_KEY) || '{}'); } catch (e) { return {}; }
+    }
+    function recordFam(category, key, correct) {
+        if (!category || !key) return;
+        const fam = loadFam();
+        if (!fam[category]) fam[category] = {};
+        const cell = fam[category][key] || { seen: 0, correct: 0 };
+        cell.seen += 1;
+        if (correct) cell.correct += 1;
+        fam[category][key] = cell;
+        try { localStorage.setItem(FAM_KEY, JSON.stringify(fam)); } catch (e) {}
+    }
+    // Returns a familiarity tier 0..3 (none / learning / familiar / mastered).
+    function famTier(cell) {
+        if (!cell || cell.seen === 0) return 0;
+        const r = cell.correct / cell.seen;
+        if (cell.seen >= 3 && r >= 0.85) return 3;
+        if (r >= 0.5) return 2;
+        return 1;
+    }
     // ── Session tracking ────────────────────────────────────
     let sessionCorrect = 0;
     let sessionTotal   = 0;
@@ -514,7 +597,45 @@ document.addEventListener("DOMContentLoaded", async () => {
         document.getElementById('session_badge').textContent  = badge;
         document.getElementById('session_title').textContent  = title;
         document.getElementById('session_detail').textContent = detail;
+        renderProgressMap(document.getElementById('session_map'));
         document.getElementById('session_overlay').classList.remove('hidden');
+    }
+
+    // Renders the accumulated familiarity map: every chord type / progression
+    // you've touched, with a small bar that deepens from "learning" to
+    // "mastered". Only shows what you've actually practiced, so the map visibly
+    // grows over time — progress you can see, without gamified noise.
+    function renderProgressMap(container) {
+        if (!container) return;
+        const fam = loadFam();
+        const TIER_COLOR = ['#3A4A5C', '#C26A23', '#2980D9', '#84CC16']; // none/learning/familiar/mastered
+        const TIER_LABEL = ['', 'Learning', 'Familiar', 'Mastered'];
+        const SECTIONS = [
+            { cat: 'chord', title: 'Chords' },
+            { cat: 'prog',  title: 'Progressions' }
+        ];
+
+        let html = '';
+        for (const sec of SECTIONS) {
+            const items = fam[sec.cat] ? Object.keys(fam[sec.cat]) : [];
+            if (items.length === 0) continue;
+            // Order by familiarity, strongest first.
+            items.sort((a, b) => famTier(fam[sec.cat][b]) - famTier(fam[sec.cat][a]));
+            html += '<div class="map-section"><div class="map-section-title">' + sec.title + '</div>';
+            for (const key of items) {
+                const cell = fam[sec.cat][key];
+                const tier = famTier(cell);
+                const pct  = Math.round((cell.correct / cell.seen) * 100);
+                const label = (sec.cat === 'chord') ? (key === 'M' ? 'major' : key) : key.split('\n')[0];
+                html += '<div class="map-row">'
+                      +   '<span class="map-name">' + label + '</span>'
+                      +   '<span class="map-bar"><span class="map-bar-fill" style="width:' + Math.max(8, pct) + '%; background:' + TIER_COLOR[tier] + ';"></span></span>'
+                      +   '<span class="map-tier" style="color:' + TIER_COLOR[tier] + ';">' + (TIER_LABEL[tier] || '') + '</span>'
+                      + '</div>';
+            }
+            html += '</div>';
+        }
+        container.innerHTML = html || '<div class="map-empty">Your progress map fills in as you play.</div>';
     }
 
     function resetSession() {
@@ -546,13 +667,46 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     document.getElementById('session_size_menu')?.addEventListener('change', resetSession);
 
-    // ── Level select ────────────────────────────────────────
+    // ── Level + Style selects ───────────────────────────────
     const levelSelect = document.getElementById("level_select");
-    Object.keys(LEVEL_POOLS_SINGLE).forEach(lvl => {
-        let opt = document.createElement("option");
-        opt.value = lvl; opt.text = lvl;
-        levelSelect.appendChild(opt);
-    });
+    const styleSelect = document.getElementById("style_menu");
+
+    // Populate the Style selector once (Progression mode only).
+    if (styleSelect && styleSelect.options.length === 0) {
+        Object.keys(PROG_STYLES).forEach(st => {
+            const opt = document.createElement("option");
+            opt.value = st; opt.text = st;
+            styleSelect.appendChild(opt);
+        });
+        styleSelect.value = getProgStyle();
+    }
+
+    // Level options depend on context: single-chord levels, or the lessons of
+    // the chosen progression Style. Keeps the same menu the user already knows
+    // (no extra control) while staying idiom-coherent.
+    function repopulateLevels() {
+        const isProg = document.getElementById("play_mode_menu").value.includes("Progression");
+        const keys = isProg
+            ? Object.keys(PROG_STYLES[getProgStyle()] || {})
+            : Object.keys(LEVEL_POOLS_SINGLE);
+        const prev = levelSelect.value;
+        levelSelect.innerHTML = "";
+        keys.forEach(lvl => {
+            const opt = document.createElement("option");
+            opt.value = lvl; opt.text = lvl;
+            levelSelect.appendChild(opt);
+        });
+        // Preserve selection if still valid, else keep the easiest (first) lesson.
+        if (keys.includes(prev)) levelSelect.value = prev;
+    }
+
+    function syncStyleVisibility() {
+        const isProg = document.getElementById("play_mode_menu").value.includes("Progression");
+        if (styleSelect) styleSelect.style.display = isProg ? "" : "none";
+    }
+
+    syncStyleVisibility();
+    repopulateLevels();
 
     // ── Reactive Auto-Regeneration ──────────────────────────
     function handleReactiveRegen() {
@@ -568,8 +722,17 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     }
     
-    document.getElementById("play_mode_menu")?.addEventListener("change", handleReactiveRegen);
+    document.getElementById("play_mode_menu")?.addEventListener("change", () => {
+        syncStyleVisibility();
+        repopulateLevels();
+        handleReactiveRegen();
+    });
     document.getElementById("level_select")?.addEventListener("change", handleReactiveRegen);
+    styleSelect?.addEventListener("change", () => {
+        localStorage.setItem(PROG_STYLE_KEY, styleSelect.value);
+        repopulateLevels();
+        handleReactiveRegen();
+    });
     
     document.getElementById("adaptive_mode_menu")?.addEventListener("change", (e) => {
         handleReactiveRegen();
@@ -652,6 +815,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
                 sessionTotal++;
                 const correct = (o === window.correctAnswerText);
+                recordFam(window._famCat, window._famKey, correct);
 
                 if (window.dbClient && window.dbClient.isReady) {
                     const payload = {
@@ -781,7 +945,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (overrides && overrides.forceRoot) currentRoot = overrides.forceRoot;
 
         if (isProgression) {
-            let pool = LEVEL_POOLS_PROG[level] || LEVEL_POOLS_PROG["1: Basic Triads"];
+            const progStyle = getProgStyle();
+            let pool = getProgPool(progStyle, level);
             let targetItem = null;
             if (overrides && overrides.forceProgression) {
                  const match = pool.find(p => p.startsWith(overrides.forceProgression));
@@ -793,6 +958,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             window.currentProgression = parts.slice(1).map(c => transposeChord(c, currentRoot));
             document.getElementById("combo_label")?.innerText;
             window.realProgressionLabel = parts[0].split("\n")[0] + " in " + currentRoot;
+            window._famCat = 'prog';
+            window._famKey = parts[0];
 
             // Determine key context for key signature rendering (Global Standard)
             const isMinorProg = parts.slice(1).some(c => /^Cm([^a-zA-Z]|$)/.test(c));
@@ -811,7 +978,9 @@ document.addEventListener("DOMContentLoaded", async () => {
             });
             if (wrongOpts.length < 3) {
                 let usedNames = new Set([parts[0], ...safePool.map(p => p.split("|")[0])]);
-                for (let lvlPool of Object.values(LEVEL_POOLS_PROG)) {
+                // Distractors stay within the same Style, so a wrong option is
+                // never a giveaway from another idiom.
+                for (let lvlPool of Object.values(PROG_STYLES[progStyle] || {})) {
                     for (let p of lvlPool) {
                         if (wrongOpts.length >= 3) break;
                         let pparts = p.split("|");
@@ -862,6 +1031,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             window.currentSymbol = targetChord;
             document.getElementById("combo_label")?.innerText;
             window.realProgressionLabel = targetChord;
+            window._famCat = 'chord';
+            window._famKey = qual || 'M';
 
             let wrongQuals = [];
             pool.forEach(p => {

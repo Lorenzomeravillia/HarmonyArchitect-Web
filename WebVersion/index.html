@@ -40,7 +40,7 @@
     <meta name="description" content="Ear training reimagined. Different instruments for each voice make chords transparent. No timers, no pressure — learn at your pace.">
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Courier+Prime:wght@700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=20">
+    <link rel="stylesheet" href="css/style.css?v=21">
 
     <!-- WebAudioFontPlayer (cross-browser, iOS-compatible) -->
     <script src="https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js"></script>
@@ -84,6 +84,7 @@
                         <option>Single Chord</option>
                         <option>Progression</option>
                     </select>
+                    <select id="style_menu" class="dropdown mode-select" title="Progression style" style="display:none; background:#2D5A9E;"></select>
                 </div>
                 <div class="progress-unified" id="progress_unified">
                     <div class="progress-bar"><div id="progress_fill" class="progress-fill" style="width:0%;"></div></div>
@@ -215,7 +216,8 @@
             <div id="session_badge" class="session-badge"></div>
             <h2 id="session_title" class="session-title"></h2>
             <p id="session_detail" class="session-detail"></p>
-            <button id="session_restart_btn" class="btn btn-primary session-restart">🔄 New Session</button>
+            <div id="session_map" class="session-map"></div>
+            <button id="session_restart_btn" class="btn btn-primary session-restart">New Session</button>
         </div>
     </div>
 
@@ -291,13 +293,13 @@
         </div>
     </div>
 
-    <script src="js/supabase-client.js?v=88"></script>
-    <script src="js/adaptive.js?v=88"></script>
-    <script src="js/audio_engine.js?v=88"></script>
-    <script src="js/music_engine.js?v=88"></script>
-    <script src="js/gui.js?v=88"></script>
-    <script src="js/coach.js?v=88"></script>
-    <script src="js/main.js?v=88"></script>
+    <script src="js/supabase-client.js?v=89"></script>
+    <script src="js/adaptive.js?v=89"></script>
+    <script src="js/audio_engine.js?v=89"></script>
+    <script src="js/music_engine.js?v=89"></script>
+    <script src="js/gui.js?v=89"></script>
+    <script src="js/coach.js?v=89"></script>
+    <script src="js/main.js?v=89"></script>
 
 </body>
 </html>
