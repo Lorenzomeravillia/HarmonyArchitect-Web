@@ -127,6 +127,27 @@ class AudioEngine {
         ]);
     }
 
+    // playMidi/playChord used to fire a bare, unawaited Tone.context.resume()
+    // before triggering a note. That's a no-op in practice: iOS can drop the
+    // context back to 'suspended' between notes (after idle periods, screen
+    // events, etc.), and nothing was actually waiting to confirm the resume
+    // worked before the sampler tried to play — so the note triggered into a
+    // dead context and produced no sound, even though everything reported
+    // ready=true/loaded. This awaits a short guarded resume and, if the
+    // context is still stuck, kicks a single background rebuild rather than
+    // one per note.
+    async _ensureContextRunning(label) {
+        if (Tone.context.state === 'running') return true;
+        await this._raceTimeout(() => Tone.context.resume(), 500, label + ' resume()');
+        if (Tone.context.state === 'running') return true;
+        if (!this._rebuildingPlayback) {
+            this._rebuildingPlayback = true;
+            this.logEvent(label + ': context still stuck during playback — rebuilding');
+            this._rebuildContext().finally(() => { this._rebuildingPlayback = false; });
+        }
+        return false;
+    }
+
     // Combined per-channel gain: positional balance × per-instrument correction.
     _channelGain(channelIdx) {
         const balance = this.voiceBalance[channelIdx] ?? 1.0;
@@ -217,10 +238,13 @@ class AudioEngine {
             }
             this._setLoading(false);
 
+            // Buffers can finish decoding even while the context is still
+            // suspended (decodeAudioData doesn't require a running context),
+            // so loadedCount alone is not proof that sound will actually play.
             const loadedCount = Object.values(this.samplers).filter(s => s && s.loaded).length;
-            this.ready = loadedCount > 0;
-            if (!this.ready) this.lastAudioError = 'rebuild-failed';
-            this.logEvent('_rebuildContext: done, loadedCount=' + loadedCount + ', ready=' + this.ready);
+            this.ready = loadedCount > 0 && Tone.context.state === 'running';
+            if (!this.ready) this.lastAudioError = Tone.context.state !== 'running' ? 'context-suspended (iOS did not resume audio)' : 'rebuild-failed';
+            this.logEvent('_rebuildContext: done, loadedCount=' + loadedCount + ', ctxState=' + Tone.context.state + ', ready=' + this.ready);
         } catch (e) {
             this.lastAudioError = 'rebuild-error: ' + e.message;
             this.logEvent('_rebuildContext THREW: ' + e.message);
@@ -563,8 +587,11 @@ class AudioEngine {
         }
 
         // Tone.js Standard Execution
-        if (Tone.context.state !== 'running') Tone.context.resume();
-        
+        if (Tone.context.state !== 'running') {
+            const running = await this._ensureContextRunning('playMidi');
+            if (!running) return;
+        }
+
         const instName = this.channels[channelIdx];
         if (!instName) return;
         
@@ -615,7 +642,7 @@ class AudioEngine {
             return;
         }
 
-        if (Tone.context.state !== 'running') Tone.context.resume();
+        if (Tone.context.state !== 'running') await this._ensureContextRunning('playChord');
 
         const lead = Tone.context.state === 'running' ? 0.1 : 0.4;
         const startTime = Tone.now() + lead;
@@ -705,7 +732,7 @@ class AudioEngine {
             return;
         }
 
-        if (Tone.context.state !== 'running') Tone.context.resume();
+        if (Tone.context.state !== 'running') await this._ensureContextRunning('playChordWithVolumes');
 
         const lead = Tone.context.state === 'running' ? 0.1 : 0.4;
         const startTime = Tone.now() + lead;
