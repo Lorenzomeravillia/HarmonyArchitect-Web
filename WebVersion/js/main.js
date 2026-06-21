@@ -72,18 +72,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     // ── PWA Start Overlay ──────────────────────────────────
     let startOverlay = document.getElementById("start_overlay");
     if (startOverlay) {
-        startOverlay.addEventListener("click", (e) => {
+        startOverlay.addEventListener("click", async (e) => {
             if (e.target.tagName.toLowerCase() === 'a') {
                 return; // Let the link work!
             }
             startOverlay.style.display = "none";
 
             // ── iOS Audio Session Kick (v87) ────────────────────
-            // Il <video autoplay muted playsinline> nell'HTML fa il lavoro pesante:
-            // forza iOS a portare AVAudioSession da soloAmbient a playback PRIMA
-            // di qualsiasi gesture (fix per il bug audio silenzioso al cold start).
-            // Qui usiamo solo MediaSession API per dichiarare l'intent "music playback"
-            // e rafforzare il segnale OS-level durante la gesture utente.
+            // The <audio autoplay loop> activator forces iOS to switch the
+            // AVAudioSession from soloAmbient to playback before any other audio
+            // request. This MUST resolve before we ask Tone.js to resume its
+            // context — otherwise the two race and the session can still be in
+            // soloAmbient when Tone.start() runs, leaving the context stuck in
+            // 'suspended' (the silent cold-start bug). So we await play() here
+            // instead of firing it and moving on.
             try {
                 if ('mediaSession' in navigator) {
                     navigator.mediaSession.metadata = new MediaMetadata({
@@ -93,10 +95,14 @@ document.addEventListener("DOMContentLoaded", async () => {
                     });
                     navigator.mediaSession.playbackState = 'playing';
                 }
-                // Ensure the video activator is playing (may have been paused by browser)
-                const videoEl = document.getElementById('ios_audio_activator');
-                if (videoEl && videoEl.paused) videoEl.play().catch(() => {});
-            } catch(e) {}
+                const activator = document.getElementById('ios_audio_activator');
+                if (activator && activator.paused) {
+                    await Promise.race([
+                        activator.play(),
+                        new Promise(r => setTimeout(r, 400)) // don't block the gesture forever
+                    ]);
+                }
+            } catch (e) {}
             // ── End iOS Audio Session Kick ───────────────────────
 
             window.audioEngine.unlockAndLoad();
