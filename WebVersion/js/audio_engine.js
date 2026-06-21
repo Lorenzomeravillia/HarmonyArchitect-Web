@@ -216,8 +216,18 @@ class AudioEngine {
         if (!window.Tone) return;
         this.logEvent('_rebuildContext: start');
         try {
+            // iOS WebKit caps the number of AudioContexts that can be alive at
+            // once (historically as few as ~4-6 per page). Every previous
+            // rebuild created a new context without closing the old one, so
+            // a handful of retries would silently exhaust that cap — after
+            // which EVERY new context, even a brand-new one, stays stuck in
+            // 'suspended' forever. Close the outgoing context first.
+            const oldCtx = Tone.context.rawContext || Tone.context._context;
             const newCtx = new (window.AudioContext || window.webkitAudioContext)();
             Tone.setContext(newCtx);
+            if (oldCtx && typeof oldCtx.close === 'function' && oldCtx.state !== 'closed') {
+                oldCtx.close().then(() => this.logEvent('_rebuildContext: closed previous context')).catch((e) => this.logEvent('_rebuildContext: closing previous context THREW — ' + e.message));
+            }
             await this._raceTimeout(() => Tone.start(), 2000, '_rebuildContext Tone.start()');
             if (Tone.context.state !== 'running') {
                 await this._raceTimeout(() => Tone.context.resume(), 1500, '_rebuildContext resume()');
