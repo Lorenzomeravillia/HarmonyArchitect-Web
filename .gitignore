@@ -1,1 +1,4 @@
-.venv/\n__pycache__/\n*.pyc\n.DS_Store
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
