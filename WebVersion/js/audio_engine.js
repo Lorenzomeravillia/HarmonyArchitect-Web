@@ -63,12 +63,113 @@ class AudioEngine {
         // Per-voice volume balance
         this.voiceBalance = [1.0, 0.80, 0.76, 0.74, 0.76, 0.80, 0.90];
 
+        // Per-instrument gain correction, applied on top of voiceBalance regardless
+        // of which channel slot the instrument lands in. The harp's plucked/decaying
+        // timbre reads as much quieter than sustained instruments at equal velocity,
+        // so it gets boosted in every preset that uses it (currently 'Clear Mix').
+        this.instrumentBoost = { harp: 1.7 };
+
         // Presets [Bass, V2, V3, V4, V5, V6, Top]
         this.PRESETS = {
             'Orchestra':    ["contrabass", "cello", "bassoon", "french-horn", "violin", "clarinet", "flute"],
             'Jazz Combo':   ["contrabass", "cello", "saxophone", "french-horn", "clarinet", "trumpet", "piano"],
             'Clear Mix':    ["bass-electric", "piano", "trumpet", "harp", "bassoon", "flute", "piano"],
         };
+
+        this._bindLifecycleEvents();
+    }
+
+    // Combined per-channel gain: positional balance × per-instrument correction.
+    _channelGain(channelIdx) {
+        const balance = this.voiceBalance[channelIdx] ?? 1.0;
+        const inst = this.channels[channelIdx];
+        const boost = this.instrumentBoost[inst] ?? 1.0;
+        return balance * boost;
+    }
+
+    // ── LIFECYCLE: keep audio alive across backgrounding ──────────────────
+    // iOS suspends (and sometimes permanently wedges) the AudioContext when the
+    // app is backgrounded. A plain resume() call often silently no-ops once the
+    // context is wedged, which is what previously made it look like only a full
+    // device restart could fix things. Here we resume on return-to-foreground,
+    // and if the context is still not running shortly after, we rebuild it from
+    // scratch — the same effect a restart had, but done in JS automatically.
+    _bindLifecycleEvents() {
+        if (this._lifecycleBound) return;
+        this._lifecycleBound = true;
+
+        const tryResume = async () => {
+            if (!this._unlocked) return;
+
+            if (this.useFallback) {
+                if (this.fallbackCtx && this.fallbackCtx.state !== 'running') {
+                    try { await this.fallbackCtx.resume(); } catch (e) {}
+                    await new Promise(r => setTimeout(r, 300));
+                    if (this.fallbackCtx.state !== 'running') {
+                        console.warn('[AudioEngine] fallback context stuck — rebuilding');
+                        this._setupFallbackContext();
+                    }
+                }
+                return;
+            }
+
+            if (!window.Tone) return;
+            if (Tone.context.state !== 'running') {
+                try { await Tone.context.resume(); } catch (e) {}
+            }
+            let waited = 0;
+            while (Tone.context.state !== 'running' && waited < 1000) {
+                await new Promise(r => setTimeout(r, 100));
+                waited += 100;
+            }
+            if (Tone.context.state !== 'running') {
+                console.warn('[AudioEngine] context stuck after resume attempt — rebuilding');
+                await this._rebuildContext();
+            } else {
+                this.ready = Object.values(this.samplers).some(s => s && s.loaded);
+            }
+        };
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') tryResume();
+        });
+        window.addEventListener('pageshow', tryResume);
+        window.addEventListener('focus', tryResume);
+    }
+
+    // Tears down and recreates the Tone.js AudioContext + reverb chain, then
+    // reloads the current channel's samplers. Used when resume() can't bring
+    // a backgrounded context back to 'running'.
+    async _rebuildContext() {
+        if (!window.Tone) return;
+        try {
+            const newCtx = new (window.AudioContext || window.webkitAudioContext)();
+            Tone.setContext(newCtx);
+            await Tone.start();
+            try { await Tone.context.resume(); } catch (e) {}
+
+            this.samplers = {};
+            this.reverb = new Tone.Reverb({ decay: 1.8, preDelay: 0.01, wet: 0.2 });
+            const eq = new Tone.Filter(8000, "lowpass");
+            this.reverb.connect(eq);
+            eq.toDestination();
+
+            this.ready = false;
+            this.lastAudioError = null;
+            this._setLoading(true);
+            for (let i = 0; i < this.channels.length; i++) {
+                await this.loadInstrument(this.channels[i]);
+            }
+            this._setLoading(false);
+
+            const loadedCount = Object.values(this.samplers).filter(s => s && s.loaded).length;
+            this.ready = loadedCount > 0;
+            if (!this.ready) this.lastAudioError = 'rebuild-failed';
+            console.log('[AudioEngine] context rebuilt, state=' + Tone.context.state);
+        } catch (e) {
+            this.lastAudioError = 'rebuild-error: ' + e.message;
+            console.error('[AudioEngine] rebuild failed', e);
+        }
     }
 
     _setLoading(isLoading) {
@@ -157,6 +258,21 @@ class AudioEngine {
         }
     }
 
+    // Manual recovery path for the on-screen "tap to retry" banner. unlockAndLoad()
+    // is a no-op once already unlocked, so a stuck-but-unlocked context needs the
+    // same rebuild used by the automatic lifecycle handler, not another unlock call.
+    async forceRecover() {
+        if (this.useFallback) {
+            this._setupFallbackContext();
+            return;
+        }
+        if (!this._unlocked) {
+            await this.unlockAndLoad();
+            return;
+        }
+        await this._rebuildContext();
+    }
+
     // Human-readable snapshot of the audio pipeline, for on-device debugging.
     getAudioStatus() {
         let st = 'n/a';
@@ -165,7 +281,10 @@ class AudioEngine {
                 ? (this.fallbackCtx && this.fallbackCtx.state)
                 : (window.Tone && Tone.context.state);
         } catch (e) {}
-        const loaded = Object.values(this.samplers).filter(s => s && s.loaded).length;
+        // Count only samplers for the currently active channels (not every
+        // instrument ever loaded across preset switches), so the number stays
+        // bounded by the channel count and reads as a meaningful ratio.
+        const loaded = this.channels.filter(name => this.samplers[name] && this.samplers[name].loaded).length;
         const parts = [
             'engine=' + (this.useFallback ? 'WebAudioFont' : (window.Tone ? 'Tone' : 'none')),
             'ctx=' + st,
@@ -322,8 +441,7 @@ class AudioEngine {
             if (this.fallbackCtx.state === 'suspended') this.fallbackCtx.resume();
             const preset = this._getFallbackPreset(channelIdx);
             if (!preset || !this.player) return;
-            const balance = this.voiceBalance[channelIdx] ?? 1.0;
-            const gain    = (velocity / 127) * this._getVolume() * balance;
+            const gain = (velocity / 127) * this._getVolume() * this._channelGain(channelIdx);
             this.player.queueWaveTable(this.fallbackCtx, this.masterBus, preset, this.fallbackCtx.currentTime, midiPitch, duration, gain);
             if (window.gui?.highlight) window.gui.highlight(channelIdx, 440 * Math.pow(2, (midiPitch - 69) / 12), duration * 1000, chordIdx);
             return;
@@ -337,10 +455,9 @@ class AudioEngine {
         
         const sampler = await this.loadInstrument(instName);
         if (!sampler || !sampler.loaded) return;
-        
-        const balance = this.voiceBalance[channelIdx] ?? 1.0;
-        const gain = (velocity / 127) * this._getVolume() * balance;
-        
+
+        const gain = (velocity / 127) * this._getVolume() * this._channelGain(channelIdx);
+
         const freq = Tone.Frequency(midiPitch, "midi").toNote();
         
         sampler.triggerAttackRelease(freq, duration, Tone.now(), gain);
@@ -372,10 +489,9 @@ class AudioEngine {
                 const midi   = Math.round(69 + 12 * Math.log2(freq / 440));
                 const preset = this._getFallbackPreset(item.voiceIdx);
                 if (!preset || !this.player) return;
-                const balance = this.voiceBalance[item.voiceIdx] ?? 1.0;
 
                 this.player.queueWaveTable(this.fallbackCtx, this.masterBus, preset,
-                    now + lead + idx * SPREAD_SEC, midi, dur, vol * balance);
+                    now + lead + idx * SPREAD_SEC, midi, dur, vol * this._channelGain(item.voiceIdx));
 
                 if (window.gui?.highlight) {
                     setTimeout(() => window.gui.highlight(item.voiceIdx, freq, dur * 800, chordIdx), (0.1 + idx * SPREAD_SEC) * 1000);
@@ -385,25 +501,24 @@ class AudioEngine {
         }
 
         if (Tone.context.state !== 'running') Tone.context.resume();
-        
+
         const lead = Tone.context.state === 'running' ? 0.1 : 0.4;
         const startTime = Tone.now() + lead;
-        
+
         notesArray.forEach(async (item, idx) => {
             const freq = item.frequency || item.freq;
             const midi = Math.round(69 + 12 * Math.log2(freq / 440));
             const instName = this.channels[item.voiceIdx];
             if (!instName) return;
-            
+
             const sampler = await this.loadInstrument(instName);
             if (!sampler || !sampler.loaded) return;
-            
-            const balance = this.voiceBalance[item.voiceIdx] ?? 1.0;
+
             const noteObj = Tone.Frequency(midi, "midi").toNote();
-            
+
             const triggerTime = startTime + idx * SPREAD_SEC;
-            sampler.triggerAttackRelease(noteObj, dur, triggerTime, vol * balance);
-            
+            sampler.triggerAttackRelease(noteObj, dur, triggerTime, vol * this._channelGain(item.voiceIdx));
+
             if (window.gui?.highlight) {
                 setTimeout(
                     () => window.gui.highlight(item.voiceIdx, freq, dur * 800, chordIdx),
@@ -464,10 +579,9 @@ class AudioEngine {
                 const midi   = Math.round(69 + 12 * Math.log2(freq / 440));
                 const preset = this._getFallbackPreset(item.voiceIdx);
                 if (!preset || !this.player) return;
-                const balance = this.voiceBalance[item.voiceIdx] ?? 1.0;
 
                 this.player.queueWaveTable(this.fallbackCtx, this.masterBus, preset,
-                    now + lead + idx * SPREAD_SEC, midi, dur, vol * balance * volMult);
+                    now + lead + idx * SPREAD_SEC, midi, dur, vol * this._channelGain(item.voiceIdx) * volMult);
 
                 if (window.gui?.highlight) {
                     setTimeout(() => window.gui.highlight(item.voiceIdx, freq, dur * 800, chordIdx), (0.1 + idx * SPREAD_SEC) * 1000);
@@ -477,27 +591,26 @@ class AudioEngine {
         }
 
         if (Tone.context.state !== 'running') Tone.context.resume();
-        
+
         const lead = Tone.context.state === 'running' ? 0.1 : 0.4;
         const startTime = Tone.now() + lead;
-        
+
         notesArray.forEach(async (item, idx) => {
             const volMult = volumeMap[item.voiceIdx] ?? 1.0;
             if (volMult <= 0) return;
-            
+
             const freq = item.frequency || item.freq;
             const midi = Math.round(69 + 12 * Math.log2(freq / 440));
             const instName = this.channels[item.voiceIdx];
             if (!instName) return;
-            
+
             const sampler = await this.loadInstrument(instName);
             if (!sampler || !sampler.loaded) return;
-            
-            const balance = this.voiceBalance[item.voiceIdx] ?? 1.0;
+
             const noteObj = Tone.Frequency(midi, "midi").toNote();
-            
+
             const triggerTime = startTime + idx * SPREAD_SEC;
-            sampler.triggerAttackRelease(noteObj, dur, triggerTime, vol * balance * volMult);
+            sampler.triggerAttackRelease(noteObj, dur, triggerTime, vol * this._channelGain(item.voiceIdx) * volMult);
             
             if (window.gui?.highlight) {
                 setTimeout(

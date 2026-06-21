@@ -150,9 +150,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         b.innerHTML = '<b style="color:#E8873D;">Audio didn\'t start.</b> '
             + 'Check the side mute switch, then tap here to retry.<br>'
             + '<span style="opacity:.8;font-weight:400;">' + status + '</span>';
-        b.onclick = () => {
-            try { window.audioEngine && window.audioEngine.unlockAndLoad(); } catch (e) {}
-            try { if (window.Tone) Tone.context.resume(); } catch (e) {}
+        b.onclick = async () => {
+            try { if (window.audioEngine) await window.audioEngine.forceRecover(); } catch (e) {}
             const pb = document.getElementById('play_btn');
             if (pb) pb.click();
             setTimeout(() => {
