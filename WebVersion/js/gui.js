@@ -1,45 +1,10 @@
-// Maps semitone interval from root to readable degree labels (no modal quality)
-const INTERVAL_LABELS = {
-    0: 'Root',
-    1: 'b2',   2: '2',
-    3: '3',    4: '3',
-    5: '4',    6: 'b5',   7: '5',   8: '#5',
-    9: 'dim7', 10: '7',   11: '7',
-    13: 'b9',  14: '9',   15: '#9',
-    17: '11',  18: '#11',
-    21: '13'
-};
-
 // ── Key Signature lookup ──────────────────────────────────────────────────────
-// Accidentals listed in the standard order they appear in a key signature.
-const KEY_SIGNATURES = {
-    'C':  {sharps:[], flats:[]},
-    'G':  {sharps:['F'], flats:[]},
-    'D':  {sharps:['F','C'], flats:[]},
-    'A':  {sharps:['F','C','G'], flats:[]},
-    'E':  {sharps:['F','C','G','D'], flats:[]},
-    'B':  {sharps:['F','C','G','D','A'], flats:[]},
-    'F#': {sharps:['F','C','G','D','A','E'], flats:[]},
-    'C#': {sharps:['F','C','G','D','A','E','B'], flats:[]},
-    'F':  {sharps:[], flats:['B']},
-    'Bb': {sharps:[], flats:['B','E']},
-    'Eb': {sharps:[], flats:['B','E','A']},
-    'Ab': {sharps:[], flats:['B','E','A','D']},
-    'Db': {sharps:[], flats:['B','E','A','D','G']},
-    'Gb': {sharps:[], flats:['B','E','A','D','G','C']},
-    'Cb': {sharps:[], flats:['B','E','A','D','G','C','F']},
-};
-
-// Minor key → relative major lookup
-const MINOR_TO_MAJOR = {
-    'A':'C','E':'G','B':'D','F#':'A','C#':'E','G#':'B','D#':'F#','A#':'C#',
-    'D':'F','G':'Bb','C':'Eb','F':'Ab','Bb':'Db','Eb':'Gb','Ab':'Cb',
-};
-
+// Delegates to MusicEngine.getKeySignature — the single source of truth shared
+// with the diatonic spelling override, so the armatura drawn here can never
+// diverge from the accidentals MusicEngine assumes when spelling notes.
 function getKeySignatureForContext(root, isMajor) {
-    if (!root) return {sharps:[], flats:[]};
-    const key = isMajor ? root : (MINOR_TO_MAJOR[root] || 'C');
-    return KEY_SIGNATURES[key] || {sharps:[], flats:[]};
+    if (!root || !window.musicEngine) return {sharps:[], flats:[]};
+    return window.musicEngine.getKeySignature(root, isMajor);
 }
 
 // Treble clef standard staff positions for key-sig accidentals
@@ -89,6 +54,12 @@ const BASS_FLAT_STEPS = {
 // Should we draw an accidental on the note, given the active key signature?
 // Returns false (no accidental needed), or the symbol to draw.
 function shouldShowAccidental(noteAcc, noteLetter, keySig) {
+    // Double accidentals (e.g. the diminished 7th spelled "Bbb") are never
+    // covered by a single-accidental key signature, so they always need an
+    // explicit symbol regardless of context.
+    if (noteAcc === 'bb') return '♭♭';
+    if (noteAcc === '##') return 'x';
+
     if (!keySig) {
         if (!noteAcc) return false;
         return noteAcc === 'b' ? '♭' : noteAcc === '#' ? '♯' : null;

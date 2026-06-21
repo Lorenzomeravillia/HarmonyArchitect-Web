@@ -53,11 +53,16 @@ class MusicEngine {
         return (octave + 1) * 12 + pc;
     }
 
-    // Given a note name like "Bb" or "F#", return its pitch-class (0-11)
-    _noteNameToPC(name) {
-        let pc = this.notesStr.indexOf(name);
-        if (pc === -1) pc = this.notesStrSharp.indexOf(name);
-        return pc;
+    // Given a sounding MIDI note and the accidental applied to its letter name,
+    // return the MIDI of the "natural" (unaltered) letter — used to derive the
+    // correct staff octave for edge spellings like Cb/B#/Fb/E#/Cbb/B##, where the
+    // sounding pitch crosses an octave boundary relative to the natural letter.
+    _naturalMidiFromAccidental(midi, acc) {
+        if (acc === 'b')  return midi + 1;
+        if (acc === '#')  return midi - 1;
+        if (acc === 'bb') return midi + 2;
+        if (acc === '##') return midi - 2;
+        return midi;
     }
 
     // Spell a chord note diatonically.
@@ -67,9 +72,6 @@ class MusicEngine {
         const rootLetter = rootStr[0];
         const rootAcc    = rootStr.slice(1);   // 'b', '#', or ''
         const rootStep   = this.stepMap[rootLetter];  // 0-6
-
-        // Root pitch class
-        const rootPC = this._noteNameToPC(rootStr);
 
         // Target letter index (mod 7)
         const targetStep   = (rootStep + letterOffset) % 7;
@@ -103,23 +105,10 @@ class MusicEngine {
         else if (accDiff === -1) acc = 'b';
         else if (accDiff === -2) acc = 'bb';
 
-        // For double accidentals use enharmonic simplification
-        if (acc === '##' || acc === 'bb') {
-            // Fall back to chromatic spelling (choose best enharmonic)
-            const pc = (rootPC + semitones) % 12;
-            const rootUseSharp = ['G','D','A','E','B','F#','C#','G#','D#','A#'].includes(rootStr);
-            const nameList = rootUseSharp ? this.notesStrSharp : this.notesStr;
-            const simpleName = nameList[pc];
-            const simpLetter = simpleName[0];
-            const simpAcc    = simpleName.slice(1);
-            const simpStep   = this.stepMap[simpLetter];
-            return {
-                name: simpleName,
-                acc: simpAcc,
-                step: simpStep  // just the letter step — octave added later
-            };
-        }
-
+        // Double accidentals (bb/##) are kept as proper diatonic spelling
+        // (e.g. the diminished 7th of Cdim7 is correctly "Bbb", not "A").
+        // Sight-reading correctness for the actual chord degree takes
+        // priority over enharmonic simplification.
         return {
             name: targetLetter + acc,
             acc: acc,
@@ -155,8 +144,11 @@ class MusicEngine {
         return rootStr;
     }
 
-    // Returns { sharps: [...], flats: [...] } for any root+quality string
-    // Used by gui.js to draw the key signature in Progression mode.
+    // Returns { sharps: [...], flats: [...] } for any root+quality string.
+    // This is the single source of truth for key signatures — gui.js calls
+    // through to this method rather than keeping its own copy, so the
+    // armatura drawn on the staff and the diatonic spelling override below
+    // can never diverge again.
     getKeySignature(rootStr, isMajor) {
         const major = {
             'C':  {sharps:[],         flats:[]},
@@ -166,19 +158,19 @@ class MusicEngine {
             'E':  {sharps:['F','C','G','D'], flats:[]},
             'B':  {sharps:['F','C','G','D','A'], flats:[]},
             'F#': {sharps:['F','C','G','D','A','E'], flats:[]},
+            'C#': {sharps:['F','C','G','D','A','E','B'], flats:[]},
             'F':  {sharps:[], flats:['B']},
             'Bb': {sharps:[], flats:['B','E']},
             'Eb': {sharps:[], flats:['B','E','A']},
             'Ab': {sharps:[], flats:['B','E','A','D']},
             'Db': {sharps:[], flats:['B','E','A','D','G']},
             'Gb': {sharps:[], flats:['B','E','A','D','G','C']},
+            'Cb': {sharps:[], flats:['B','E','A','D','G','C','F']},
         };
         // Minor → relative major
         const minorToMajor = {
-            'A':'C', 'E':'G', 'B':'D', 'F#':'A', 'C#':'E', 'G#':'B',
-            'D':'F', 'G':'Bb', 'C':'Eb', 'F':'Ab', 'Bb':'Db', 'Eb':'Gb',
-            // enharmonic equivalents
-            'D#':'E', 'A#':'F#',
+            'A':'C', 'E':'G', 'B':'D', 'F#':'A', 'C#':'E', 'G#':'B', 'D#':'F#', 'A#':'C#',
+            'D':'F', 'G':'Bb', 'C':'Eb', 'F':'Ab', 'Bb':'Db', 'Eb':'Gb', 'Ab':'Cb',
         };
         if (isMajor) {
             return major[rootStr] || {sharps:[], flats:[]};
@@ -209,7 +201,11 @@ class MusicEngine {
 
         if (spellTable) {
             notesMidi   = spellTable.map(([iv]) => rootMidi + iv);
-            spelledNotes = spellTable.map(([iv, lo]) => this.spellNoteDiatonic(rootStr, iv, lo));
+            spelledNotes = spellTable.map(([iv, lo]) => {
+                const sp = this.spellNoteDiatonic(rootStr, iv, lo);
+                sp.degree = lo + 1; // 0->1(root), 2->3rd, 4->5th, 6->7th, 8->9th, 10->11th, 12->13th
+                return sp;
+            });
         } else {
             const rawIntervals = this.chordTypes[typeStr] || [0,4,7];
             notesMidi   = rawIntervals.map(iv => rootMidi + iv);
@@ -423,7 +419,7 @@ class MusicEngine {
 
         notesMidi.unshift(bassMidi);
         if (spelledNotes) {
-            spelledNotes.unshift({ name: rootStr, acc: rootStr.slice(1), step: this.stepMap[rootStr[0]] });
+            spelledNotes.unshift({ name: rootStr, acc: rootStr.slice(1), step: this.stepMap[rootStr[0]], degree: 1 });
         }
 
         // ── 4. Outer Shell Semantic Voice Allocation ──────────────────────────────────
@@ -503,19 +499,23 @@ class MusicEngine {
         }
 
         let result = notesMidi.map((midi, idx) => {
-            let octave = Math.floor(midi / 12) - 1;
             let pc = midi % 12;
             let freq = 440 * Math.pow(2, (midi-69)/12);
             let ival = (pc - rootPC + 12) % 12;
 
-            let name, acc, step;
+            let name, acc, step, degree;
 
             if (spelledNotes && spelledNotes[idx]) {
                 const sp = spelledNotes[idx];
                 name = sp.name;
                 acc  = sp.acc;
-                const baseLetterStep = this.stepMap[sp.name[0]];
-                step = octave * 7 + baseLetterStep;
+                degree = sp.degree;
+                // Octave from the NATURAL letter, not the sounding pitch — required for
+                // edge spellings (Cb, B#, Bbb...) where the accidental crosses an octave
+                // boundary relative to the sounding note (e.g. Cb5 sounds as B4).
+                const naturalMidi = this._naturalMidiFromAccidental(midi, acc);
+                const naturalOctave = Math.floor(naturalMidi / 12) - 1;
+                step = naturalOctave * 7 + this.stepMap[sp.name[0]];
             } else {
                 const noteObj = this.getNoteFromMidi(midi, globalPreferSharp);
                 name = noteObj.name;
@@ -528,30 +528,32 @@ class MusicEngine {
             if (diatonicPCs && diatonicPCs[pc]) {
                 let target = diatonicPCs[pc];
                 let expectedName = target.base + target.acc;
-                
+
                 if (name !== expectedName) {
-                    let expectedNaturalMidi = midi;
-                    if (target.acc === 'b') expectedNaturalMidi += 1;
-                    else if (target.acc === '#') expectedNaturalMidi -= 1;
-                    
-                    // Ricalcolo dell'ottava per prevenire salti visivi sui boundary (es. Cb5 che slitta a B4)
-                    let trueOctave = Math.floor(expectedNaturalMidi / 12) - 1;
-                    
+                    const naturalMidi = this._naturalMidiFromAccidental(midi, target.acc);
+                    const trueOctave = Math.floor(naturalMidi / 12) - 1;
+
                     name = expectedName;
                     acc = target.acc;
                     step = trueOctave * 7 + this.stepMap[target.base];
                 }
             }
 
-            let color = "#D946A8"; 
-            if (ival === 0) color = "#4A90D9";
-            else if (ival === 3 || ival === 4) {
-                color = (ival === 3 && (typeStr.includes('alt') || typeStr.includes('#9'))) ? "#D946A8" : "#2EC4B6";
+            // Color by actual chord degree (root/3rd/5th/7th vs. extension), not raw
+            // semitone distance — semitones alone can't distinguish e.g. a 13th from a
+            // m7 (both 9 semitones mod 12), or a b9 from a m3 (both 3 semitones).
+            let color;
+            if (degree === undefined) {
+                // Raw (non-spelled) fallback chords are always simple triads (root/3rd/5th).
+                if (ival === 0) degree = 1;
+                else if (ival === 3 || ival === 4) degree = 3;
+                else degree = 5;
             }
-            else if (ival === 6 || ival === 7 || ival === 8) {
-                color = (ival === 6 && typeStr.includes('#11')) ? "#D946A8" : "#F0B429";
-            }
-            else if (ival === 9 || ival === 10 || ival === 11) color = "#E8873D";
+            if (degree === 1) color = "#4A90D9";
+            else if (degree === 3) color = "#2EC4B6";
+            else if (degree === 5) color = "#F0B429";
+            else if (degree === 7) color = "#E8873D";
+            else color = "#D946A8"; // 9th, 11th, 13th — extensions
 
             return { name, step, color, accidental: acc, frequency: freq, voiceIdx: voiceIndices[idx] };
         });
