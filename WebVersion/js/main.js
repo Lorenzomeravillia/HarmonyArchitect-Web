@@ -86,6 +86,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             // soloAmbient when Tone.start() runs, leaving the context stuck in
             // 'suspended' (the silent cold-start bug). So we await play() here
             // instead of firing it and moving on.
+            const eng0 = window.audioEngine;
             try {
                 if ('mediaSession' in navigator) {
                     navigator.mediaSession.metadata = new MediaMetadata({
@@ -97,12 +98,17 @@ document.addEventListener("DOMContentLoaded", async () => {
                 }
                 const activator = document.getElementById('ios_audio_activator');
                 if (activator && activator.paused) {
+                    if (eng0) eng0.logEvent('start tap: calling activator.play()');
                     await Promise.race([
-                        activator.play(),
-                        new Promise(r => setTimeout(r, 400)) // don't block the gesture forever
+                        activator.play().then(() => { if (eng0) eng0.logEvent('activator.play() resolved'); }),
+                        new Promise(r => setTimeout(() => { if (eng0) eng0.logEvent('activator.play() timed out at 400ms'); r(); }, 400))
                     ]);
+                } else if (eng0) {
+                    eng0.logEvent('start tap: activator missing or already playing (paused=' + (activator && activator.paused) + ')');
                 }
-            } catch (e) {}
+            } catch (e) {
+                if (eng0) eng0.logEvent('activator.play() THREW: ' + e.message);
+            }
             // ── End iOS Audio Session Kick ───────────────────────
 
             window.audioEngine.unlockAndLoad();
@@ -148,22 +154,41 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (!b) {
             b = document.createElement('div');
             b.id = 'audio_trouble';
-            b.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;z-index:99998;'
+            b.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;z-index:99998;max-height:55vh;overflow-y:auto;'
                 + 'background:#3A1B1B;border:1px solid #E8873D;color:#FFD9B0;border-radius:10px;'
                 + 'padding:10px 12px;font:600 12px/1.4 Inter,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.5);';
             document.body.appendChild(b);
         }
-        b.innerHTML = '<b style="color:#E8873D;">Audio didn\'t start.</b> '
-            + 'Check the side mute switch, then tap here to retry.<br>'
-            + '<span style="opacity:.8;font-weight:400;">' + status + '</span>';
-        b.onclick = async () => {
+        const log = window.audioEngine ? window.audioEngine.getDebugLog() : '';
+        b.innerHTML = '<b style="color:#E8873D;">Audio didn\'t start.</b> Check the side mute switch.<br>'
+            + '<span id="audio_trouble_status" style="opacity:.8;font-weight:400;">' + status + '</span>'
+            + '<pre id="audio_trouble_log" style="white-space:pre-wrap;font:400 10px/1.4 monospace;opacity:.7;margin:8px 0 0;max-height:22vh;overflow-y:auto;">' + log + '</pre>'
+            + '<div style="display:flex;gap:8px;margin-top:8px;">'
+            + '<button id="audio_trouble_retry" style="flex:1;padding:8px;border-radius:6px;border:1px solid #E8873D;background:#E8873D;color:#1a0f08;font-weight:700;">Retry</button>'
+            + '<button id="audio_trouble_copy" style="flex:1;padding:8px;border-radius:6px;border:1px solid #FFD9B0;background:transparent;color:#FFD9B0;font-weight:700;">Copy log</button>'
+            + '</div>';
+
+        document.getElementById('audio_trouble_retry').onclick = async () => {
             try { if (window.audioEngine) await window.audioEngine.forceRecover(); } catch (e) {}
             const pb = document.getElementById('play_btn');
             if (pb) pb.click();
             setTimeout(() => {
-                b.querySelector('span').textContent =
+                document.getElementById('audio_trouble_status').textContent =
                     window.audioEngine ? window.audioEngine.getAudioStatus() : '';
+                document.getElementById('audio_trouble_log').textContent =
+                    window.audioEngine ? window.audioEngine.getDebugLog() : '';
             }, 1200);
+        };
+        document.getElementById('audio_trouble_copy').onclick = async () => {
+            const text = (window.audioEngine ? window.audioEngine.getAudioStatus() : '') + '\n\n' + log;
+            const btn = document.getElementById('audio_trouble_copy');
+            try {
+                await navigator.clipboard.writeText(text);
+                btn.textContent = 'Copied!';
+            } catch (e) {
+                btn.textContent = 'Copy failed';
+            }
+            setTimeout(() => { btn.textContent = 'Copy log'; }, 1500);
         };
     }
 

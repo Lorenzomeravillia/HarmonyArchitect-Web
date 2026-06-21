@@ -3,6 +3,7 @@ class AudioEngine {
         this._unlocked  = false;
         this.ready      = false;   // true once a context is running AND samples can play
         this.lastAudioError = null;
+        this._log = []; // timestamped event ring-buffer for on-device debugging
 
         // Tone.js vars
         this.samplers = {};
@@ -79,6 +80,20 @@ class AudioEngine {
         this._bindLifecycleEvents();
     }
 
+    // Timestamped event log, visible in the on-screen trouble banner so the exact
+    // sequence of what happened can be reported without needing devtools on iOS.
+    logEvent(msg) {
+        const t = new Date();
+        const stamp = String(t.getMinutes()).padStart(2, '0') + ':' + String(t.getSeconds()).padStart(2, '0') + '.' + String(t.getMilliseconds()).padStart(3, '0');
+        this._log.push(stamp + ' ' + msg);
+        if (this._log.length > 50) this._log.shift();
+        console.log('[AudioEngine] ' + msg);
+    }
+
+    getDebugLog() {
+        return this._log.join('\n');
+    }
+
     // Combined per-channel gain: positional balance × per-instrument correction.
     _channelGain(channelIdx) {
         const balance = this.voiceBalance[channelIdx] ?? 1.0;
@@ -98,7 +113,8 @@ class AudioEngine {
         if (this._lifecycleBound) return;
         this._lifecycleBound = true;
 
-        const tryResume = async () => {
+        const tryResume = async (source) => {
+            this.logEvent('lifecycle event: ' + source + ', unlocked=' + this._unlocked);
             if (!this._unlocked) return;
 
             if (this.useFallback) {
@@ -106,7 +122,7 @@ class AudioEngine {
                     try { await this.fallbackCtx.resume(); } catch (e) {}
                     await new Promise(r => setTimeout(r, 300));
                     if (this.fallbackCtx.state !== 'running') {
-                        console.warn('[AudioEngine] fallback context stuck — rebuilding');
+                        this.logEvent('fallback context stuck — rebuilding');
                         this._setupFallbackContext();
                     }
                 }
@@ -114,16 +130,18 @@ class AudioEngine {
             }
 
             if (!window.Tone) return;
+            this.logEvent('tryResume: state before resume=' + Tone.context.state);
             if (Tone.context.state !== 'running') {
-                try { await Tone.context.resume(); } catch (e) {}
+                try { await Tone.context.resume(); } catch (e) { this.logEvent('tryResume resume() threw: ' + e.message); }
             }
             let waited = 0;
             while (Tone.context.state !== 'running' && waited < 1000) {
                 await new Promise(r => setTimeout(r, 100));
                 waited += 100;
             }
+            this.logEvent('tryResume: state after ' + waited + 'ms=' + Tone.context.state);
             if (Tone.context.state !== 'running') {
-                console.warn('[AudioEngine] context stuck after resume attempt — rebuilding');
+                this.logEvent('context stuck after resume attempt — rebuilding');
                 await this._rebuildContext();
             } else {
                 this.ready = Object.values(this.samplers).some(s => s && s.loaded);
@@ -131,10 +149,10 @@ class AudioEngine {
         };
 
         document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') tryResume();
+            if (document.visibilityState === 'visible') tryResume('visibilitychange');
         });
-        window.addEventListener('pageshow', tryResume);
-        window.addEventListener('focus', tryResume);
+        window.addEventListener('pageshow', () => tryResume('pageshow'));
+        window.addEventListener('focus', () => tryResume('focus'));
     }
 
     // Tears down and recreates the Tone.js AudioContext + reverb chain, then
@@ -142,11 +160,13 @@ class AudioEngine {
     // a backgrounded context back to 'running'.
     async _rebuildContext() {
         if (!window.Tone) return;
+        this.logEvent('_rebuildContext: start');
         try {
             const newCtx = new (window.AudioContext || window.webkitAudioContext)();
             Tone.setContext(newCtx);
             await Tone.start();
-            try { await Tone.context.resume(); } catch (e) {}
+            try { await Tone.context.resume(); } catch (e) { this.logEvent('_rebuildContext resume() threw: ' + e.message); }
+            this.logEvent('_rebuildContext: new context state=' + Tone.context.state);
 
             this.samplers = {};
             this.reverb = new Tone.Reverb({ decay: 1.8, preDelay: 0.01, wet: 0.2 });
@@ -165,10 +185,10 @@ class AudioEngine {
             const loadedCount = Object.values(this.samplers).filter(s => s && s.loaded).length;
             this.ready = loadedCount > 0;
             if (!this.ready) this.lastAudioError = 'rebuild-failed';
-            console.log('[AudioEngine] context rebuilt, state=' + Tone.context.state);
+            this.logEvent('_rebuildContext: done, loadedCount=' + loadedCount + ', ready=' + this.ready);
         } catch (e) {
             this.lastAudioError = 'rebuild-error: ' + e.message;
-            console.error('[AudioEngine] rebuild failed', e);
+            this.logEvent('_rebuildContext THREW: ' + e.message);
         }
     }
 
@@ -196,31 +216,46 @@ class AudioEngine {
     }
 
     async unlockAndLoad() {
-        if (this._unlocked) return;
+        if (this._unlocked) {
+            this.logEvent('unlockAndLoad: already unlocked, no-op');
+            return;
+        }
         this._unlocked = true;
+        this.logEvent('unlockAndLoad: start, document.visibilityState=' + document.visibilityState);
 
         if (!window.Tone) {
-            console.warn("Tone.js unavailable. Falling back to WebAudioFont.");
+            this.logEvent('Tone.js unavailable — falling back to WebAudioFont');
             this.useFallback = true;
             this._setupFallbackContext();
             return;
         }
 
-        await Tone.start();
+        this.logEvent('Tone.context.state before Tone.start(): ' + Tone.context.state);
+        try {
+            await Tone.start();
+            this.logEvent('Tone.start() resolved, state=' + Tone.context.state);
+        } catch (e) {
+            this.logEvent('Tone.start() THREW: ' + e.message);
+        }
 
         // ── iOS: wait for AudioContext to be actually running ─────────────────
         // decodeAudioData (called internally by Tone.Sampler) hangs indefinitely
         // if the AudioContext is still suspended. On iOS this can take >100ms after
         // Tone.start() returns. We poll for up to 2s before loading instruments.
         if (Tone.context.state !== 'running') {
-            try { await Tone.context.resume(); } catch(e) {}
+            try {
+                await Tone.context.resume();
+                this.logEvent('explicit context.resume() resolved, state=' + Tone.context.state);
+            } catch (e) {
+                this.logEvent('explicit context.resume() THREW: ' + e.message);
+            }
         }
         let waited = 0;
         while (Tone.context.state !== 'running' && waited < 2000) {
             await new Promise(r => setTimeout(r, 50));
             waited += 50;
         }
-        console.log(`[AudioEngine] context state after wait: ${Tone.context.state} (${waited}ms)`);
+        this.logEvent(`context state after ${waited}ms poll: ${Tone.context.state}`);
         // ─────────────────────────────────────────────────────────────────────
 
         // High quality Reverb setup
@@ -247,6 +282,7 @@ class AudioEngine {
             // If every sampler failed (e.g. the external CDN host is blocked on
             // this network), keep ready=false so the on-screen diagnostic appears.
             const loadedCount = Object.values(this.samplers).filter(s => s && s.loaded).length;
+            this.logEvent('sample preload done, loadedCount=' + loadedCount + '/' + this.channels.length);
             if (loadedCount > 0) {
                 this.ready = true;
             } else if (!this.lastAudioError) {
@@ -254,7 +290,7 @@ class AudioEngine {
             }
         } else {
             this.lastAudioError = 'context-suspended (iOS did not resume audio)';
-            console.warn('[AudioEngine] Context never reached running — skipping sample preload');
+            this.logEvent('Context never reached running — skipping sample preload');
         }
     }
 
@@ -262,6 +298,7 @@ class AudioEngine {
     // is a no-op once already unlocked, so a stuck-but-unlocked context needs the
     // same rebuild used by the automatic lifecycle handler, not another unlock call.
     async forceRecover() {
+        this.logEvent('forceRecover() called, unlocked=' + this._unlocked + ', useFallback=' + this.useFallback);
         if (this.useFallback) {
             this._setupFallbackContext();
             return;
@@ -361,19 +398,31 @@ class AudioEngine {
             ? `assets/samples/${name}/`
             : `https://nbrosowsky.github.io/tonejs-instruments/samples/${name}/`;
 
+        this.logEvent('loadInstrument(' + name + '): requesting from ' + baseUrl);
         return new Promise((resolve) => {
+            let settled = false;
+            const timeoutId = setTimeout(() => {
+                if (settled) return;
+                this.logEvent('loadInstrument(' + name + '): TIMEOUT after 8s (Tone never called onload/onerror)');
+            }, 8000);
             const sampler = new Tone.Sampler({
                 urls: this.INSTRUMENT_MAPS[name] || { "C4": "C4.mp3" },
                 baseUrl: baseUrl,
                 onload: () => {
+                    settled = true;
+                    clearTimeout(timeoutId);
+                    this.logEvent('loadInstrument(' + name + '): onload OK');
                     this.samplers[name] = sampler;
                     sampler.connect(this.reverb);
                     resolve(sampler);
                 },
-                onerror: () => {
+                onerror: (err) => {
+                    settled = true;
+                    clearTimeout(timeoutId);
                     // Fail gracefully, but record it so the on-device status can
                     // surface a sample/network problem (e.g. blocked CDN host).
                     this.lastAudioError = 'sample-load-failed: ' + name;
+                    this.logEvent('loadInstrument(' + name + '): onerror — ' + (err && err.message ? err.message : err));
                     this.samplers[name] = sampler;
                     sampler.connect(this.reverb);
                     resolve(sampler);
