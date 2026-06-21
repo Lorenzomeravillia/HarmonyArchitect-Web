@@ -40,7 +40,7 @@
     <meta name="description" content="Ear training reimagined. Different instruments for each voice make chords transparent. No timers, no pressure — learn at your pace.">
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Courier+Prime:wght@700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=19">
+    <link rel="stylesheet" href="css/style.css?v=20">
 
     <!-- WebAudioFontPlayer (cross-browser, iOS-compatible) -->
     <script src="https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js"></script>
@@ -64,7 +64,7 @@
     <!-- Global Loading Toast -->
     <div id="loading_toast" class="loading-toast">
         <div class="spinner"></div>
-        <span>Caricamento alta fedeltà...</span>
+        <span>Loading high-fidelity audio…</span>
     </div>
 
     <!-- Full-width session progress (fixed, 4px, always visible) -->
@@ -120,6 +120,8 @@
                 </select>
                 <span class="label">Tempo:</span>
                 <select id="tempo_menu" class="dropdown small-btn">
+                    <option value="4500">Ultra Slow</option>
+                    <option value="3200">Very Slow</option>
                     <option value="2160">Slow</option>
                     <option value="1560" selected>Medium</option>
                     <option value="960">Fast</option>
@@ -178,8 +180,12 @@
             
             <!-- Inline Feedback Controls (Thumb Zone) -->
             <div id="inline_feedback" class="inline-feedback-controls">
-                <button id="next_popup_replay" class="btn inline-fb-btn inline-fb-replay">🔄 Replay</button>
-                <button id="next_popup_continue" class="btn inline-fb-btn inline-fb-next">▶ Play Next</button>
+                <span id="fb_status" class="fb-status"></span>
+                <div class="inline-fb-row">
+                    <button id="hear_difference_btn" class="btn inline-fb-btn inline-fb-hear" style="display:none;">Hear the difference</button>
+                    <button id="next_popup_replay" class="btn inline-fb-btn inline-fb-replay">Replay</button>
+                    <button id="next_popup_continue" class="btn inline-fb-btn inline-fb-next">Play Next</button>
+                </div>
             </div>
         </div>
 
@@ -277,21 +283,21 @@
     <!-- Join Class Modal -->
     <div id="join_class_modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:10001; align-items:center; justify-content:center; flex-direction:column;">
         <div style="background:rgba(30,35,45,1); padding:40px; border-radius:16px; width:350px; text-align:center; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
-            <h2 style="font-family:'DM Serif Display',serif; color:white; margin-top:0;">Unisciti alla Classe</h2>
-            <p style="color:#8899BB; font-size:14px; margin-bottom: 25px;">Il tuo insegnante ti ha invitato. Inserisci il tuo nome e cognome per farti riconoscere nel registro elettronico.</p>
-            <input type="text" id="join_student_name" placeholder="Nome e Cognome..." style="width:100%; padding: 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:rgba(0,0,0,0.3); color:white; margin-bottom: 20px; box-sizing: border-box; font-size:16px;">
-            <button id="btn_confirm_join" style="width:100%; padding: 14px; background:#2EC4B6; color:#0a0e17; border:none; border-radius:8px; font-weight:700; font-size:16px; cursor:pointer;">Entra nella Classe</button>
+            <h2 style="font-family:'DM Serif Display',serif; color:white; margin-top:0;">Join the Class</h2>
+            <p style="color:#8899BB; font-size:14px; margin-bottom: 25px;">Your teacher invited you. Enter your first and last name so they can recognize you in the class roster.</p>
+            <input type="text" id="join_student_name" placeholder="First and last name…" style="width:100%; padding: 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:rgba(0,0,0,0.3); color:white; margin-bottom: 20px; box-sizing: border-box; font-size:16px;">
+            <button id="btn_confirm_join" style="width:100%; padding: 14px; background:#2EC4B6; color:#0a0e17; border:none; border-radius:8px; font-weight:700; font-size:16px; cursor:pointer;">Join Class</button>
             <p id="join_error_text" style="color:#FF4A4A; font-size:12px; margin-top:15px; display:none;"></p>
         </div>
     </div>
 
-    <script src="js/supabase-client.js?v=87"></script>
-    <script src="js/adaptive.js?v=87"></script>
-    <script src="js/audio_engine.js?v=87"></script>
-    <script src="js/music_engine.js?v=87"></script>
-    <script src="js/gui.js?v=87"></script>
-    <script src="js/coach.js?v=87"></script>
-    <script src="js/main.js?v=87"></script>
+    <script src="js/supabase-client.js?v=88"></script>
+    <script src="js/adaptive.js?v=88"></script>
+    <script src="js/audio_engine.js?v=88"></script>
+    <script src="js/music_engine.js?v=88"></script>
+    <script src="js/gui.js?v=88"></script>
+    <script src="js/coach.js?v=88"></script>
+    <script src="js/main.js?v=88"></script>
 
 </body>
 </html>

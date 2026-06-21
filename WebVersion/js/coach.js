@@ -1,7 +1,11 @@
 // Coach Marks — first-use contextual tooltips
 (function () {
     const STORAGE_KEY = 'coachMarksShown_v2';
-    const DURATION_MS = 3000; // visible time before auto-dismiss
+    // No auto-dismiss timer: tooltips stay until the user advances. A timed
+    // reading window is exactly the kind of pressure this app avoids, and
+    // reading speed varies a lot — especially for the neurodivergent users
+    // this tool is built for. Advance by tapping anywhere or the Next button;
+    // Skip ends the tour. A counter shows how many steps remain.
 
     const MARKS = [
         {
@@ -70,6 +74,37 @@
     let queue = [];
     let currentTimeout = null;
     let dismissHandler = null;
+    let tourTotal = 0;   // number of steps in the current tour
+    let tourPos   = 0;   // 1-based index of the step being shown
+
+    // Build (once) and return the Next/Skip/progress footer inside the tooltip.
+    // .coach-mark itself is pointer-events:none, so the controls opt back in.
+    function getControls(el, onNext, onSkip) {
+        let bar = el.querySelector('.coach-controls');
+        if (!bar) {
+            bar = document.createElement('div');
+            bar.className = 'coach-controls';
+            const prog = document.createElement('span');
+            prog.className = 'coach-progress';
+            const skip = document.createElement('button');
+            skip.className = 'coach-skip';
+            skip.type = 'button';
+            skip.textContent = 'Skip';
+            const next = document.createElement('button');
+            next.className = 'coach-next';
+            next.type = 'button';
+            next.textContent = 'Next ›';
+            bar.appendChild(prog);
+            bar.appendChild(skip);
+            bar.appendChild(next);
+            el.appendChild(bar);
+        }
+        const next = bar.querySelector('.coach-next');
+        const skip = bar.querySelector('.coach-skip');
+        next.onclick = (e) => { e.stopPropagation(); onNext && onNext(); };
+        skip.onclick = (e) => { e.stopPropagation(); onSkip && onSkip(); };
+        return bar;
+    }
 
     function getShown() {
         try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch (e) { return {}; }
@@ -163,7 +198,7 @@
         setTimeout(() => { el.classList.add('hidden'); cb && cb(); }, 320);
     }
 
-    function showCoachMark(mark, onDone) {
+    function showCoachMark(mark, onDone, progress) {
         const el     = getEl();
         const target = document.querySelector(mark.target);
         if (!el || !target) { onDone && onDone(); return; }
@@ -174,6 +209,22 @@
 
         const textEl = el.querySelector('.coach-text');
         if (textEl) textEl.textContent = mark.text;
+
+        function done() {
+            hideCoachMark(() => setTimeout(() => onDone && onDone(), 200));
+        }
+        function endTour() {
+            queue = [];
+            hideCoachMark();
+        }
+
+        // Footer: progress counter + Skip + Next. Last step shows "Done" instead.
+        const bar  = getControls(el, done, endTour);
+        const prog = bar.querySelector('.coach-progress');
+        const next = bar.querySelector('.coach-next');
+        const isLast = progress && progress.pos >= progress.total;
+        if (prog) prog.textContent = progress ? (progress.pos + '/' + progress.total) : '';
+        if (next) next.textContent = isLast ? 'Done' : 'Next ›';
 
         // Position before revealing (prevents flash of wrong position)
         positionTooltip(el, rect, mark.pos);
@@ -187,15 +238,9 @@
 
         markShown(mark.id);
 
-        function done() {
-            hideCoachMark(() => setTimeout(() => onDone && onDone(), 200));
-        }
-
-        currentTimeout = setTimeout(done, DURATION_MS);
-
-        // Dismiss on any tap/click outside the tooltip itself
-        // IMPORTANT: use capture:true but exclude the coach_btn itself —
-        // clicking ? must not trigger dismissal (it calls startTour directly).
+        // Tap anywhere outside the tooltip to advance (no timer). Tapping inside
+        // — including Next/Skip — is handled by their own listeners.
+        // IMPORTANT: exclude the coach_btn (?) so it can restart the tour.
         dismissHandler = function (e) {
             const coachBtn = document.getElementById('coach_btn');
             if (coachBtn && (e.target === coachBtn || coachBtn.contains(e.target))) return;
@@ -221,12 +266,13 @@
                         target: '#user_profile_btn',
                         text: "Login here to save your Smart Practice progress on the cloud ☁️",
                         pos: 'below'
-                    });
+                    }, null, { pos: tourTotal, total: tourTotal });
                 }, 400); // Wait for CSS transition
             }
             return;
         }
-        showCoachMark(queue.shift(), runQueue);
+        tourPos++;
+        showCoachMark(queue.shift(), runQueue, { pos: tourPos, total: tourTotal });
     }
 
 
@@ -255,6 +301,8 @@
                 const r = t.getBoundingClientRect();
                 return r.width > 0 && r.height > 0;
             });
+            tourTotal = queue.length;
+            tourPos   = 0;
             if (queue.length > 0) setTimeout(runQueue, 400);
         });
     }

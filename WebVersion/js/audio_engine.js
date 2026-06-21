@@ -319,7 +319,12 @@ class AudioEngine {
     async playChord(notesArray, durationOverride = null, chordIdx = null) {
         if (!this._unlocked) return;
 
-        const SPREAD_SEC = 0;
+        // Subtle onset stagger (30ms) between voices, bottom-up. Even a small
+        // asynchrony sharply improves auditory stream segregation — the brain
+        // separates the voices instead of fusing them into one "blob". Kept
+        // small enough to still read as a chord, not an arpeggio. This is the
+        // app's core differentiator, so it's on by default for everyone.
+        const SPREAD_SEC = 0.03;
         const dur = durationOverride !== null ? durationOverride : 1.87;
         const vol = this._getVolume();
 

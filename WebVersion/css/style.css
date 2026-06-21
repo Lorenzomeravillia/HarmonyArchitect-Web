@@ -438,7 +438,9 @@ canvas {
 /* ── Inline Feedback Controls (Thumb Zone) ──────────── */
 .inline-feedback-controls {
     display: flex;
-    gap: 10px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
     padding: 4px 0;
     opacity: 0;
     visibility: hidden;
@@ -448,6 +450,31 @@ canvas {
 .inline-feedback-controls.visible {
     opacity: 1;
     visibility: visible;
+}
+.inline-fb-row {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+}
+.fb-status {
+    font-size: 14px;
+    font-weight: 700;
+    text-align: center;
+    letter-spacing: 0.2px;
+    min-height: 18px;
+}
+.fb-status-ok { color: var(--cyan); }
+.fb-status-no { color: #C9D4E8; }
+.inline-fb-hear {
+    background: rgba(255,255,255,0.06);
+    color: var(--cyan);
+    border: 1px solid rgba(46,196,182,0.45);
+    font-weight: 700;
+}
+.inline-fb-hear:hover {
+    background: rgba(46,196,182,0.14);
+    color: #fff;
 }
 .inline-fb-btn {
     flex: 1;
@@ -969,5 +996,59 @@ canvas {
         max-width: 280px;
         padding: 14px 20px;
         font-size: 18px;
+    }
+}
+
+/* ── Coach tour controls (Next / Skip / progress) ───────────── */
+/* .coach-mark is pointer-events:none; the footer opts back in. */
+.coach-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+    pointer-events: auto;
+}
+.coach-progress {
+    font-size: 12px;
+    font-weight: 700;
+    color: #5B6B8C;
+    margin-right: auto;
+    font-variant-numeric: tabular-nums;
+}
+.coach-skip,
+.coach-next {
+    pointer-events: auto;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 7px 14px;
+    cursor: pointer;
+    font-family: inherit;
+}
+.coach-skip {
+    background: none;
+    border: none;
+    color: #5B6B8C;
+    text-decoration: underline;
+    padding: 7px 6px;
+}
+.coach-skip:hover { color: #0D1B3E; }
+.coach-next {
+    background: #2563A8;
+    border: 1px solid #1E4E86;
+    color: #fff;
+}
+.coach-next:hover { background: #1E4E86; }
+
+/* ── Reduced motion: honor the OS-level accessibility preference ──
+   Neutralizes the looping pulses/glows (Play button, Next glow, spinner)
+   that can be distracting — especially for ADHD/neurodivergent users —
+   without adding any in-app toggle. */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
     }
 }

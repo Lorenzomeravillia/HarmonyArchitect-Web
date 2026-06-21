@@ -49,16 +49,16 @@ document.addEventListener("DOMContentLoaded", async () => {
                         display_name: name
                     });
                     
-                    alert("Benvenuto nella classe: " + cData.name + "! Tutti i tuoi esercizi d'ora in poi genereranno report automatici per l'insegnante.");
+                    alert("Welcome to the class: " + cData.name + "! From now on, all your exercises will automatically generate reports for your teacher.");
                     window.history.replaceState({}, document.title, window.location.pathname);
                 } else {
                     const e = document.getElementById('join_error_text');
-                    e.innerText = "Codice classe disattivato o inesistente.";
+                    e.innerText = "Class code disabled or not found.";
                     e.style.display = 'block';
                     return;
                 }
             } else {
-                alert("Errore connettore DB offline.");
+                alert("Database connector offline.");
             }
             
             document.getElementById('join_class_modal').style.display = 'none';
@@ -398,13 +398,34 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     }
 
-    // ── Post-answer popup ───────────────────────────────────
-    const CORRECT_MSGS = ['🎯 Perfect!', '⚡ Correct!', '🔥 Great!', '✨ Brilliant!', '🚀 Excellent!'];
-    const WRONG_MSGS   = ['💡 Almost!', '🎓 Try again!', '🧠 Keep listening!', '🔄 Once more!'];
+    // ── Post-answer feedback ────────────────────────────────
+    // Understated, adult tone — confirmation without gamified noise.
+    const CORRECT_MSGS = ['Correct.', "That's the one.", 'Yes — well heard.', 'Right.', 'Exactly.'];
+    const WRONG_MSGS   = ['Not quite.', 'Close — listen again.', 'Not this time.'];
 
-    function showNextPopup(correct) {
-        // Show inline feedback controls (thumb zone)
+    function pickMsg(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+    function showNextPopup(correct, revealed) {
         const inlineFb = document.getElementById('inline_feedback');
+        const status   = document.getElementById('fb_status');
+        const hearBtn  = document.getElementById('hear_difference_btn');
+
+        // Critical-note comparison is offered only on a wrong answer in single-chord
+        // mode, where both the correct and the chosen chord are plain symbols we can
+        // voice. Opt-in: the user can compare or just move on — never forced.
+        const canCompare = !correct && !revealed && !window.currentProgression && !!window._lastWrongSymbol;
+
+        if (status) {
+            if (revealed) {
+                status.textContent = 'Revealed — listen and remember.';
+                status.className = 'fb-status fb-status-no';
+            } else {
+                status.textContent = correct ? pickMsg(CORRECT_MSGS) : pickMsg(WRONG_MSGS);
+                status.className = 'fb-status ' + (correct ? 'fb-status-ok' : 'fb-status-no');
+            }
+        }
+        if (hearBtn) hearBtn.style.display = canCompare ? '' : 'none';
+
         if (inlineFb) inlineFb.classList.add('visible');
     }
     function hideNextPopup() {
@@ -422,6 +443,40 @@ document.addEventListener("DOMContentLoaded", async () => {
         document.getElementById('play_btn').click();
     });
     document.getElementById('next_popup_stop').addEventListener('click', hideNextPopup);
+
+    // ── Critical-note comparison (opt-in, single-chord wrong answers) ─────────
+    // Plays — slowly, one at a time, in each voice's own timbre — exactly the
+    // notes that tell the correct chord apart from the one the user picked. Hear
+    // (and see, via staff highlight) the tones you missed, instead of re-hearing
+    // the whole blob. Lightweight on purpose: one tap, no extra screens.
+    function freqToPc(freq) { return ((Math.round(69 + 12 * Math.log2(freq / 440)) % 12) + 12) % 12; }
+
+    function playCriticalNotes() {
+        if (!window.currentVoicings || window.currentProgression) return;
+        const correctV = window.currentVoicings[0];
+        const wrongSym = window._lastWrongSymbol;
+        if (!correctV || !wrongSym) return;
+
+        const isOpt   = document.getElementById('voice_leading_menu').value.includes('Optimized');
+        const wrongV  = window.musicEngine.generateVoicing(wrongSym, 'C3', isOpt) || [];
+        const wrongPCs = new Set(wrongV.map(n => freqToPc(n.frequency)));
+
+        // The distinguishing tones: present in the correct chord, absent in the wrong one.
+        let critical = correctV.filter(n => !wrongPCs.has(freqToPc(n.frequency)));
+        if (critical.length === 0) critical = correctV; // identical pc content (shouldn't happen)
+        critical = critical.slice().sort((a, b) => a.frequency - b.frequency);
+
+        window.cancelActivePlaybacks();
+        const gap = 700; // unhurried, one note at a time
+        critical.forEach((n, i) => {
+            setTimeout(() => {
+                window.audioEngine.playPitch(n.voiceIdx, n.frequency, 1.4, 0);
+                if (window.gui?.highlight) window.gui.highlight(n.voiceIdx, n.frequency, 1100, 0);
+            }, i * gap);
+        });
+    }
+
+    document.getElementById('hear_difference_btn')?.addEventListener('click', playCriticalNotes);
 
     // ── Session complete ────────────────────────────────────
     function showSessionComplete() {
@@ -569,7 +624,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             });
         }
         // Show inline feedback controls (Replay / Play Next)
-        showNextPopup(false);
+        showNextPopup(false, true);
     });
 
     // ── Answer buttons ──────────────────────────────────────
@@ -626,6 +681,10 @@ document.addEventListener("DOMContentLoaded", async () => {
                 currentRevealUsed = false;
                 currentSoloUsed = false;
                 currentChallengeReplays = 0;
+
+                // Remember the chosen wrong chord so the optional critical-note
+                // comparison can voice the difference (single-chord mode only).
+                window._lastWrongSymbol = (correct || window.currentProgression) ? null : o;
 
                 if (correct) {
                     sessionCorrect++;
@@ -704,8 +763,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (window.audioEngine.ctx.state === 'suspended') window.audioEngine.ctx.resume();
         window.gui.drawPitches([]);
         window.gui.resetSoloButtons();
-        
+
         window.hasPlayedCurrentChallenge = false;
+        window._lastWrongSymbol = null; // clear stale comparison target for the new challenge
 
         const isProgression = document.getElementById("play_mode_menu").value.includes("Progression");
         const level = document.getElementById("level_select").value;
