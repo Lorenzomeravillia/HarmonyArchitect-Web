@@ -138,9 +138,12 @@ class AudioEngine {
     // one per note.
     async _ensureContextRunning(label) {
         if (Tone.context.state === 'running') return true;
-        await this._raceTimeout(() => Tone.context.resume(), 500, label + ' resume()');
-        if (Tone.context.state === 'running') return true;
-        if (!this._rebuildingPlayback) {
+        // resume() throws on a closed context; only attempt it when suspended.
+        if (Tone.context.state !== 'closed') {
+            await this._raceTimeout(() => Tone.context.resume(), 500, label + ' resume()');
+            if (Tone.context.state === 'running') return true;
+        }
+        if (!this._rebuildingPlayback && !this._rebuildPromise) {
             this._rebuildingPlayback = true;
             this.logEvent(label + ': context still stuck during playback — rebuilding');
             this._rebuildContext().finally(() => { this._rebuildingPlayback = false; });
@@ -171,6 +174,15 @@ class AudioEngine {
             this.logEvent('lifecycle event: ' + source + ', unlocked=' + this._unlocked);
             if (!this._unlocked) return;
 
+            // iOS fires visibilitychange + pageshow + focus together on
+            // foreground; without this guard each one runs its own resume/
+            // rebuild and they trample each other.
+            if (this._resuming || this._rebuildPromise) {
+                this.logEvent('tryResume: another resume/rebuild already running — skipping ' + source);
+                return;
+            }
+            this._resuming = true;
+            try {
             if (this.useFallback) {
                 if (this.fallbackCtx && this.fallbackCtx.state !== 'running') {
                     try { await this.fallbackCtx.resume(); } catch (e) {}
@@ -185,6 +197,13 @@ class AudioEngine {
 
             if (!window.Tone) return;
             this.logEvent('tryResume: state before resume=' + Tone.context.state);
+            // A closed context can never be resumed — resume() just throws
+            // 'Context is closed'. Skip straight to a rebuild.
+            if (Tone.context.state === 'closed') {
+                this.logEvent('tryResume: context closed — rebuilding');
+                await this._rebuildContext();
+                return;
+            }
             if (Tone.context.state !== 'running') {
                 await this._raceTimeout(() => Tone.context.resume(), 1000, 'tryResume resume()');
             }
@@ -200,6 +219,9 @@ class AudioEngine {
             } else {
                 this.ready = Object.values(this.samplers).some(s => s && s.loaded);
             }
+            } finally {
+                this._resuming = false;
+            }
         };
 
         document.addEventListener('visibilitychange', () => {
@@ -212,21 +234,47 @@ class AudioEngine {
     // Tears down and recreates the Tone.js AudioContext + reverb chain, then
     // reloads the current channel's samplers. Used when resume() can't bring
     // a backgrounded context back to 'running'.
+    //
+    // Rebuilds MUST be serialized. iOS foregrounding fires visibilitychange,
+    // pageshow and focus almost simultaneously, and playback can trigger a
+    // rebuild too — so several _rebuildContext() calls used to run at once,
+    // each creating a new context and then closing what it thought was the
+    // "old" one. Under concurrency that "old" context is actually the live
+    // context a sibling rebuild just created, so they closed each other's
+    // contexts and left the page permanently 'closed'. This guard makes any
+    // overlapping call await the in-flight rebuild instead of competing.
     async _rebuildContext() {
         if (!window.Tone) return;
+        if (this._rebuildPromise) {
+            this.logEvent('_rebuildContext: already running — awaiting in-flight rebuild');
+            return this._rebuildPromise;
+        }
+        this._rebuildPromise = this._rebuildContextInner();
+        try {
+            await this._rebuildPromise;
+        } finally {
+            this._rebuildPromise = null;
+        }
+    }
+
+    async _rebuildContextInner() {
         this.logEvent('_rebuildContext: start');
         try {
             // iOS WebKit caps the number of AudioContexts that can be alive at
-            // once (historically as few as ~4-6 per page). Every previous
-            // rebuild created a new context without closing the old one, so
-            // a handful of retries would silently exhaust that cap — after
-            // which EVERY new context, even a brand-new one, stays stuck in
-            // 'suspended' forever. Close the outgoing context first.
+            // once (historically as few as ~4-6 per page). Leaving old contexts
+            // open across rebuilds eventually exhausts that cap, after which
+            // EVERY new context stays stuck 'suspended' forever. Close the
+            // now-orphaned previous context — safe because rebuilds are
+            // serialized, so nothing else is still using it.
             const oldCtx = Tone.context.rawContext || Tone.context._context;
             const newCtx = new (window.AudioContext || window.webkitAudioContext)();
             Tone.setContext(newCtx);
-            if (oldCtx && typeof oldCtx.close === 'function' && oldCtx.state !== 'closed') {
-                oldCtx.close().then(() => this.logEvent('_rebuildContext: closed previous context')).catch((e) => this.logEvent('_rebuildContext: closing previous context THREW — ' + e.message));
+            const newRaw = newCtx.rawContext || newCtx;
+            if (oldCtx && oldCtx !== newCtx && oldCtx !== newRaw &&
+                typeof oldCtx.close === 'function' && oldCtx.state !== 'closed') {
+                oldCtx.close()
+                    .then(() => this.logEvent('_rebuildContext: closed previous context'))
+                    .catch((e) => this.logEvent('_rebuildContext: closing previous context THREW — ' + e.message));
             }
             await this._raceTimeout(() => Tone.start(), 2000, '_rebuildContext Tone.start()');
             if (Tone.context.state !== 'running') {
