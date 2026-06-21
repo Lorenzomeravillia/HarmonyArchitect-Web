@@ -94,6 +94,32 @@ class AudioEngine {
         return this._log.join('\n');
     }
 
+    // Runs an async op (e.g. Tone.start()/context.resume()) but never waits
+    // longer than `ms` for it — iOS can leave these promises permanently
+    // unsettled, and without a cap that hangs the entire unlock sequence with
+    // no error to show. We don't care which one "wins"; the caller always
+    // re-checks Tone.context.state afterwards regardless of which path fired.
+    _raceTimeout(promiseFactory, ms, label) {
+        let settled = false;
+        const guarded = (async () => {
+            try {
+                await promiseFactory();
+                settled = true;
+                this.logEvent(label + ' resolved, state=' + (window.Tone ? Tone.context.state : 'n/a'));
+            } catch (e) {
+                settled = true;
+                this.logEvent(label + ' THREW: ' + e.message);
+            }
+        })();
+        return Promise.race([
+            guarded,
+            new Promise(r => setTimeout(() => {
+                if (!settled) this.logEvent(label + ' did not settle within ' + ms + 'ms — proceeding anyway');
+                r();
+            }, ms))
+        ]);
+    }
+
     // Combined per-channel gain: positional balance × per-instrument correction.
     _channelGain(channelIdx) {
         const balance = this.voiceBalance[channelIdx] ?? 1.0;
@@ -132,7 +158,7 @@ class AudioEngine {
             if (!window.Tone) return;
             this.logEvent('tryResume: state before resume=' + Tone.context.state);
             if (Tone.context.state !== 'running') {
-                try { await Tone.context.resume(); } catch (e) { this.logEvent('tryResume resume() threw: ' + e.message); }
+                await this._raceTimeout(() => Tone.context.resume(), 1000, 'tryResume resume()');
             }
             let waited = 0;
             while (Tone.context.state !== 'running' && waited < 1000) {
@@ -164,8 +190,10 @@ class AudioEngine {
         try {
             const newCtx = new (window.AudioContext || window.webkitAudioContext)();
             Tone.setContext(newCtx);
-            await Tone.start();
-            try { await Tone.context.resume(); } catch (e) { this.logEvent('_rebuildContext resume() threw: ' + e.message); }
+            await this._raceTimeout(() => Tone.start(), 2000, '_rebuildContext Tone.start()');
+            if (Tone.context.state !== 'running') {
+                await this._raceTimeout(() => Tone.context.resume(), 1500, '_rebuildContext resume()');
+            }
             this.logEvent('_rebuildContext: new context state=' + Tone.context.state);
 
             this.samplers = {};
@@ -231,24 +259,17 @@ class AudioEngine {
         }
 
         this.logEvent('Tone.context.state before Tone.start(): ' + Tone.context.state);
-        try {
-            await Tone.start();
-            this.logEvent('Tone.start() resolved, state=' + Tone.context.state);
-        } catch (e) {
-            this.logEvent('Tone.start() THREW: ' + e.message);
-        }
+        // iOS Safari has a known bug where AudioContext.resume()'s promise can
+        // hang forever (never resolves, never rejects) under certain audio
+        // session states. Tone.start() awaits exactly that promise internally,
+        // so without a timeout guard the whole unlock sequence would block
+        // indefinitely with no error to surface. _raceTimeout lets us move on
+        // regardless and check the actual context.state afterwards.
+        await this._raceTimeout(() => Tone.start(), 3000, 'Tone.start()');
 
         // ── iOS: wait for AudioContext to be actually running ─────────────────
-        // decodeAudioData (called internally by Tone.Sampler) hangs indefinitely
-        // if the AudioContext is still suspended. On iOS this can take >100ms after
-        // Tone.start() returns. We poll for up to 2s before loading instruments.
         if (Tone.context.state !== 'running') {
-            try {
-                await Tone.context.resume();
-                this.logEvent('explicit context.resume() resolved, state=' + Tone.context.state);
-            } catch (e) {
-                this.logEvent('explicit context.resume() THREW: ' + e.message);
-            }
+            await this._raceTimeout(() => Tone.context.resume(), 2000, 'explicit context.resume()');
         }
         let waited = 0;
         while (Tone.context.state !== 'running' && waited < 2000) {
@@ -256,6 +277,17 @@ class AudioEngine {
             waited += 50;
         }
         this.logEvent(`context state after ${waited}ms poll: ${Tone.context.state}`);
+
+        // If the context is still stuck after start+resume+poll, the device-level
+        // bug means resume() will likely never work for THIS context instance.
+        // Recreate the AudioContext from scratch right now (same recovery used
+        // for backgrounding) instead of giving up — this is what previously only
+        // a full device restart could fix.
+        if (Tone.context.state !== 'running') {
+            this.logEvent('initial unlock: context still stuck — rebuilding immediately');
+            await this._rebuildContext();
+            return;
+        }
         // ─────────────────────────────────────────────────────────────────────
 
         // High quality Reverb setup
@@ -440,7 +472,7 @@ class AudioEngine {
         if (this._unlocked) {
             // Guard: don't start loading if context is suspended — decodeAudioData would hang.
             if (window.Tone && Tone.context.state !== 'running') {
-                try { await Tone.context.resume(); } catch(e) {}
+                await this._raceTimeout(() => Tone.context.resume(), 1500, 'applyPreset resume()');
                 let waited = 0;
                 while (Tone.context.state !== 'running' && waited < 1000) {
                     await new Promise(r => setTimeout(r, 50));

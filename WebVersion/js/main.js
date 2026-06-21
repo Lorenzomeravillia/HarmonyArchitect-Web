@@ -99,9 +99,10 @@ document.addEventListener("DOMContentLoaded", async () => {
                 const activator = document.getElementById('ios_audio_activator');
                 if (activator && activator.paused) {
                     if (eng0) eng0.logEvent('start tap: calling activator.play()');
+                    let settled = false;
                     await Promise.race([
-                        activator.play().then(() => { if (eng0) eng0.logEvent('activator.play() resolved'); }),
-                        new Promise(r => setTimeout(() => { if (eng0) eng0.logEvent('activator.play() timed out at 400ms'); r(); }, 400))
+                        activator.play().then(() => { settled = true; if (eng0) eng0.logEvent('activator.play() resolved'); }),
+                        new Promise(r => setTimeout(() => { if (!settled && eng0) eng0.logEvent('activator.play() timed out at 400ms'); r(); }, 400))
                     ]);
                 } else if (eng0) {
                     eng0.logEvent('start tap: activator missing or already playing (paused=' + (activator && activator.paused) + ')');
