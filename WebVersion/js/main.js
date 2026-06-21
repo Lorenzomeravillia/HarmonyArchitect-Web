@@ -113,15 +113,53 @@ document.addEventListener("DOMContentLoaded", async () => {
                 window._coachAutoStart();
             }
 
-            // Frictionless start: open → one tap → sound. The hardest moment for
-            // an ADHD brain is *starting*, so we remove the extra "now press Play"
-            // step and let the first chord play itself right after START. The
-            // playChord path awaits sample loading, so a short delay is enough.
-            setTimeout(() => {
-                const pb = document.getElementById('play_btn');
-                if (pb && !window.hasPlayedCurrentChallenge) pb.click();
-            }, 700);
+            // Frictionless start + audio watchdog. We wait for the engine to be
+            // actually READY (context running + samples loaded) before auto-playing
+            // the first chord, instead of firing on a blind timer that could hit
+            // before audio is up. If audio never comes up (the classic iOS unlock
+            // failure), we surface the real status on screen so it's diagnosable.
+            let _audioWaited = 0;
+            const _audioWatch = setInterval(() => {
+                _audioWaited += 250;
+                const eng = window.audioEngine;
+                if (eng && eng.ready) {
+                    clearInterval(_audioWatch);
+                    const pb = document.getElementById('play_btn');
+                    if (pb && !window.hasPlayedCurrentChallenge) pb.click();
+                } else if (_audioWaited >= 4000) {
+                    clearInterval(_audioWatch);
+                    showAudioTrouble(eng ? eng.getAudioStatus() : 'audio engine missing');
+                }
+            }, 250);
         });
+    }
+
+    // Visible, only-on-failure audio diagnostic. Appears as a tappable banner so
+    // the user can report exactly where audio breaks (context state, sample load,
+    // fallback) — essential for an iOS issue that can't be reproduced off-device.
+    function showAudioTrouble(status) {
+        let b = document.getElementById('audio_trouble');
+        if (!b) {
+            b = document.createElement('div');
+            b.id = 'audio_trouble';
+            b.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;z-index:99998;'
+                + 'background:#3A1B1B;border:1px solid #E8873D;color:#FFD9B0;border-radius:10px;'
+                + 'padding:10px 12px;font:600 12px/1.4 Inter,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.5);';
+            document.body.appendChild(b);
+        }
+        b.innerHTML = '<b style="color:#E8873D;">Audio didn\'t start.</b> '
+            + 'Check the side mute switch, then tap here to retry.<br>'
+            + '<span style="opacity:.8;font-weight:400;">' + status + '</span>';
+        b.onclick = () => {
+            try { window.audioEngine && window.audioEngine.unlockAndLoad(); } catch (e) {}
+            try { if (window.Tone) Tone.context.resume(); } catch (e) {}
+            const pb = document.getElementById('play_btn');
+            if (pb) pb.click();
+            setTimeout(() => {
+                b.querySelector('span').textContent =
+                    window.audioEngine ? window.audioEngine.getAudioStatus() : '';
+            }, 1200);
+        };
     }
 
     window.gui = new GUI();

@@ -1,7 +1,9 @@
 class AudioEngine {
     constructor() {
         this._unlocked  = false;
-        
+        this.ready      = false;   // true once a context is running AND samples can play
+        this.lastAudioError = null;
+
         // Tone.js vars
         this.samplers = {};
         this.reverb = null;
@@ -140,9 +142,38 @@ class AudioEngine {
                 await this.loadInstrument(this.channels[i]);
             }
             this._setLoading(false);
+            // "Ready" means samples actually decoded — not just that the loop ran.
+            // If every sampler failed (e.g. the external CDN host is blocked on
+            // this network), keep ready=false so the on-screen diagnostic appears.
+            const loadedCount = Object.values(this.samplers).filter(s => s && s.loaded).length;
+            if (loadedCount > 0) {
+                this.ready = true;
+            } else if (!this.lastAudioError) {
+                this.lastAudioError = 'no samples decoded';
+            }
         } else {
+            this.lastAudioError = 'context-suspended (iOS did not resume audio)';
             console.warn('[AudioEngine] Context never reached running — skipping sample preload');
         }
+    }
+
+    // Human-readable snapshot of the audio pipeline, for on-device debugging.
+    getAudioStatus() {
+        let st = 'n/a';
+        try {
+            st = this.useFallback
+                ? (this.fallbackCtx && this.fallbackCtx.state)
+                : (window.Tone && Tone.context.state);
+        } catch (e) {}
+        const loaded = Object.values(this.samplers).filter(s => s && s.loaded).length;
+        const parts = [
+            'engine=' + (this.useFallback ? 'WebAudioFont' : (window.Tone ? 'Tone' : 'none')),
+            'ctx=' + st,
+            'ready=' + (!!this.ready),
+            'samples=' + loaded + '/' + this.channels.length
+        ];
+        if (this.lastAudioError) parts.push('err=' + this.lastAudioError);
+        return parts.join(' · ');
     }
 
     // ── FALLBACK WEBAUDIOFONT LOGIC ───────────────────────────────────────
@@ -174,6 +205,7 @@ class AudioEngine {
 
         this.fallbackCtx.resume().then(() => {
             this.channels.forEach(inst => this._loadFallbackProg(this.fallbackPrograms[inst]));
+            this.ready = true;
         });
     }
 
@@ -220,7 +252,9 @@ class AudioEngine {
                     resolve(sampler);
                 },
                 onerror: () => {
-                    // Fail gracefully
+                    // Fail gracefully, but record it so the on-device status can
+                    // surface a sample/network problem (e.g. blocked CDN host).
+                    this.lastAudioError = 'sample-load-failed: ' + name;
                     this.samplers[name] = sampler;
                     sampler.connect(this.reverb);
                     resolve(sampler);
