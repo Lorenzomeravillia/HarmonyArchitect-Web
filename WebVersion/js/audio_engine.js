@@ -127,28 +127,20 @@ class AudioEngine {
         ]);
     }
 
-    // playMidi/playChord used to fire a bare, unawaited Tone.context.resume()
-    // before triggering a note. That's a no-op in practice: iOS can drop the
-    // context back to 'suspended' between notes (after idle periods, screen
-    // events, etc.), and nothing was actually waiting to confirm the resume
-    // worked before the sampler tried to play — so the note triggered into a
-    // dead context and produced no sound, even though everything reported
-    // ready=true/loaded. This awaits a short guarded resume and, if the
-    // context is still stuck, kicks a single background rebuild rather than
-    // one per note.
+    // Lightweight, NON-destructive context wake used on the playback path.
+    // Crucial: this must NEVER rebuild the context or reload samplers. A
+    // rebuild wipes this.samplers and recreates the graph, and doing that
+    // per-chord made every chord cut off after a fraction of a second while
+    // the samples reloaded. If a quick resume() doesn't wake the context we
+    // just skip the note — real recovery (rebuild) is reserved for the
+    // foreground-return and manual-retry paths only.
     async _ensureContextRunning(label) {
         if (Tone.context.state === 'running') return true;
         // resume() throws on a closed context; only attempt it when suspended.
         if (Tone.context.state !== 'closed') {
-            await this._raceTimeout(() => Tone.context.resume(), 500, label + ' resume()');
-            if (Tone.context.state === 'running') return true;
+            await this._raceTimeout(() => Tone.context.resume(), 400, label + ' resume()');
         }
-        if (!this._rebuildingPlayback && !this._rebuildPromise) {
-            this._rebuildingPlayback = true;
-            this.logEvent(label + ': context still stuck during playback — rebuilding');
-            this._rebuildContext().finally(() => { this._rebuildingPlayback = false; });
-        }
-        return false;
+        return Tone.context.state === 'running';
     }
 
     // Combined per-channel gain: positional balance × per-instrument correction.
@@ -260,22 +252,14 @@ class AudioEngine {
     async _rebuildContextInner() {
         this.logEvent('_rebuildContext: start');
         try {
-            // iOS WebKit caps the number of AudioContexts that can be alive at
-            // once (historically as few as ~4-6 per page). Leaving old contexts
-            // open across rebuilds eventually exhausts that cap, after which
-            // EVERY new context stays stuck 'suspended' forever. Close the
-            // now-orphaned previous context — safe because rebuilds are
-            // serialized, so nothing else is still using it.
-            const oldCtx = Tone.context.rawContext || Tone.context._context;
+            // NOTE: we deliberately do NOT close the previous context here.
+            // An earlier attempt to close it (to respect iOS's cap on live
+            // AudioContexts) backfired: on iOS, closing a context in the same
+            // session left the freshly-created replacement stuck 'closed', so
+            // audio never recovered. Letting the old context be garbage-
+            // collected is the behavior that actually worked on device.
             const newCtx = new (window.AudioContext || window.webkitAudioContext)();
             Tone.setContext(newCtx);
-            const newRaw = newCtx.rawContext || newCtx;
-            if (oldCtx && oldCtx !== newCtx && oldCtx !== newRaw &&
-                typeof oldCtx.close === 'function' && oldCtx.state !== 'closed') {
-                oldCtx.close()
-                    .then(() => this.logEvent('_rebuildContext: closed previous context'))
-                    .catch((e) => this.logEvent('_rebuildContext: closing previous context THREW — ' + e.message));
-            }
             await this._raceTimeout(() => Tone.start(), 2000, '_rebuildContext Tone.start()');
             if (Tone.context.state !== 'running') {
                 await this._raceTimeout(() => Tone.context.resume(), 1500, '_rebuildContext resume()');

@@ -80,12 +80,16 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             // ── iOS Audio Session Kick (v87) ────────────────────
             // The <audio autoplay loop> activator forces iOS to switch the
-            // AVAudioSession from soloAmbient to playback before any other audio
-            // request. This MUST resolve before we ask Tone.js to resume its
-            // context — otherwise the two race and the session can still be in
-            // soloAmbient when Tone.start() runs, leaving the context stuck in
-            // 'suspended' (the silent cold-start bug). So we await play() here
-            // instead of firing it and moving on.
+            // AVAudioSession from soloAmbient to playback. We used to AWAIT
+            // its play() before calling unlockAndLoad(), but that was the bug:
+            // iOS only honors AudioContext.resume()/Tone.start() while a user
+            // activation is still live, and awaiting play() crosses a task
+            // boundary that consumes the activation — so Tone.start() then
+            // hung forever and the context never left 'suspended'. Both the
+            // session kick and the context unlock only need to be *initiated*
+            // inside the gesture, not resolved in order. So we fire the
+            // activator (no await) and call unlockAndLoad() synchronously in
+            // the same tap, keeping the activation valid for Tone.start().
             const eng0 = window.audioEngine;
             try {
                 if ('mediaSession' in navigator) {
@@ -98,12 +102,10 @@ document.addEventListener("DOMContentLoaded", async () => {
                 }
                 const activator = document.getElementById('ios_audio_activator');
                 if (activator && activator.paused) {
-                    if (eng0) eng0.logEvent('start tap: calling activator.play()');
-                    let settled = false;
-                    await Promise.race([
-                        activator.play().then(() => { settled = true; if (eng0) eng0.logEvent('activator.play() resolved'); }),
-                        new Promise(r => setTimeout(() => { if (!settled && eng0) eng0.logEvent('activator.play() timed out at 400ms'); r(); }, 400))
-                    ]);
+                    if (eng0) eng0.logEvent('start tap: firing activator.play() (not awaited)');
+                    activator.play()
+                        .then(() => { if (eng0) eng0.logEvent('activator.play() resolved'); })
+                        .catch((e) => { if (eng0) eng0.logEvent('activator.play() rejected: ' + e.message); });
                 } else if (eng0) {
                     eng0.logEvent('start tap: activator missing or already playing (paused=' + (activator && activator.paused) + ')');
                 }
@@ -112,6 +114,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
             // ── End iOS Audio Session Kick ───────────────────────
 
+            // Called synchronously in the tap so Tone.start()'s resume() still
+            // has a live user activation (see note above).
             window.audioEngine.unlockAndLoad();
             // Pre-load first challenge so PLAY is ready immediately
             startNewChallenge();
@@ -150,6 +154,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Visible, only-on-failure audio diagnostic. Appears as a tappable banner so
     // the user can report exactly where audio breaks (context state, sample load,
     // fallback) — essential for an iOS issue that can't be reproduced off-device.
+    function hideAudioTrouble() {
+        const b = document.getElementById('audio_trouble');
+        if (b) b.remove();
+    }
+
     function showAudioTrouble(status) {
         let b = document.getElementById('audio_trouble');
         if (!b) {
@@ -157,11 +166,12 @@ document.addEventListener("DOMContentLoaded", async () => {
             b.id = 'audio_trouble';
             b.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;z-index:99998;max-height:55vh;overflow-y:auto;'
                 + 'background:#3A1B1B;border:1px solid #E8873D;color:#FFD9B0;border-radius:10px;'
-                + 'padding:10px 12px;font:600 12px/1.4 Inter,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.5);';
+                + 'padding:10px 32px 10px 12px;font:600 12px/1.4 Inter,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.5);';
             document.body.appendChild(b);
         }
         const log = window.audioEngine ? window.audioEngine.getDebugLog() : '';
-        b.innerHTML = '<b style="color:#E8873D;">Audio didn\'t start.</b> Check the side mute switch.<br>'
+        b.innerHTML = '<button id="audio_trouble_close" aria-label="Close" style="position:absolute;top:6px;right:8px;width:26px;height:26px;border:none;background:transparent;color:#FFD9B0;font-size:20px;line-height:1;cursor:pointer;">&times;</button>'
+            + '<b style="color:#E8873D;">Audio didn\'t start.</b> Check the side mute switch.<br>'
             + '<span id="audio_trouble_status" style="opacity:.8;font-weight:400;">' + status + '</span>'
             + '<pre id="audio_trouble_log" style="white-space:pre-wrap;font:400 10px/1.4 monospace;opacity:.7;margin:8px 0 0;max-height:22vh;overflow-y:auto;">' + log + '</pre>'
             + '<div style="display:flex;gap:8px;margin-top:8px;">'
@@ -169,15 +179,26 @@ document.addEventListener("DOMContentLoaded", async () => {
             + '<button id="audio_trouble_copy" style="flex:1;padding:8px;border-radius:6px;border:1px solid #FFD9B0;background:transparent;color:#FFD9B0;font-weight:700;">Copy log</button>'
             + '</div>';
 
+        document.getElementById('audio_trouble_close').onclick = () => hideAudioTrouble();
+
         document.getElementById('audio_trouble_retry').onclick = async () => {
             try { if (window.audioEngine) await window.audioEngine.forceRecover(); } catch (e) {}
+            // If recovery worked, dismiss the banner and play; otherwise refresh
+            // the diagnostic in place so the user can see the latest state/log.
+            if (window.audioEngine && window.audioEngine.ready) {
+                hideAudioTrouble();
+                const pb = document.getElementById('play_btn');
+                if (pb) pb.click();
+                return;
+            }
             const pb = document.getElementById('play_btn');
             if (pb) pb.click();
             setTimeout(() => {
-                document.getElementById('audio_trouble_status').textContent =
-                    window.audioEngine ? window.audioEngine.getAudioStatus() : '';
-                document.getElementById('audio_trouble_log').textContent =
-                    window.audioEngine ? window.audioEngine.getDebugLog() : '';
+                if (window.audioEngine && window.audioEngine.ready) { hideAudioTrouble(); return; }
+                const st = document.getElementById('audio_trouble_status');
+                const lg = document.getElementById('audio_trouble_log');
+                if (st) st.textContent = window.audioEngine ? window.audioEngine.getAudioStatus() : '';
+                if (lg) lg.textContent = window.audioEngine ? window.audioEngine.getDebugLog() : '';
             }, 1200);
         };
         document.getElementById('audio_trouble_copy').onclick = async () => {
