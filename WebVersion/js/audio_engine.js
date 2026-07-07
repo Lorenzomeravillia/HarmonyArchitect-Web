@@ -201,6 +201,10 @@ class AudioEngine {
                 return;
             }
             if (Tone.context.state !== 'running') {
+                // We released the session on backgrounding (paused activator,
+                // suspended context) — re-acquire it before resuming, in the
+                // same order as the cold-start unlock: session first, then ctx.
+                await this._kickAudioSession(800);
                 await this._raceTimeout(() => Tone.context.resume(), 1000, 'tryResume resume()');
             }
             let waited = 0;
@@ -219,6 +223,34 @@ class AudioEngine {
                 this._resuming = false;
             }
         };
+
+        // ── Release the audio session the moment we're backgrounded ────────
+        // On-device evidence: cold start and background/return both work, but
+        // force-closing the app (Safari or PWA) while the session is active
+        // wedges iOS's audio daemon system-wide — every context on the device
+        // is then born suspended-forever until a reboot. A force-close always
+        // goes through the app switcher, i.e. the page gets 'hidden' BEFORE
+        // being killed. So if we release the session (pause the looping
+        // activator, suspend the context) as soon as we're hidden, a kill
+        // finds nothing active to orphan, and the daemon stays healthy.
+        const releaseSession = (source) => {
+            if (!this._unlocked || this.useFallback) return;
+            this.logEvent('lifecycle: ' + source + ' — releasing audio session');
+            try {
+                const el = document.getElementById('ios_audio_activator');
+                if (el && !el.paused) el.pause();
+            } catch (e) {}
+            try {
+                const ctx = this._rawCtx;
+                if (ctx && ctx.state === 'running' && ctx.suspend) {
+                    ctx.suspend().catch(() => {});
+                }
+            } catch (e) {}
+        };
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') releaseSession('visibilitychange-hidden');
+        });
+        window.addEventListener('pagehide', () => releaseSession('pagehide'));
 
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') tryResume('visibilitychange');
@@ -529,6 +561,9 @@ class AudioEngine {
             await this._freshContextAfterKick('unlock');
         } else {
             await this._raceTimeout(() => Tone.start(), 1500, 'Tone.start()');
+            // Track the raw context so releaseSession/watchdog can reach it
+            // on this path too (on iOS it's set by _freshContextAfterKick).
+            try { this._rawCtx = Tone.context.rawContext || null; } catch (e) {}
         }
         // ─────────────────────────────────────────────────────────────────────
 

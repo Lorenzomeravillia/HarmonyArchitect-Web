@@ -156,8 +156,12 @@ document.addEventListener("DOMContentLoaded", async () => {
             document.body.appendChild(b);
         }
         const log = window.audioEngine ? window.audioEngine.getDebugLog() : '';
+        const wedged = (status || '').includes('audio-system-wedged');
+        const headline = wedged
+            ? '<b style="color:#E8873D;">L\'audio di iOS è bloccato a livello di sistema.</b> Riavvia il telefono per ripristinarlo (non dipende dall\'app).<br>'
+            : '<b style="color:#E8873D;">Audio didn\'t start.</b> Check the side mute switch.<br>';
         b.innerHTML = '<button id="audio_trouble_close" aria-label="Close" style="position:absolute;top:6px;right:8px;width:26px;height:26px;border:none;background:transparent;color:#FFD9B0;font-size:20px;line-height:1;cursor:pointer;">&times;</button>'
-            + '<b style="color:#E8873D;">Audio didn\'t start.</b> Check the side mute switch.<br>'
+            + headline
             + '<span id="audio_trouble_status" style="opacity:.8;font-weight:400;">' + status + '</span>'
             + '<pre id="audio_trouble_log" style="white-space:pre-wrap;font:400 10px/1.4 monospace;opacity:.7;margin:8px 0 0;max-height:22vh;overflow-y:auto;">' + log + '</pre>'
             + '<div style="display:flex;gap:8px;margin-top:8px;">'
