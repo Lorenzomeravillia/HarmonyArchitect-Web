@@ -85,6 +85,10 @@ class AudioEngine {
         };
 
         this._bindLifecycleEvents();
+        // Request the 'playback' AVAudioSession category as early as possible
+        // via the official Safari 17+ API (no-op elsewhere); logged so the
+        // on-device debug trail shows whether the API exists on this device.
+        this._configureAudioSession();
     }
 
     // Timestamped event log, visible in the on-screen trouble banner so the exact
@@ -289,6 +293,7 @@ class AudioEngine {
             this.ready = loadedCount > 0 && Tone.context.state === 'running';
             if (!this.ready) this.lastAudioError = Tone.context.state !== 'running' ? 'context-suspended (iOS did not resume audio)' : 'rebuild-failed';
             this.logEvent('_rebuildContext: done, loadedCount=' + loadedCount + ', ctxState=' + Tone.context.state + ', ready=' + this.ready);
+            if (Tone.context.state !== 'running') this._startContextWatchdog();
         } catch (e) {
             this.lastAudioError = 'rebuild-error: ' + e.message;
             this.logEvent('_rebuildContext THREW: ' + e.message);
@@ -325,7 +330,47 @@ class AudioEngine {
     // a user gesture the FIRST time; after that first blessed play, iOS lets
     // the same element be re-played programmatically (foreground return,
     // Retry button) without a new gesture.
+    // Safari 17+ exposes the AVAudioSession directly (navigator.audioSession):
+    // setting type='playback' is the official replacement for the silence.wav
+    // hack, and .state tells us if iOS considers the session 'interrupted' —
+    // a state in which no context will ever resume, invisible until now.
+    _configureAudioSession() {
+        try {
+            if ('audioSession' in navigator) {
+                navigator.audioSession.type = 'playback';
+                this.logEvent('audioSession API: type=playback set, state=' + navigator.audioSession.state);
+                if (!this._audioSessionHooked) {
+                    this._audioSessionHooked = true;
+                    navigator.audioSession.onstatechange = () =>
+                        this.logEvent('audioSession state → ' + navigator.audioSession.state);
+                }
+            } else {
+                this.logEvent('audioSession API not available on this Safari');
+            }
+        } catch (e) {
+            this.logEvent('audioSession API THREW: ' + e.message);
+        }
+    }
+
+    // Classic iOS unlock ritual: play a 1-sample silent buffer through the
+    // context. This predates resume() and can unwedge contexts whose resume()
+    // promise never settles. Tone's own default context gets this from
+    // standardized-audio-context internally — raw contexts we mint ourselves
+    // never did, which may be exactly why they stayed suspended.
+    _unlockRitual(ctx, tag, quiet) {
+        try {
+            const src = ctx.createBufferSource();
+            src.buffer = ctx.createBuffer(1, 1, 22050);
+            src.connect(ctx.destination);
+            src.start(0);
+            if (!quiet) this.logEvent(tag + ': silent-buffer unlock ritual fired');
+        } catch (e) {
+            this.logEvent(tag + ': unlock ritual THREW — ' + e.message);
+        }
+    }
+
     async _kickAudioSession(ms) {
+        this._configureAudioSession();
         const el = document.getElementById('ios_audio_activator');
         if (!el) {
             this.logEvent('kickAudioSession: activator element missing');
@@ -358,20 +403,64 @@ class AudioEngine {
     async _freshContextAfterKick(label) {
         for (let attempt = 1; attempt <= 2; attempt++) {
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            this.logEvent(label + ': fresh context #' + attempt + ' state=' + ctx.state);
+            const tag = label + ' ctx#' + attempt;
+            this.logEvent(tag + ' created, state=' + ctx.state);
+            // Timestamped record of every state transition — tells us whether
+            // a "stuck" context ever comes alive later (resume()'s promise is
+            // known to never settle on some WebKit builds even on success).
+            ctx.onstatechange = () => this.logEvent(tag + ' statechange → ' + ctx.state);
             Tone.setContext(ctx);
+            this._rawCtx = ctx;
+            this._unlockRitual(ctx, tag);
             if (ctx.state !== 'running') {
-                await this._raceTimeout(() => ctx.resume(), 1200, label + ' fresh-ctx resume #' + attempt);
+                await this._raceTimeout(() => ctx.resume(), 1200, tag + ' resume()');
             }
             let waited = 0;
-            while (Tone.context.state !== 'running' && waited < 600) {
-                await new Promise(r => setTimeout(r, 50));
-                waited += 50;
+            while (ctx.state !== 'running' && waited < 1200) {
+                await new Promise(r => setTimeout(r, 100));
+                waited += 100;
             }
-            this.logEvent(label + ': context #' + attempt + ' after ' + waited + 'ms poll: ' + Tone.context.state);
-            if (Tone.context.state === 'running') return true;
+            this.logEvent(tag + ' after ' + waited + 'ms poll: ' + ctx.state);
+            if (ctx.state === 'running') return true;
         }
         return false;
+    }
+
+    // Long-tail recovery: some wedged iOS contexts come alive seconds after
+    // every direct resume attempt has "failed" (the promise never settles but
+    // the state flips anyway). Poll for 30s, re-poking the context every few
+    // ticks; on success flip ready, clear the error, and drop the banner.
+    _startContextWatchdog() {
+        if (this._watchdogTimer) return;
+        this.logEvent('context watchdog: started (30s)');
+        let ticks = 0;
+        this._watchdogTimer = setInterval(() => {
+            ticks++;
+            const ctx = this._rawCtx || (window.Tone ? Tone.context : null);
+            if (!ctx) return;
+            if (ctx.state === 'running') {
+                clearInterval(this._watchdogTimer);
+                this._watchdogTimer = null;
+                const loaded = Object.values(this.samplers).filter(s => s && s.loaded).length;
+                this.ready = loaded > 0;
+                if (this.ready) this.lastAudioError = null;
+                this.logEvent('context watchdog: RUNNING after ~' + ticks + 's, loaded=' + loaded + ', ready=' + this.ready);
+                const banner = document.getElementById('audio_trouble');
+                if (banner) banner.remove();
+                return;
+            }
+            if (ticks % 3 === 0) {
+                try {
+                    if (ctx.resume) ctx.resume().catch(() => {});
+                    this._unlockRitual(ctx, 'watchdog', ticks !== 3);
+                } catch (e) {}
+            }
+            if (ticks >= 30) {
+                clearInterval(this._watchdogTimer);
+                this._watchdogTimer = null;
+                this.logEvent('context watchdog: gave up after 30s, state=' + ctx.state);
+            }
+        }, 1000);
     }
 
     async unlockAndLoad() {
@@ -441,6 +530,7 @@ class AudioEngine {
             this.ready = true;
         } else if (Tone.context.state !== 'running') {
             this.lastAudioError = 'context-suspended (iOS did not resume audio)';
+            this._startContextWatchdog();
         } else if (!this.lastAudioError) {
             this.lastAudioError = 'no samples decoded';
         }
