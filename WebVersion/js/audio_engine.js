@@ -402,6 +402,16 @@ class AudioEngine {
     // stay under iOS's cap on live contexts.
     async _freshContextAfterKick(label) {
         for (let attempt = 1; attempt <= 2; attempt++) {
+            // Hard budget on contexts minted per page session. iOS tracks live
+            // contexts beyond the page (audio daemon side); churning through
+            // them is what likely wedged the device's Web Audio system-wide in
+            // the first place. Better to stop and say so than to make it worse.
+            this._ctxCount = (this._ctxCount || 1) + 1;   // starts at 1 = page-load context
+            if (this._ctxCount > 5) {
+                this.logEvent(label + ': context budget exhausted (' + this._ctxCount + ' this session) — not creating more');
+                this.lastAudioError = 'audio-system-wedged (riavvia il telefono)';
+                return false;
+            }
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
             const tag = label + ' ctx#' + attempt;
             this.logEvent(tag + ' created, state=' + ctx.state);
@@ -449,6 +459,23 @@ class AudioEngine {
                 if (banner) banner.remove();
                 return;
             }
+            // Media-element contention experiment: some iOS builds won't let
+            // Web Audio join the session while an <audio> element is actively
+            // playing. Pause the looping activator for ticks 6-11 and keep
+            // poking; if the context flips to running only in that window,
+            // the activator itself is the blocker and the log will show it.
+            if (ticks === 6) {
+                try {
+                    const el = document.getElementById('ios_audio_activator');
+                    if (el && !el.paused) { el.pause(); this.logEvent('watchdog: activator paused (contention test)'); }
+                } catch (e) {}
+            }
+            if (ticks === 12) {
+                try {
+                    const el = document.getElementById('ios_audio_activator');
+                    if (el && el.paused) { el.play().catch(() => {}); this.logEvent('watchdog: activator restarted'); }
+                } catch (e) {}
+            }
             if (ticks % 3 === 0) {
                 try {
                     if (ctx.resume) ctx.resume().catch(() => {});
@@ -459,6 +486,11 @@ class AudioEngine {
                 clearInterval(this._watchdogTimer);
                 this._watchdogTimer = null;
                 this.logEvent('context watchdog: gave up after 30s, state=' + ctx.state);
+                // Every recovery strategy has now failed on a context that
+                // never once changed state — that's the signature of iOS's
+                // system-level Web Audio wedge, which only a device restart
+                // clears. Say so honestly instead of blaming the mute switch.
+                this.lastAudioError = 'audio-system-wedged (riavvia il telefono)';
             }
         }, 1000);
     }
