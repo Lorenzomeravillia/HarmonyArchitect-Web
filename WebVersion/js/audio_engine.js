@@ -258,12 +258,14 @@ class AudioEngine {
             // session left the freshly-created replacement stuck 'closed', so
             // audio never recovered. Letting the old context be garbage-
             // collected is the behavior that actually worked on device.
-            const newCtx = new (window.AudioContext || window.webkitAudioContext)();
-            Tone.setContext(newCtx);
-            await this._raceTimeout(() => Tone.start(), 2000, '_rebuildContext Tone.start()');
-            if (Tone.context.state !== 'running') {
-                await this._raceTimeout(() => Tone.context.resume(), 1500, '_rebuildContext resume()');
-            }
+            //
+            // Session kick first: iOS pauses the silence-activator when the
+            // app is backgrounded, dropping the AVAudioSession out of
+            // 'playback' — and a context created under the wrong session is
+            // born unresumable. The activator was blessed by the original
+            // start tap, so re-playing it here needs no new gesture.
+            await this._kickAudioSession(800);
+            await this._freshContextAfterKick('_rebuildContext');
             this.logEvent('_rebuildContext: new context state=' + Tone.context.state);
 
             this.samplers = {};
@@ -316,6 +318,62 @@ class AudioEngine {
         return { state: 'suspended', resume: async () => {}, currentTime: 0 };
     }
 
+    // Starts (or restarts) the hidden silence-<audio> activator and waits for
+    // it to actually play. This is what flips the iOS AVAudioSession from
+    // soloAmbient to 'playback' — the precondition for any AudioContext to be
+    // resumable. Must be invoked so that el.play() fires synchronously inside
+    // a user gesture the FIRST time; after that first blessed play, iOS lets
+    // the same element be re-played programmatically (foreground return,
+    // Retry button) without a new gesture.
+    async _kickAudioSession(ms) {
+        const el = document.getElementById('ios_audio_activator');
+        if (!el) {
+            this.logEvent('kickAudioSession: activator element missing');
+            return;
+        }
+        if (!el.paused && !el.ended) {
+            this.logEvent('kickAudioSession: activator already playing');
+            return;
+        }
+        this.logEvent('kickAudioSession: activator.play()');
+        let settled = false;
+        await Promise.race([
+            el.play()
+                .then(() => { settled = true; this.logEvent('kickAudioSession: activator playing (session=playback)'); })
+                .catch((e) => { settled = true; this.logEvent('kickAudioSession: play() rejected — ' + e.message); }),
+            new Promise(r => setTimeout(() => {
+                if (!settled) this.logEvent('kickAudioSession: play() did not settle within ' + ms + 'ms');
+                r();
+            }, ms))
+        ]);
+        // Give the OS a beat to finish the session-category switch; play()
+        // resolving and the route actually being live aren't atomic.
+        await new Promise(r => setTimeout(r, 150));
+    }
+
+    // Creates a fresh AudioContext (assumes the session was just kicked),
+    // makes it Tone's context, and confirms it reaches 'running'. Retries once
+    // with a second context if the first is born wedged — but never more, to
+    // stay under iOS's cap on live contexts.
+    async _freshContextAfterKick(label) {
+        for (let attempt = 1; attempt <= 2; attempt++) {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            this.logEvent(label + ': fresh context #' + attempt + ' state=' + ctx.state);
+            Tone.setContext(ctx);
+            if (ctx.state !== 'running') {
+                await this._raceTimeout(() => ctx.resume(), 1200, label + ' fresh-ctx resume #' + attempt);
+            }
+            let waited = 0;
+            while (Tone.context.state !== 'running' && waited < 600) {
+                await new Promise(r => setTimeout(r, 50));
+                waited += 50;
+            }
+            this.logEvent(label + ': context #' + attempt + ' after ' + waited + 'ms poll: ' + Tone.context.state);
+            if (Tone.context.state === 'running') return true;
+        }
+        return false;
+    }
+
     async unlockAndLoad() {
         if (this._unlocked) {
             this.logEvent('unlockAndLoad: already unlocked, no-op');
@@ -333,36 +391,24 @@ class AudioEngine {
 
         this.logEvent('unlockAndLoad: page-load context state=' + Tone.context.state);
 
-        // ── iOS: swap in a fresh in-gesture context ────────────────────────
-        // The context Tone.js created at page load (before any user gesture)
-        // can be PERMANENTLY unresumable on iOS: resume()'s promise never
-        // settles, no matter how many times or when it's called — on-device
-        // logs showed Tone.start() hanging even when invoked synchronously
-        // inside the tap. Trying to resurrect that context for ~7s and only
-        // then rebuilding meant the replacement was created long after the
-        // tap, outside the user activation, so it started suspended too.
-        // The reliable pattern is the opposite: create a brand-new
-        // AudioContext RIGHT HERE, synchronously inside the tap — contexts
-        // born inside a live user gesture start 'running' on iOS.
+        // ── iOS: session kick FIRST, fresh context SECOND ───────────────────
+        // On-device experiments pinned the ordering down precisely:
+        //  · The page-load context is permanently unresumable (resume() never
+        //    settles, even called synchronously in the tap).
+        //  · A fresh context created BEFORE the silence-<audio> activator has
+        //    actually started playing is born under the soloAmbient session
+        //    and is JUST as unresumable — in-gesture or not.
+        //  · The one build that worked created its fresh context seconds
+        //    AFTER the activator was playing (session already 'playback').
+        // So: start the activator inside the tap (media elements need the
+        // gesture; the context does not), wait for it to actually play, and
+        // only THEN mint the new AudioContext under the playback session.
         if (Tone.context.state !== 'running') {
-            const freshCtx = new (window.AudioContext || window.webkitAudioContext)();
-            this.logEvent('in-gesture context created, state=' + freshCtx.state);
-            Tone.setContext(freshCtx);
-            if (freshCtx.state !== 'running') {
-                // Still inside the tap (no awaits so far) — resume() called
-                // here has a live activation, unlike the page-load context.
-                await this._raceTimeout(() => freshCtx.resume(), 2000, 'in-gesture resume()');
-            }
+            await this._kickAudioSession(1200);   // play() fires synchronously, still in-gesture
+            await this._freshContextAfterKick('unlock');
         } else {
             await this._raceTimeout(() => Tone.start(), 1500, 'Tone.start()');
         }
-
-        let waited = 0;
-        while (Tone.context.state !== 'running' && waited < 1500) {
-            await new Promise(r => setTimeout(r, 50));
-            waited += 50;
-        }
-        this.logEvent(`context state after ${waited}ms poll: ${Tone.context.state}`);
         // ─────────────────────────────────────────────────────────────────────
 
         // Build the reverb chain BEFORE loading samples, and regardless of the

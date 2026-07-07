@@ -78,19 +78,15 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
             startOverlay.style.display = "none";
 
-            // ── iOS Audio Session Kick (v87) ────────────────────
-            // The <audio autoplay loop> activator forces iOS to switch the
-            // AVAudioSession from soloAmbient to playback. We used to AWAIT
-            // its play() before calling unlockAndLoad(), but that was the bug:
-            // iOS only honors AudioContext.resume()/Tone.start() while a user
-            // activation is still live, and awaiting play() crosses a task
-            // boundary that consumes the activation — so Tone.start() then
-            // hung forever and the context never left 'suspended'. Both the
-            // session kick and the context unlock only need to be *initiated*
-            // inside the gesture, not resolved in order. So we fire the
-            // activator (no await) and call unlockAndLoad() synchronously in
-            // the same tap, keeping the activation valid for Tone.start().
-            const eng0 = window.audioEngine;
+            // ── iOS Audio Session ────────────────────────────────
+            // The silence-<audio> activator (the AVAudioSession kick) is now
+            // owned entirely by the audio engine: unlockAndLoad() starts it
+            // synchronously inside this tap and waits for it to actually be
+            // playing BEFORE creating the AudioContext (a context minted
+            // under the pre-kick soloAmbient session is born unresumable).
+            // Do NOT play the activator here: play() flips el.paused to
+            // false synchronously, which would make the engine think the
+            // session is already switched and skip its wait.
             try {
                 if ('mediaSession' in navigator) {
                     navigator.mediaSession.metadata = new MediaMetadata({
@@ -100,22 +96,12 @@ document.addEventListener("DOMContentLoaded", async () => {
                     });
                     navigator.mediaSession.playbackState = 'playing';
                 }
-                const activator = document.getElementById('ios_audio_activator');
-                if (activator && activator.paused) {
-                    if (eng0) eng0.logEvent('start tap: firing activator.play() (not awaited)');
-                    activator.play()
-                        .then(() => { if (eng0) eng0.logEvent('activator.play() resolved'); })
-                        .catch((e) => { if (eng0) eng0.logEvent('activator.play() rejected: ' + e.message); });
-                } else if (eng0) {
-                    eng0.logEvent('start tap: activator missing or already playing (paused=' + (activator && activator.paused) + ')');
-                }
             } catch (e) {
-                if (eng0) eng0.logEvent('activator.play() THREW: ' + e.message);
+                if (window.audioEngine) window.audioEngine.logEvent('mediaSession setup THREW: ' + e.message);
             }
-            // ── End iOS Audio Session Kick ───────────────────────
 
-            // Called synchronously in the tap so Tone.start()'s resume() still
-            // has a live user activation (see note above).
+            // Must stay synchronous in the tap: the engine's session kick
+            // needs the live gesture to bless the activator's first play().
             window.audioEngine.unlockAndLoad();
             // Pre-load first challenge so PLAY is ready immediately
             startNewChallenge();
