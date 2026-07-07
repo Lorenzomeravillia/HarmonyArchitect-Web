@@ -147,6 +147,17 @@ class AudioEngine {
         return Tone.context.state === 'running';
     }
 
+    // Samplers usable RIGHT NOW: buffers decoded AND built on the current
+    // context generation (a stale-generation sampler reports loaded=true but
+    // is permanently silent — its nodes live on an abandoned context).
+    _usableSamplerCount() {
+        const gen = this._ctxGen || 0;
+        return this.channels.filter(n => {
+            const s = this.samplers[n];
+            return s && s.loaded && (s._cvGen || 0) === gen;
+        }).length;
+    }
+
     // Combined per-channel gain: positional balance × per-instrument correction.
     _channelGain(channelIdx) {
         const balance = this.voiceBalance[channelIdx] ?? 1.0;
@@ -217,7 +228,7 @@ class AudioEngine {
                 this.logEvent('context stuck after resume attempt — rebuilding');
                 await this._rebuildContext();
             } else {
-                this.ready = Object.values(this.samplers).some(s => s && s.loaded);
+                this.ready = this._usableSamplerCount() > 0;
             }
             } finally {
                 this._resuming = false;
@@ -321,7 +332,7 @@ class AudioEngine {
             // Buffers can finish decoding even while the context is still
             // suspended (decodeAudioData doesn't require a running context),
             // so loadedCount alone is not proof that sound will actually play.
-            const loadedCount = Object.values(this.samplers).filter(s => s && s.loaded).length;
+            const loadedCount = this._usableSamplerCount();
             this.ready = loadedCount > 0 && Tone.context.state === 'running';
             if (!this.ready) this.lastAudioError = Tone.context.state !== 'running' ? 'context-suspended (iOS did not resume audio)' : 'rebuild-failed';
             this.logEvent('_rebuildContext: done, loadedCount=' + loadedCount + ', ctxState=' + Tone.context.state + ', ready=' + this.ready);
@@ -453,6 +464,14 @@ class AudioEngine {
             ctx.onstatechange = () => this.logEvent(tag + ' statechange → ' + ctx.state);
             Tone.setContext(ctx);
             this._rawCtx = ctx;
+            // Every context swap invalidates all Tone nodes built on earlier
+            // contexts: a sampler created under the previous context keeps
+            // reporting loaded=true but is permanently silent (its nodes live
+            // on the abandoned context). Bump the generation so loadInstrument
+            // rebuilds stale samplers instead of trusting the cache — the
+            // on-device symptom was earcons playing (fresh oscillators on the
+            // current context) while note samplers stayed mute.
+            this._ctxGen = (this._ctxGen || 0) + 1;
             this._unlockRitual(ctx, tag);
             if (ctx.state !== 'running') {
                 await this._raceTimeout(() => ctx.resume(), 1200, tag + ' resume()');
@@ -483,7 +502,7 @@ class AudioEngine {
             if (ctx.state === 'running') {
                 clearInterval(this._watchdogTimer);
                 this._watchdogTimer = null;
-                const loaded = Object.values(this.samplers).filter(s => s && s.loaded).length;
+                const loaded = this._usableSamplerCount();
                 this.ready = loaded > 0;
                 if (this.ready) this.lastAudioError = null;
                 this.logEvent('context watchdog: RUNNING after ~' + ticks + 's, loaded=' + loaded + ', ready=' + this.ready);
@@ -590,7 +609,7 @@ class AudioEngine {
             await this.loadInstrument(this.channels[i]);
         }
         this._setLoading(false);
-        const loadedCount = Object.values(this.samplers).filter(s => s && s.loaded).length;
+        const loadedCount = this._usableSamplerCount();
         this.logEvent('sample preload done, loadedCount=' + loadedCount + '/' + this.channels.length
             + ', ctx=' + Tone.context.state);
         if (loadedCount > 0 && Tone.context.state === 'running') {
@@ -630,7 +649,7 @@ class AudioEngine {
         // Count only samplers for the currently active channels (not every
         // instrument ever loaded across preset switches), so the number stays
         // bounded by the channel count and reads as a meaningful ratio.
-        const loaded = this.channels.filter(name => this.samplers[name] && this.samplers[name].loaded).length;
+        const loaded = this._usableSamplerCount();
         const parts = [
             'engine=' + (this.useFallback ? 'WebAudioFont' : (window.Tone ? 'Tone' : 'none')),
             'ctx=' + st,
@@ -729,7 +748,17 @@ class AudioEngine {
             return null;
         }
         if (!window.Tone) return null;
-        if (this.samplers[name]) return this.samplers[name];
+        const cached = this.samplers[name];
+        if (cached) {
+            // Only trust the cache if the sampler was built on the CURRENT
+            // context. One from a previous generation still says loaded=true
+            // but its nodes live on an abandoned context — silent forever.
+            if ((cached._cvGen || 0) === (this._ctxGen || 0)) return cached;
+            this.logEvent('loadInstrument(' + name + '): cached sampler is from stale context (gen '
+                + (cached._cvGen || 0) + ' ≠ ' + (this._ctxGen || 0) + ') — rebuilding');
+            try { cached.dispose(); } catch (e) {}
+            delete this.samplers[name];
+        }
         
         // Define locally hosted reliable priority samples vs CDN lazy loads
         const SELF_HOSTED = ['bass-electric', 'trumpet', 'french-horn', 'flute'];
@@ -772,7 +801,10 @@ class AudioEngine {
                     resolve(sampler);
                 }
             });
-            // Immediately cache the instance reference to avoid duplicate triggers
+            // Stamp the generation the sampler was built under (checked by the
+            // cache above) and cache the instance immediately to avoid
+            // duplicate loads from concurrent callers.
+            sampler._cvGen = this._ctxGen || 0;
             this.samplers[name] = sampler;
         });
     }
