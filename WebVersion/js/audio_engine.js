@@ -215,7 +215,11 @@ class AudioEngine {
                 // We released the session on backgrounding (paused activator,
                 // suspended context) — re-acquire it before resuming, in the
                 // same order as the cold-start unlock: session first, then ctx.
-                await this._kickAudioSession(800);
+                const kick = await this._kickAudioSession(800);
+                if (kick === 'rejected') {
+                    // No gesture available out here; the next user tap has one.
+                    this._armGestureRecovery();
+                }
                 await this._raceTimeout(() => Tone.context.resume(), 1000, 'tryResume resume()');
             }
             let waited = 0;
@@ -227,6 +231,7 @@ class AudioEngine {
             if (Tone.context.state !== 'running') {
                 this.logEvent('context stuck after resume attempt — rebuilding');
                 await this._rebuildContext();
+                if (Tone.context.state !== 'running') this._armGestureRecovery();
             } else {
                 this.ready = this._usableSamplerCount() > 0;
             }
@@ -336,7 +341,10 @@ class AudioEngine {
             this.ready = loadedCount > 0 && Tone.context.state === 'running';
             if (!this.ready) this.lastAudioError = Tone.context.state !== 'running' ? 'context-suspended (iOS did not resume audio)' : 'rebuild-failed';
             this.logEvent('_rebuildContext: done, loadedCount=' + loadedCount + ', ctxState=' + Tone.context.state + ', ready=' + this.ready);
-            if (Tone.context.state !== 'running') this._startContextWatchdog();
+            if (Tone.context.state !== 'running') {
+                this._startContextWatchdog();
+                this._armGestureRecovery();
+            }
         } catch (e) {
             this.lastAudioError = 'rebuild-error: ' + e.message;
             this.logEvent('_rebuildContext THREW: ' + e.message);
@@ -417,18 +425,19 @@ class AudioEngine {
         const el = document.getElementById('ios_audio_activator');
         if (!el) {
             this.logEvent('kickAudioSession: activator element missing');
-            return;
+            return 'missing';
         }
         if (!el.paused && !el.ended) {
             this.logEvent('kickAudioSession: activator already playing');
-            return;
+            return 'playing';
         }
         this.logEvent('kickAudioSession: activator.play()');
         let settled = false;
+        let result = 'timeout';
         await Promise.race([
             el.play()
-                .then(() => { settled = true; this.logEvent('kickAudioSession: activator playing (session=playback)'); })
-                .catch((e) => { settled = true; this.logEvent('kickAudioSession: play() rejected — ' + e.message); }),
+                .then(() => { settled = true; result = 'playing'; this.logEvent('kickAudioSession: activator playing (session=playback)'); })
+                .catch((e) => { settled = true; result = 'rejected'; this.logEvent('kickAudioSession: play() rejected — ' + e.message); }),
             new Promise(r => setTimeout(() => {
                 if (!settled) this.logEvent('kickAudioSession: play() did not settle within ' + ms + 'ms');
                 r();
@@ -437,6 +446,49 @@ class AudioEngine {
         // Give the OS a beat to finish the session-category switch; play()
         // resolving and the route actually being live aren't atomic.
         await new Promise(r => setTimeout(r, 150));
+        return result;
+    }
+
+    // Safety net for foreground returns where the automatic re-kick fails:
+    // outside a user gesture iOS may reject activator.play() (NotAllowedError),
+    // leaving the session unacquired and EVERYTHING silent — notes and earcons
+    // alike. The user's next tap anywhere on the page IS a gesture, so arm a
+    // one-shot capture-phase listener that re-kicks the session in-gesture and
+    // resumes/rebuilds the context, invisibly to the user.
+    _armGestureRecovery() {
+        if (this._gestureRecoveryArmed) return;
+        this._gestureRecoveryArmed = true;
+        this.logEvent('gesture recovery armed — next tap re-kicks the session');
+        const handler = () => {
+            document.removeEventListener('touchend', handler, true);
+            document.removeEventListener('click', handler, true);
+            this._gestureRecoveryArmed = false;
+            this.logEvent('gesture recovery: tap received — re-kicking in-gesture');
+            // Synchronous inside the gesture — this play() is user-activated.
+            try {
+                const el = document.getElementById('ios_audio_activator');
+                if (el && el.paused) el.play().catch(() => {});
+            } catch (e) {}
+            (async () => {
+                if (!window.Tone || Tone.context.state === 'running') return;
+                await this._raceTimeout(() => Tone.context.resume(), 1000, 'gesture-recovery resume()');
+                let waited = 0;
+                while (Tone.context.state !== 'running' && waited < 1000) {
+                    await new Promise(r => setTimeout(r, 100));
+                    waited += 100;
+                }
+                if (Tone.context.state === 'running') {
+                    this.ready = this._usableSamplerCount() > 0;
+                    if (this.ready) this.lastAudioError = null;
+                    this.logEvent('gesture recovery: context running, ready=' + this.ready);
+                } else {
+                    this.logEvent('gesture recovery: still stuck — rebuilding');
+                    await this._rebuildContext();
+                }
+            })();
+        };
+        document.addEventListener('touchend', handler, true);
+        document.addEventListener('click', handler, true);
     }
 
     // Creates a fresh AudioContext (assumes the session was just kicked),
@@ -541,7 +593,10 @@ class AudioEngine {
                 // never once changed state — that's the signature of iOS's
                 // system-level Web Audio wedge, which only a device restart
                 // clears. Say so honestly instead of blaming the mute switch.
+                // (iOS often frees the orphaned session after a few idle
+                // minutes, so the next tap may still save the day.)
                 this.lastAudioError = 'audio-system-wedged (riavvia il telefono)';
+                this._armGestureRecovery();
             }
         }, 1000);
     }
