@@ -331,71 +331,72 @@ class AudioEngine {
             return;
         }
 
-        this.logEvent('Tone.context.state before Tone.start(): ' + Tone.context.state);
-        // iOS Safari has a known bug where AudioContext.resume()'s promise can
-        // hang forever (never resolves, never rejects) under certain audio
-        // session states. Tone.start() awaits exactly that promise internally,
-        // so without a timeout guard the whole unlock sequence would block
-        // indefinitely with no error to surface. _raceTimeout lets us move on
-        // regardless and check the actual context.state afterwards.
-        await this._raceTimeout(() => Tone.start(), 3000, 'Tone.start()');
+        this.logEvent('unlockAndLoad: page-load context state=' + Tone.context.state);
 
-        // ── iOS: wait for AudioContext to be actually running ─────────────────
+        // ── iOS: swap in a fresh in-gesture context ────────────────────────
+        // The context Tone.js created at page load (before any user gesture)
+        // can be PERMANENTLY unresumable on iOS: resume()'s promise never
+        // settles, no matter how many times or when it's called — on-device
+        // logs showed Tone.start() hanging even when invoked synchronously
+        // inside the tap. Trying to resurrect that context for ~7s and only
+        // then rebuilding meant the replacement was created long after the
+        // tap, outside the user activation, so it started suspended too.
+        // The reliable pattern is the opposite: create a brand-new
+        // AudioContext RIGHT HERE, synchronously inside the tap — contexts
+        // born inside a live user gesture start 'running' on iOS.
         if (Tone.context.state !== 'running') {
-            await this._raceTimeout(() => Tone.context.resume(), 2000, 'explicit context.resume()');
+            const freshCtx = new (window.AudioContext || window.webkitAudioContext)();
+            this.logEvent('in-gesture context created, state=' + freshCtx.state);
+            Tone.setContext(freshCtx);
+            if (freshCtx.state !== 'running') {
+                // Still inside the tap (no awaits so far) — resume() called
+                // here has a live activation, unlike the page-load context.
+                await this._raceTimeout(() => freshCtx.resume(), 2000, 'in-gesture resume()');
+            }
+        } else {
+            await this._raceTimeout(() => Tone.start(), 1500, 'Tone.start()');
         }
+
         let waited = 0;
-        while (Tone.context.state !== 'running' && waited < 2000) {
+        while (Tone.context.state !== 'running' && waited < 1500) {
             await new Promise(r => setTimeout(r, 50));
             waited += 50;
         }
         this.logEvent(`context state after ${waited}ms poll: ${Tone.context.state}`);
-
-        // If the context is still stuck after start+resume+poll, the device-level
-        // bug means resume() will likely never work for THIS context instance.
-        // Recreate the AudioContext from scratch right now (same recovery used
-        // for backgrounding) instead of giving up — this is what previously only
-        // a full device restart could fix.
-        if (Tone.context.state !== 'running') {
-            this.logEvent('initial unlock: context still stuck — rebuilding immediately');
-            await this._rebuildContext();
-            return;
-        }
         // ─────────────────────────────────────────────────────────────────────
 
-        // High quality Reverb setup
+        // Build the reverb chain BEFORE loading samples, and regardless of the
+        // context state — samplers connect to this.reverb from their onload
+        // callbacks, and creating it late left this.reverb null during loads
+        // (the "t is not an Object" connect error seen on device).
         this.reverb = new Tone.Reverb({
             decay: 1.8,
             preDelay: 0.01,
             wet: 0.2
         });
-        
+
         // Lowpass EQ filter for realism and softening the top end
         const eq = new Tone.Filter(8000, "lowpass");
         this.reverb.connect(eq);
         eq.toDestination();
 
-        // Preload current preset asynchronously and sequentially
-        // (only if context is running — otherwise skip to avoid infinite hang)
-        if (Tone.context.state === 'running') {
-            this._setLoading(true);
-            for (let i = 0; i < this.channels.length; i++) {
-                await this.loadInstrument(this.channels[i]);
-            }
-            this._setLoading(false);
-            // "Ready" means samples actually decoded — not just that the loop ran.
-            // If every sampler failed (e.g. the external CDN host is blocked on
-            // this network), keep ready=false so the on-screen diagnostic appears.
-            const loadedCount = Object.values(this.samplers).filter(s => s && s.loaded).length;
-            this.logEvent('sample preload done, loadedCount=' + loadedCount + '/' + this.channels.length);
-            if (loadedCount > 0) {
-                this.ready = true;
-            } else if (!this.lastAudioError) {
-                this.lastAudioError = 'no samples decoded';
-            }
-        } else {
+        // Preload current preset sequentially. Loading works even on a
+        // suspended context (decodeAudioData doesn't need 'running'), so do it
+        // unconditionally — but 'ready' still requires a running context.
+        this._setLoading(true);
+        for (let i = 0; i < this.channels.length; i++) {
+            await this.loadInstrument(this.channels[i]);
+        }
+        this._setLoading(false);
+        const loadedCount = Object.values(this.samplers).filter(s => s && s.loaded).length;
+        this.logEvent('sample preload done, loadedCount=' + loadedCount + '/' + this.channels.length
+            + ', ctx=' + Tone.context.state);
+        if (loadedCount > 0 && Tone.context.state === 'running') {
+            this.ready = true;
+        } else if (Tone.context.state !== 'running') {
             this.lastAudioError = 'context-suspended (iOS did not resume audio)';
-            this.logEvent('Context never reached running — skipping sample preload');
+        } else if (!this.lastAudioError) {
+            this.lastAudioError = 'no samples decoded';
         }
     }
 
@@ -496,6 +497,14 @@ class AudioEngine {
     // connect so a graph failure doesn't get mislabeled as a load failure.
     _connectSampler(sampler, name) {
         try {
+            if (!this.reverb) {
+                // Reverb chain not built yet (load triggered before/outside
+                // unlockAndLoad) — wire straight to the output instead of
+                // letting connect(null) throw a cryptic WebKit TypeError.
+                this.logEvent('loadInstrument(' + name + '): no reverb yet — connecting toDestination()');
+                sampler.toDestination();
+                return true;
+            }
             sampler.connect(this.reverb);
             return true;
         } catch (e) {
