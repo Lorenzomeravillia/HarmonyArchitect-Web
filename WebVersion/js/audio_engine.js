@@ -539,14 +539,18 @@ class AudioEngine {
         return false;
     }
 
-    // Long-tail recovery: some wedged iOS contexts come alive seconds after
-    // every direct resume attempt has "failed" (the promise never settles but
-    // the state flips anyway). Poll for 30s, re-poking the context every few
-    // ticks; on success flip ready, clear the error, and drop the banner.
+    // Long-tail recovery. On-device evidence says the "wedge" is really an
+    // orphaned audio-session lease that iOS releases on its own after a few
+    // MINUTES of it being idle — the user reported audio coming back after
+    // leaving the app alone for a while. So don't give up at 30s: keep
+    // watching for 5 minutes (2s ticks), re-poking resume + the unlock ritual
+    // every few ticks. On success flip ready, clear the error, drop the
+    // banner — the app heals itself without the user leaving or reloading.
     _startContextWatchdog() {
         if (this._watchdogTimer) return;
-        this.logEvent('context watchdog: started (30s)');
-        let ticks = 0;
+        this.logEvent('context watchdog: started (up to 5min)');
+        let ticks = 0;                    // one tick = 2s
+        const MAX_TICKS = 150;            // 5 minutes
         this._watchdogTimer = setInterval(() => {
             ticks++;
             const ctx = this._rawCtx || (window.Tone ? Tone.context : null);
@@ -557,23 +561,23 @@ class AudioEngine {
                 const loaded = this._usableSamplerCount();
                 this.ready = loaded > 0;
                 if (this.ready) this.lastAudioError = null;
-                this.logEvent('context watchdog: RUNNING after ~' + ticks + 's, loaded=' + loaded + ', ready=' + this.ready);
+                this.logEvent('context watchdog: RUNNING after ~' + (ticks * 2) + 's, loaded=' + loaded + ', ready=' + this.ready);
                 const banner = document.getElementById('audio_trouble');
                 if (banner) banner.remove();
                 return;
             }
             // Media-element contention experiment: some iOS builds won't let
             // Web Audio join the session while an <audio> element is actively
-            // playing. Pause the looping activator for ticks 6-11 and keep
-            // poking; if the context flips to running only in that window,
-            // the activator itself is the blocker and the log will show it.
-            if (ticks === 6) {
+            // playing. Pause the looping activator for a window early on and
+            // keep poking; if the context flips to running only inside that
+            // window, the activator itself is the blocker — the log shows it.
+            if (ticks === 3) {
                 try {
                     const el = document.getElementById('ios_audio_activator');
                     if (el && !el.paused) { el.pause(); this.logEvent('watchdog: activator paused (contention test)'); }
                 } catch (e) {}
             }
-            if (ticks === 12) {
+            if (ticks === 6) {
                 try {
                     const el = document.getElementById('ios_audio_activator');
                     if (el && el.paused) { el.play().catch(() => {}); this.logEvent('watchdog: activator restarted'); }
@@ -585,20 +589,22 @@ class AudioEngine {
                     this._unlockRitual(ctx, 'watchdog', ticks !== 3);
                 } catch (e) {}
             }
-            if (ticks >= 30) {
+            // After the first minute, the honest hint: the lease usually
+            // expires within a few minutes, but a reboot always works.
+            if (ticks === 30) {
+                this.lastAudioError = 'audio-system-wedged (attendi qualche minuto o riavvia il telefono)';
+                this._armGestureRecovery();
+                const st = document.getElementById('audio_trouble_status');
+                if (st && window.audioEngine) st.textContent = this.getAudioStatus();
+            }
+            if (ticks >= MAX_TICKS) {
                 clearInterval(this._watchdogTimer);
                 this._watchdogTimer = null;
-                this.logEvent('context watchdog: gave up after 30s, state=' + ctx.state);
-                // Every recovery strategy has now failed on a context that
-                // never once changed state — that's the signature of iOS's
-                // system-level Web Audio wedge, which only a device restart
-                // clears. Say so honestly instead of blaming the mute switch.
-                // (iOS often frees the orphaned session after a few idle
-                // minutes, so the next tap may still save the day.)
+                this.logEvent('context watchdog: gave up after 5min, state=' + ctx.state);
                 this.lastAudioError = 'audio-system-wedged (riavvia il telefono)';
                 this._armGestureRecovery();
             }
-        }, 1000);
+        }, 2000);
     }
 
     async unlockAndLoad() {
