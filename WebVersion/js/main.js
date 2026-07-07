@@ -16,6 +16,16 @@ window.cancelActivePlaybacks = function() {
     if (window.audioEngine && window.audioEngine.stopAll) window.audioEngine.stopAll();
 };
 
+// Sample-cache service worker: after the first visit, instrument samples are
+// served from device storage instead of the network (see sw.js for the
+// versioning contract). Registered as early as possible so it controls the
+// page before the user taps START and the first sample loads begin.
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js')
+        .then(reg => { if (window.audioEngine) window.audioEngine.logEvent('sample-cache SW registered, scope=' + reg.scope); })
+        .catch(e => { if (window.audioEngine) window.audioEngine.logEvent('sample-cache SW registration failed: ' + e.message); });
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
     if (window.dbClient) window.dbClient.init();
 
