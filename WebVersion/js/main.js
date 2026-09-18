@@ -486,8 +486,16 @@ document.addEventListener("DOMContentLoaded", async () => {
         // those for now, and the student grows into them.
         "Chitarra": {
             "1: Due accordi": [
+                // With only two chords and no tonic established beforehand, the
+                // ear hears the RELATIONSHIP, not the absolute key: a major
+                // chord followed by a major chord a fourth up is an authentic
+                // cadence, full stop. So "I – IV" (C–F) is indistinguishable
+                // from "V – I" (G–C) and the two must never both be offered —
+                // whichever the student picked would be a coin flip. Root
+                // motion up a fourth is always labelled V – I here. Every pair
+                // below is a distinct quality pattern or root motion.
                 "I – V|C|G",
-                "I – IV|C|F",
+                "I – ii|C|Dm",
                 "I – vi|C|Am",
                 "V – I|G|C",
                 "i – VII|Cm|Bb",
