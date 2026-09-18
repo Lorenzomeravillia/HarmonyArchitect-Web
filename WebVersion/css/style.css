@@ -677,7 +677,9 @@ canvas {
     justify-content: space-around;
     gap: 6px;
 }
-.header-left  { gap: 6px; flex-shrink: 0; }
+/* wrap so the added Tonalità selector can drop to a second line on narrow
+   phones instead of pushing the progress bar off-screen */
+.header-left  { gap: 6px; flex-shrink: 0; flex-wrap: wrap; }
 
 /* ── Play frame ────────────────────────────────────────── */
 .play-frame {

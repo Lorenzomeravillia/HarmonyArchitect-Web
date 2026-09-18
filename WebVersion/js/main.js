@@ -395,7 +395,79 @@ document.addEventListener("DOMContentLoaded", async () => {
     // ── Level pool data ─────────────────────────────────────
     const ROOTS = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
 
+    // ── Notation (global) ───────────────────────────────────────────────────
+    // Italian students read fixed-do names (Do, Re, Mi), not letter names.
+    // This is a display layer only: every internal symbol, answer comparison
+    // and DB payload stays on the English sigla.
+    const NOTATION_KEY = 'cv_notation';
+    const NOTE_IT    = { C:'Do', D:'Re', E:'Mi', F:'Fa', G:'Sol', A:'La', B:'Si' };
+    const QUALITY_IT = { '':'maggiore', 'm':'minore', 'dim':'diminuito', 'aug':'aumentato' };
+
+    function getNotation() {
+        const sel = document.getElementById('notation_menu');
+        if (sel && sel.value) return sel.value;
+        return localStorage.getItem(NOTATION_KEY) || 'en';
+    }
+
+    // "Bb" → "Sib", "Am" → "Lam". With expand, basic triads are spelled out
+    // ("La minore") — used where there are few buttons and clarity wins.
+    function chordToItalian(sym, expand) {
+        const m = String(sym).match(/^([A-G])([b#]?)(.*)$/);
+        if (!m) return sym;
+        const base = NOTE_IT[m[1]] + m[2];
+        const qual = m[3];
+        if (expand && QUALITY_IT[qual] !== undefined) {
+            return qual === '' ? base + ' maggiore' : base + ' ' + QUALITY_IT[qual];
+        }
+        return base + qual;
+    }
+
+    // Answer labels come in two shapes: a bare chord symbol (single-chord mode)
+    // or "Roman numerals\n(C - F - G)" (progressions). Only the chord tokens
+    // are translated — the roman-numeral line is already language-neutral.
+    function localizeAnswerText(text) {
+        if (getNotation() !== 'it') return text;
+        const lines = String(text).split('\n');
+        if (lines.length > 1) {
+            lines[1] = lines[1].replace(/\(([^)]*)\)/, (_, inner) =>
+                '(' + inner.split(' - ').map(c => chordToItalian(c.trim(), false)).join(' - ') + ')');
+            return lines.join('\n');
+        }
+        return chordToItalian(text, true);
+    }
+
+    // ── Guitar-friendly beginner track ──────────────────────────────────────
+    // Designed to run alongside in-person guitar lessons: the teacher has to be
+    // able to play every chord the app asks about, in a comfortable position.
+    const GUITAR_SINGLE_LEVEL = "0: 🎸 Maggiore o minore?";
+    const GUITAR_PROG_STYLE   = "Chitarra";
+
+    // The only roots whose major AND minor triads are both open-position
+    // chords (A/Am, D/Dm, E/Em). Asking "major or minor?" on C or G would pair
+    // an open chord with a barre chord the student cannot yet play back.
+    const GUITAR_QUALITY_ROOTS = ["A", "D", "E"];
+
+    // Guitar-comfortable keys. Each minor is the relative of a major above it,
+    // so the pair shares the same chord shapes (C/Am, G/Em, D/Bm).
+    const GUITAR_KEYS = [
+        { id:"C",  it:"Do maggiore",  en:"C major", root:"C", minor:false },
+        { id:"G",  it:"Sol maggiore", en:"G major", root:"G", minor:false },
+        { id:"D",  it:"Re maggiore",  en:"D major", root:"D", minor:false },
+        { id:"Am", it:"La minore",    en:"A minor", root:"A", minor:true  },
+        { id:"Em", it:"Mi minore",    en:"E minor", root:"E", minor:true  },
+        { id:"Bm", it:"Si minore",    en:"B minor", root:"B", minor:true  },
+    ];
+
+    // A template is minor when its tonic is written Cm (all templates are
+    // written in C and transposed at runtime).
+    const isMinorTemplate = (tpl) =>
+        tpl.split("|").slice(1).some(c => /^Cm([^a-zA-Z]|$)/.test(c));
+
     const LEVEL_POOLS_SINGLE = {
+        // Two answers only. The root is irrelevant to the question (it is shown
+        // on every button); it is drawn from GUITAR_QUALITY_ROOTS so both the
+        // major and the minor shape are playable on guitar.
+        [GUITAR_SINGLE_LEVEL]: ["A", "Am"],
         "1: Basic Triads":    ["C", "Cm", "Cdim", "Caug", "F", "Fm", "G", "Gm", "Bb", "D", "Am"],
         "2: Seventh Chords":  ["Cmaj7", "Cm7", "C7", "Cm7b5", "Fmaj7", "G7", "Bbmaj7", "Ddim7"],
         "3: Jazz Extensions": ["Cmaj9", "C9", "C13", "G7alt", "G7b9", "Bb7#11", "Dm9", "Fm9"],
@@ -408,6 +480,42 @@ document.addEventListener("DOMContentLoaded", async () => {
     // carry a numeric prefix for difficulty ordering. Templates are written in
     // C major / C minor and transposed at runtime.
     const PROG_STYLES = {
+        // Beginner guitar track. Every template lands on open-position chords
+        // once transposed into GUITAR_KEYS. The two exceptions are deliberate
+        // and agreed: F in C major, and Bm/F# in G-D-Bm — the teacher plays
+        // those for now, and the student grows into them.
+        "Chitarra": {
+            "1: Due accordi": [
+                "I – V|C|G",
+                "I – IV|C|F",
+                "I – vi|C|Am",
+                "V – I|G|C",
+                "i – VII|Cm|Bb",
+                "i – iv|Cm|Fm",
+                "i – VI|Cm|Ab",
+                "V – i|G|Cm"
+            ],
+            "2: Tre accordi": [
+                "I – IV – V|C|F|G",
+                "I – V – vi|C|G|Am",
+                "I – vi – IV|C|Am|F",
+                "I – IV – I|C|F|C",
+                "i – VII – VI|Cm|Bb|Ab",
+                "i – iv – V|Cm|Fm|G",
+                "i – VI – VII|Cm|Ab|Bb",
+                "i – iv – i|Cm|Fm|Cm"
+            ],
+            "3: Quattro accordi": [
+                "I – V – vi – IV|C|G|Am|F",
+                "I – vi – IV – V|C|Am|F|G",
+                "I – IV – V – I|C|F|G|C",
+                "vi – IV – I – V|Am|F|C|G",
+                "i – VI – III – VII|Cm|Ab|Eb|Bb",
+                "i – iv – VII – III|Cm|Fm|Bb|Eb",
+                "i – VII – VI – V|Cm|Bb|Ab|G",
+                "i – iv – i – V|Cm|Fm|Cm|G"
+            ]
+        },
         "Classical": {
             "1: Cadences": [
                 "Authentic V–I|G|C",
@@ -464,6 +572,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     };
 
     const PROG_STYLE_KEY = 'cv_prog_style';
+    const LEVEL_KEY      = 'cv_level';
     function getProgStyle() {
         const sel = document.getElementById('style_menu');
         if (sel && sel.value && PROG_STYLES[sel.value]) return sel.value;
@@ -786,8 +895,12 @@ document.addEventListener("DOMContentLoaded", async () => {
             opt.value = lvl; opt.text = lvl;
             levelSelect.appendChild(opt);
         });
-        // Preserve selection if still valid, else keep the easiest (first) lesson.
+        // Preserve selection if still valid, then fall back to the last level
+        // this user chose, so adding a new first entry never silently moves
+        // a returning student off the level they were working on.
+        const saved = localStorage.getItem(LEVEL_KEY);
         if (keys.includes(prev)) levelSelect.value = prev;
+        else if (saved && keys.includes(saved)) levelSelect.value = saved;
     }
 
     function syncStyleVisibility() {
@@ -795,8 +908,62 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (styleSelect) styleSelect.style.display = isProg ? "" : "none";
     }
 
+    // ── Tonalità selector ───────────────────────────────────────────────────
+    // One control covers both requests: pick a key explicitly, or leave it on
+    // "Auto" and simply never be handed a key that is awkward on guitar.
+    function isGuitarProgContext() {
+        const isProg = document.getElementById("play_mode_menu").value.includes("Progression");
+        return isProg && getProgStyle() === GUITAR_PROG_STYLE;
+    }
+    function isGuitarSingleContext() {
+        const isProg = document.getElementById("play_mode_menu").value.includes("Progression");
+        return !isProg && levelSelect.value === GUITAR_SINGLE_LEVEL;
+    }
+
+    function repopulateKeys() {
+        const sel = document.getElementById("key_select");
+        if (!sel) return;
+        const it   = getNotation() === 'it';
+        const prev = sel.value;
+        let opts;
+
+        if (isGuitarProgContext()) {
+            opts = [{ v:"auto", t:"Auto 🎸" }]
+                .concat(GUITAR_KEYS.map(k => ({ v:k.id, t: it ? k.it : k.en })));
+        } else if (isGuitarSingleContext()) {
+            opts = [{ v:"auto", t:"Auto 🎸" }]
+                .concat(GUITAR_QUALITY_ROOTS.map(r => ({ v:r, t: it ? chordToItalian(r, false) : r })));
+        } else {
+            opts = [{ v:"auto", t:"Auto" }]
+                .concat(ROOTS.map(r => ({ v:r, t: it ? chordToItalian(r, false) : r })));
+        }
+
+        sel.innerHTML = "";
+        opts.forEach(o => {
+            const el = document.createElement("option");
+            el.value = o.v; el.text = o.t;
+            sel.appendChild(el);
+        });
+        if (opts.some(o => o.v === prev)) sel.value = prev;
+    }
+
+    // Re-label answer buttons in place when notation changes, so switching
+    // language mid-session doesn't throw away the current question.
+    function relabelAnswers() {
+        document.querySelectorAll('.answers-frame .answer-btn').forEach(b => {
+            if (b.dataset.answered || !b.dataset.answer) return;
+            b.innerText = localizeAnswerText(b.dataset.answer);
+        });
+    }
+
+    // Restore the saved notation before the first paint, so the menus below
+    // are populated in the language the user last chose.
+    const notationMenu = document.getElementById('notation_menu');
+    if (notationMenu) notationMenu.value = localStorage.getItem(NOTATION_KEY) || 'en';
+
     syncStyleVisibility();
     repopulateLevels();
+    repopulateKeys();
 
     // ── Reactive Auto-Regeneration ──────────────────────────
     function handleReactiveRegen() {
@@ -815,12 +982,24 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("play_mode_menu")?.addEventListener("change", () => {
         syncStyleVisibility();
         repopulateLevels();
+        repopulateKeys();
         handleReactiveRegen();
     });
-    document.getElementById("level_select")?.addEventListener("change", handleReactiveRegen);
+    document.getElementById("level_select")?.addEventListener("change", () => {
+        localStorage.setItem(LEVEL_KEY, levelSelect.value);
+        repopulateKeys();
+        handleReactiveRegen();
+    });
+    document.getElementById("key_select")?.addEventListener("change", handleReactiveRegen);
+    document.getElementById("notation_menu")?.addEventListener("change", (e) => {
+        localStorage.setItem(NOTATION_KEY, e.target.value);
+        repopulateKeys();
+        relabelAnswers();
+    });
     styleSelect?.addEventListener("change", () => {
         localStorage.setItem(PROG_STYLE_KEY, styleSelect.value);
         repopulateLevels();
+        repopulateKeys();
         handleReactiveRegen();
     });
     
@@ -872,7 +1051,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 btn.dataset.answered = '1';
                 if (btn.dataset.answer === window.correctAnswerText) {
                     btn.classList.add('correct');
-                    btn.textContent = '✓ ' + btn.dataset.answer.split('\n')[0];
+                    btn.textContent = '✓ ' + localizeAnswerText(btn.dataset.answer).split('\n')[0];
                 }
             });
         }
@@ -892,7 +1071,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         opts.forEach(o => {
             let b = document.createElement("button");
             b.className = "btn answer-btn";
-            b.innerText = o;
+            // dataset.answer stays on the internal English symbol (it is what
+            // scoring and the DB payload compare against); only the label is
+            // localized.
+            b.innerText = localizeAnswerText(o);
             b.dataset.answer = o;
 
             b.onclick = () => {
@@ -944,16 +1126,16 @@ document.addEventListener("DOMContentLoaded", async () => {
                     sessionCorrect++;
                     streak++;
                     b.classList.add('correct');
-                    b.innerText = "✓ " + o.split("\n")[0];
+                    b.innerText = "✓ " + localizeAnswerText(o).split("\n")[0];
                     // combo_label removed from UI
                 } else {
                     streak = 0;
                     b.classList.add('wrong');
-                    b.innerText = "✗ " + o.split("\n")[0];
+                    b.innerText = "✗ " + localizeAnswerText(o).split("\n")[0];
                     answersFrame.querySelectorAll('.answer-btn').forEach(btn => {
                         if (btn.dataset.answer === window.correctAnswerText) {
                             btn.classList.add('correct');
-                            btn.innerText = "✓ " + btn.dataset.answer.split("\n")[0];
+                            btn.innerText = "✓ " + localizeAnswerText(btn.dataset.answer).split("\n")[0];
                         }
                     });
                 }
@@ -976,7 +1158,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         // Auto-scale font for long answer texts (Progression mode)
         const maxLen = Math.max(...opts.map(o => {
-            const lines = o.split('\n');
+            const lines = localizeAnswerText(o).split('\n');
             return Math.max(lines[0].length, lines[1] ? lines[1].length : 0);
         }));
 
@@ -1001,6 +1183,27 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     }
 
+    // Resolve the key/root for a challenge. Returns { root, minor }, where
+    // minor is null when the mode is not constrained (the level's pool decides).
+    function pickKey(isProgression) {
+        const sel = document.getElementById("key_select");
+        const val = sel && sel.value ? sel.value : "auto";
+
+        if (val !== "auto") {
+            const gk = GUITAR_KEYS.find(k => k.id === val);
+            if (gk) return { root: gk.root, minor: gk.minor };
+            if (ROOTS.includes(val)) return { root: val, minor: null };
+        }
+        // Auto on the guitar progression track: draw a whole key (root + mode)
+        // so major and minor templates stay coherent with the announced key.
+        if (isProgression && getProgStyle() === GUITAR_PROG_STYLE) {
+            const gk = GUITAR_KEYS[Math.floor(Math.random() * GUITAR_KEYS.length)];
+            return { root: gk.root, minor: gk.minor };
+        }
+        const pool = isGuitarSingleContext() ? GUITAR_QUALITY_ROOTS : ROOTS;
+        return { root: pool[Math.floor(Math.random() * pool.length)], minor: null };
+    }
+
     // ── Start new challenge ─────────────────────────────────
     async function startNewChallenge() {
         if (sessionTotal === 0 && sessionCorrect === 0) {
@@ -1023,20 +1226,36 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         const isProgression = document.getElementById("play_mode_menu").value.includes("Progression");
         const level = document.getElementById("level_select").value;
-        const root  = ROOTS[Math.floor(Math.random() * ROOTS.length)];
+        // Resolve the key for this challenge: an explicit pick from the
+        // Tonalità menu, or a random draw restricted to what the level allows
+        // (guitar-playable keys only, on the beginner track).
+        const pickedKey = pickKey(isProgression);
 
         // --- ADAPTIVE OVERRIDES ---
-        let currentRoot = root;
+        let currentRoot = pickedKey.root;
         let overrides = null;
         if (window.adaptiveEngine && document.getElementById("adaptive_mode_menu")?.value === "on") {
             const userId = window.dbClient?.getUserId();
             if (userId) overrides = await window.adaptiveEngine.selectNextChallengeOverrides(userId, level, isProgression ? "progression" : "single");
         }
-        if (overrides && overrides.forceRoot) currentRoot = overrides.forceRoot;
+        // Smart Practice may want to drill a root the student is weak on, but
+        // the key contract wins: an explicit Tonalità pick must be honoured,
+        // and on the guitar track every key has to stay playable on the
+        // instrument. Quality/progression overrides still apply in both cases.
+        const keyIsPinned = (document.getElementById("key_select")?.value || "auto") !== "auto"
+            || isGuitarSingleContext()
+            || (isProgression && getProgStyle() === GUITAR_PROG_STYLE);
+        if (overrides && overrides.forceRoot && !keyIsPinned) currentRoot = overrides.forceRoot;
 
         if (isProgression) {
             const progStyle = getProgStyle();
             let pool = getProgPool(progStyle, level);
+            // A chosen key carries its mode: a minor key must not be handed a
+            // major template (or the announced tonality would be a lie).
+            if (pickedKey.minor !== null) {
+                const sameMode = pool.filter(p => isMinorTemplate(p) === pickedKey.minor);
+                if (sameMode.length) pool = sameMode;
+            }
             let targetItem = null;
             if (overrides && overrides.forceProgression) {
                  const match = pool.find(p => p.startsWith(overrides.forceProgression));
@@ -1062,9 +1281,11 @@ document.addEventListener("DOMContentLoaded", async () => {
                 let pparts = p.split("|");
                 return p !== item && (pparts.length - 1 === targetLength);
             });
+            // Distractors must be transposed to the SAME key as the question —
+            // using a different root would make the odd one out obvious.
             safePool.forEach(p => {
                 let pparts = p.split("|");
-                wrongOpts.push(pparts[0] + "\n(" + pparts.slice(1).map(c => transposeChord(c, root)).join(" - ") + ")");
+                wrongOpts.push(pparts[0] + "\n(" + pparts.slice(1).map(c => transposeChord(c, currentRoot)).join(" - ") + ")");
             });
             if (wrongOpts.length < 3) {
                 let usedNames = new Set([parts[0], ...safePool.map(p => p.split("|")[0])]);
@@ -1075,9 +1296,10 @@ document.addEventListener("DOMContentLoaded", async () => {
                         if (wrongOpts.length >= 3) break;
                         let pparts = p.split("|");
                         let pLength = pparts.length - 1;
-                        if (pLength === targetLength && !usedNames.has(pparts[0])) {
+                        const modeOk = pickedKey.minor === null || isMinorTemplate(p) === pickedKey.minor;
+                        if (pLength === targetLength && modeOk && !usedNames.has(pparts[0])) {
                             usedNames.add(pparts[0]);
-                            wrongOpts.push(pparts[0] + "\n(" + pparts.slice(1).map(c => transposeChord(c, root)).join(" - ") + ")");
+                            wrongOpts.push(pparts[0] + "\n(" + pparts.slice(1).map(c => transposeChord(c, currentRoot)).join(" - ") + ")");
                         }
                     }
                     if (wrongOpts.length >= 3) break;
@@ -1129,7 +1351,8 @@ document.addEventListener("DOMContentLoaded", async () => {
                 let pm = p.match(/^([A-G][b#]?)(.*)/);
                 if (pm && pm[2] !== qual && !wrongQuals.includes(pm[2])) wrongQuals.push(pm[2]);
             });
-            createAnswers(targetChord, wrongQuals.map(q => root + q));
+            // Same root on every button: the question is the quality, not the note.
+            createAnswers(targetChord, wrongQuals.map(q => currentRoot + q));
             // Pre-generate voicing so SOLO buttons appear immediately
             const _isOpt2 = document.getElementById('voice_leading_menu').value.includes('Optimized');
             const _tv = window.musicEngine.generateVoicing(targetChord, 'C3', _isOpt2);

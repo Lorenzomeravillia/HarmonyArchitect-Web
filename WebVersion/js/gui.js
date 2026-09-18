@@ -93,13 +93,19 @@ class GUI {
             { name: 'Clear Mix',  dots: 1 },
             { name: 'Jazz Combo', dots: 2 },
             { name: 'Orchestra',  dots: 3 },
+            // Single-timbre option for the beginner guitar track — marked with
+            // an icon instead of dots, since it isn't a point on the same
+            // timbral-variety scale as the other three.
+            { name: 'Chitarra',   icon: '🎸' },
         ];
         presetDefs.forEach((p, i) => {
             const btn = document.createElement('button');
             btn.className = 'btn preset-btn' + (i === 0 ? ' active' : '');
-            const dotHTML = [1,2,3].map(d =>
-                `<span style="opacity:${d <= p.dots ? '1' : '0.22'}">●</span>`
-            ).join('');
+            const dotHTML = p.icon
+                ? p.icon
+                : [1,2,3].map(d =>
+                    `<span style="opacity:${d <= p.dots ? '1' : '0.22'}">●</span>`
+                  ).join('');
             btn.innerHTML = `<span style="letter-spacing:2px;font-size:13px;">${dotHTML}</span>&nbsp;${p.name}`;
             btn.onclick = () => {
                 document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));

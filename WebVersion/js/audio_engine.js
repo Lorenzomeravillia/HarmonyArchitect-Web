@@ -82,6 +82,11 @@ class AudioEngine {
             // fast and disappear against the others while they're still ringing —
             // a real mixing concern we keep elsewhere, but avoid here on purpose.
             'Clear Mix':    ["contrabass", "bassoon", "french-horn", "clarinet", "saxophone", "trumpet", "flute"],
+            // Beginner guitar track: one timbre on every voice, so the chord
+            // sounds like the instrument the student is actually learning
+            // rather than a timbral separation puzzle. The whole point is
+            // transfer to what the teacher plays in the lesson.
+            'Chitarra':     ["guitar-nylon", "guitar-nylon", "guitar-nylon", "guitar-nylon", "guitar-nylon", "guitar-nylon", "guitar-nylon"],
         };
 
         this._bindLifecycleEvents();
