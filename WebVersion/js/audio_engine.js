@@ -282,24 +282,39 @@ class AudioEngine {
         // being killed. So if we release the session (pause the looping
         // activator, suspend the context) as soon as we're hidden, a kill
         // finds nothing active to orphan, and the daemon stays healthy.
-        const releaseSession = (source) => {
+        // 'hidden' is a maybe-coming-back: pause the activator and suspend the
+        // context, cheap to undo. 'pagehide' means the page is being frozen or
+        // discarded — iOS reloads this app outright after a spell in the app
+        // switcher — so there is nothing to come back to and we CLOSE every
+        // context we ever created instead of leaving them for the audio daemon
+        // to reap. Closing here cannot race with anything (unlike the rebuild
+        // path, where it once wedged the page), and a rebuild afterwards is now
+        // cheap because the samples are self-hosted and service-worker cached.
+        const releaseSession = (source, hard) => {
             if (!this._unlocked || this.useFallback) return;
-            this.logEvent('lifecycle: ' + source + ' — releasing audio session');
+            this.logEvent('lifecycle: ' + source + ' — releasing audio session' + (hard ? ' (closing contexts)' : ''));
             try {
                 const el = document.getElementById('ios_audio_activator');
                 if (el && !el.paused) el.pause();
             } catch (e) {}
-            try {
-                const ctx = this._rawCtx;
-                if (ctx && ctx.state === 'running' && ctx.suspend) {
-                    ctx.suspend().catch(() => {});
-                }
-            } catch (e) {}
+            if (!hard) {
+                try {
+                    const ctx = this._rawCtx;
+                    if (ctx && ctx.state === 'running' && ctx.suspend) ctx.suspend().catch(() => {});
+                } catch (e) {}
+                return;
+            }
+            (this._createdCtxs || []).forEach(ctx => {
+                try {
+                    if (ctx && ctx.state !== 'closed' && ctx.close) ctx.close().catch(() => {});
+                } catch (e) {}
+            });
+            this._createdCtxs = [];
         };
         document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'hidden') releaseSession('visibilitychange-hidden');
+            if (document.visibilityState === 'hidden') releaseSession('visibilitychange-hidden', false);
         });
-        window.addEventListener('pagehide', () => releaseSession('pagehide'));
+        window.addEventListener('pagehide', () => releaseSession('pagehide', true));
 
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') tryResume('visibilitychange');
@@ -529,6 +544,23 @@ class AudioEngine {
     // with a second context if the first is born wedged — but never more, to
     // stay under iOS's cap on live contexts.
     async _freshContextAfterKick(label) {
+        // Never let two swaps overlap. unlockAndLoad and a lifecycle-triggered
+        // rebuild can both reach here, and concurrent swaps closing each
+        // other's freshly-made context is exactly what once wedged the page in
+        // 'closed'. Serializing makes the close below provably safe.
+        if (this._ctxSwapping) {
+            this.logEvent(label + ': context swap already in progress — skipping');
+            return Tone.context.state === 'running';
+        }
+        this._ctxSwapping = true;
+        try {
+            return await this._freshContextAttempts(label);
+        } finally {
+            this._ctxSwapping = false;
+        }
+    }
+
+    async _freshContextAttempts(label) {
         for (let attempt = 1; attempt <= 2; attempt++) {
             // Hard budget on contexts minted per page session. iOS tracks live
             // contexts beyond the page (audio daemon side); churning through
@@ -540,7 +572,9 @@ class AudioEngine {
                 this.lastAudioError = 'audio-system-wedged (riavvia il telefono)';
                 return false;
             }
+            const abandoned = this._rawCtx;
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            (this._createdCtxs = this._createdCtxs || []).push(ctx);
             const tag = label + ' ctx#' + attempt;
             this.logEvent(tag + ' created, state=' + ctx.state);
             // Timestamped record of every state transition — tells us whether
@@ -549,6 +583,19 @@ class AudioEngine {
             ctx.onstatechange = () => this.logEvent(tag + ' statechange → ' + ctx.state);
             Tone.setContext(ctx);
             this._rawCtx = ctx;
+            // Only now that the replacement is live is the previous context
+            // genuinely orphaned — closing it any earlier would leave the page
+            // without one if creating the replacement failed. Swaps are
+            // serialized, so this can never be someone else's live context
+            // (the mistake that once wedged every context in 'closed'). A
+            // failed unlock used to leak one context per attempt, and iOS
+            // reloads this page every time it is minimised.
+            if (abandoned && abandoned !== ctx && abandoned.state !== 'closed' && abandoned.close) {
+                this._createdCtxs = this._createdCtxs.filter(c => c !== abandoned);
+                abandoned.close()
+                    .then(() => this.logEvent(label + ': closed abandoned context'))
+                    .catch(() => {});
+            }
             // Every context swap invalidates all Tone nodes built on earlier
             // contexts: a sampler created under the previous context keeps
             // reporting loaded=true but is permanently silent (its nodes live

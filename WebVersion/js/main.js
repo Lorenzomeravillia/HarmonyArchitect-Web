@@ -150,9 +150,32 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Visible, only-on-failure audio diagnostic. Appears as a tappable banner so
     // the user can report exactly where audio breaks (context state, sample load,
     // fallback) — essential for an iOS issue that can't be reproduced off-device.
+    let audioTroubleTimer = null;
     function hideAudioTrouble() {
+        if (audioTroubleTimer) { clearInterval(audioTroubleTimer); audioTroubleTimer = null; }
         const b = document.getElementById('audio_trouble');
         if (b) b.remove();
+    }
+
+    // Keep the banner live while it is on screen. The recovery work that
+    // matters most happens AFTER the first failure — the watchdog re-poking
+    // the context for minutes, the activator contention test — and a snapshot
+    // taken the instant audio failed never shows any of it.
+    function startAudioTroubleRefresh() {
+        if (audioTroubleTimer) return;
+        audioTroubleTimer = setInterval(() => {
+            const eng = window.audioEngine;
+            if (!eng || !document.getElementById('audio_trouble')) return;
+            if (eng.ready) { hideAudioTrouble(); return; }
+            const st = document.getElementById('audio_trouble_status');
+            const lg = document.getElementById('audio_trouble_log');
+            if (st) st.textContent = eng.getAudioStatus();
+            if (lg) {
+                const atBottom = lg.scrollTop + lg.clientHeight >= lg.scrollHeight - 4;
+                lg.textContent = eng.getDebugLog();
+                if (atBottom) lg.scrollTop = lg.scrollHeight;
+            }
+        }, 2000);
     }
 
     function showAudioTrouble(status) {
@@ -180,6 +203,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             + '</div>';
 
         document.getElementById('audio_trouble_close').onclick = () => hideAudioTrouble();
+        startAudioTroubleRefresh();
 
         document.getElementById('audio_trouble_retry').onclick = async () => {
             try { if (window.audioEngine) await window.audioEngine.forceRecover(); } catch (e) {}
