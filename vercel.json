@@ -1,4 +1,9 @@
 {
+  "git": {
+    "deploymentEnabled": {
+      "claude/chord-logic-analysis-e1iv0t": false
+    }
+  },
   "rewrites": [
     { "source": "/", "destination": "/WebVersion/index.html" },
     { "source": "/(.*)", "destination": "/WebVersion/$1" }
