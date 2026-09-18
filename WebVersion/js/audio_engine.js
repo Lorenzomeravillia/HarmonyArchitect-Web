@@ -54,7 +54,14 @@ class AudioEngine {
             'organ': { 'C3': 'C3.mp3', 'C4': 'C4.mp3', 'C5': 'C5.mp3', 'C6': 'C6.mp3', 'D#1': 'Ds1.mp3', 'D#2': 'Ds2.mp3', 'D#3': 'Ds3.mp3', 'D#4': 'Ds4.mp3', 'D#5': 'Ds5.mp3', 'F#1': 'Fs1.mp3', 'F#2': 'Fs2.mp3', 'F#3': 'Fs3.mp3', 'F#4': 'Fs4.mp3', 'F#5': 'Fs5.mp3', 'A1': 'A1.mp3', 'A2': 'A2.mp3', 'A3': 'A3.mp3', 'A4': 'A4.mp3', 'A5': 'A5.mp3', 'C1': 'C1.mp3', 'C2': 'C2.mp3' },
             'contrabass': { 'C2': 'C2.mp3', 'C#3': 'Cs3.mp3', 'D2': 'D2.mp3', 'E2': 'E2.mp3', 'E3': 'E3.mp3', 'F#1': 'Fs1.mp3', 'F#2': 'Fs2.mp3', 'G1': 'G1.mp3', 'G#2': 'Gs2.mp3', 'G#3': 'Gs3.mp3', 'A2': 'A2.mp3', 'A#1': 'As1.mp3', 'B3': 'B3.mp3' },
             'saxophone': { 'D#5': 'Ds5.mp3', 'E3': 'E3.mp3', 'E4': 'E4.mp3', 'E5': 'E5.mp3', 'F3': 'F3.mp3', 'F4': 'F4.mp3', 'F5': 'F5.mp3', 'F#3': 'Fs3.mp3', 'F#4': 'Fs4.mp3', 'F#5': 'Fs5.mp3', 'G3': 'G3.mp3', 'G4': 'G4.mp3', 'G5': 'G5.mp3', 'G#3': 'Gs3.mp3', 'G#4': 'Gs4.mp3', 'G#5': 'Gs5.mp3', 'A4': 'A4.mp3', 'A5': 'A5.mp3', 'A#3': 'As3.mp3', 'A#4': 'As4.mp3', 'B3': 'B3.mp3', 'B4': 'B4.mp3', 'C4': 'C4.mp3', 'C5': 'C5.mp3', 'C#3': 'Cs3.mp3', 'C#4': 'Cs4.mp3', 'C#5': 'Cs5.mp3', 'D3': 'D3.mp3', 'D4': 'D4.mp3', 'D5': 'D5.mp3', 'D#3': 'Ds3.mp3', 'D#4': 'Ds4.mp3' },
-            'guitar-nylon': { 'F#2': 'Fs2.mp3', 'F#3': 'Fs3.mp3', 'F#4': 'Fs4.mp3', 'F#5': 'Fs5.mp3', 'G3': 'G3.mp3', 'G5': 'G3.mp3', 'G#2': 'Gs2.mp3', 'G#4': 'Gs4.mp3', 'G#5': 'Gs5.mp3', 'A2': 'A2.mp3', 'A3': 'A3.mp3', 'A4': 'A4.mp3', 'A5': 'A5.mp3', 'A#5': 'As5.mp3', 'B1': 'B1.mp3', 'B2': 'B2.mp3', 'B3': 'B3.mp3', 'B4': 'B4.mp3', 'C#3': 'Cs3.mp3', 'C#4': 'Cs4.mp3', 'C#5': 'Cs5.mp3', 'D2': 'D2.mp3', 'D3': 'D3.mp3', 'D5': 'D5.mp3', 'D#4': 'Ds4.mp3', 'E2': 'E2.mp3', 'E3': 'E3.mp3', 'E4': 'E4.mp3', 'E5': 'E5.mp3' },
+            // NOTE: this CDN sample set is transcribed carelessly — 'G5' pointed
+            // at G3.mp3 (two octaves out), and D5.mp3 sounds a semitone sharp
+            // (it turns a D chord's top octave into a b9 on device). D5 is
+            // deliberately left OUT so Tone derives it from Cs5.mp3 a semitone
+            // up; do not "restore" it without listening to the file first.
+            // Every other entry must satisfy file === note + '.mp3' ('#'→'s'),
+            // which _assertSampleMaps() checks at startup.
+            'guitar-nylon': { 'F#2': 'Fs2.mp3', 'F#3': 'Fs3.mp3', 'F#4': 'Fs4.mp3', 'F#5': 'Fs5.mp3', 'G3': 'G3.mp3', 'G5': 'G5.mp3', 'G#2': 'Gs2.mp3', 'G#4': 'Gs4.mp3', 'G#5': 'Gs5.mp3', 'A2': 'A2.mp3', 'A3': 'A3.mp3', 'A4': 'A4.mp3', 'A5': 'A5.mp3', 'A#5': 'As5.mp3', 'B1': 'B1.mp3', 'B2': 'B2.mp3', 'B3': 'B3.mp3', 'B4': 'B4.mp3', 'C#3': 'Cs3.mp3', 'C#4': 'Cs4.mp3', 'C#5': 'Cs5.mp3', 'D2': 'D2.mp3', 'D3': 'D3.mp3', 'D#4': 'Ds4.mp3', 'E2': 'E2.mp3', 'E3': 'E3.mp3', 'E4': 'E4.mp3', 'E5': 'E5.mp3' },
             'violin': { 'A3': 'A3.mp3', 'A4': 'A4.mp3', 'A5': 'A5.mp3', 'A6': 'A6.mp3', 'C4': 'C4.mp3', 'C5': 'C5.mp3', 'C6': 'C6.mp3', 'C7': 'C7.mp3', 'E4': 'E4.mp3', 'E5': 'E5.mp3', 'E6': 'E6.mp3', 'G4': 'G4.mp3', 'G5': 'G5.mp3', 'G6': 'G6.mp3' }
         };
 
@@ -89,11 +96,32 @@ class AudioEngine {
             'Chitarra':     ["guitar-nylon", "guitar-nylon", "guitar-nylon", "guitar-nylon", "guitar-nylon", "guitar-nylon", "guitar-nylon"],
         };
 
+        this._assertSampleMaps();
         this._bindLifecycleEvents();
         // Request the 'playback' AVAudioSession category as early as possible
         // via the official Safari 17+ API (no-op elsewhere); logged so the
         // on-device debug trail shows whether the API exists on this device.
         this._configureAudioSession();
+    }
+
+    // A sample map entry must name the file after its own note ('F#2' →
+    // 'Fs2.mp3'). When it doesn't, Tone believes the buffer sounds a pitch it
+    // doesn't, and that voice plays transposed while the staff still shows the
+    // written note — a wrong-note bug with no visible cause. This caught
+    // 'G5' → 'G3.mp3' in guitar-nylon; it runs once and normally logs nothing.
+    _assertSampleMaps() {
+        let bad = 0;
+        for (const inst in this.INSTRUMENT_MAPS) {
+            const map = this.INSTRUMENT_MAPS[inst];
+            for (const note in map) {
+                const expected = note.replace('#', 's') + '.mp3';
+                if (map[note] !== expected) {
+                    bad++;
+                    this.logEvent('SAMPLE MAP BUG: ' + inst + ' ' + note + ' -> ' + map[note] + ' (expected ' + expected + ')');
+                }
+            }
+        }
+        if (bad) this.logEvent('sample map check: ' + bad + ' mismatched entr' + (bad === 1 ? 'y' : 'ies'));
     }
 
     // Timestamped event log, visible in the on-screen trouble banner so the exact
