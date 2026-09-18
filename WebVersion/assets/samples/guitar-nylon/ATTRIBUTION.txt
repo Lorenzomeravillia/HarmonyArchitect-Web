@@ -1,0 +1,41 @@
+Nylon guitar samples — origin and licence
+=========================================
+
+Source
+  gleitz/midi-js-soundfonts, FluidR3_GM/acoustic_guitar_nylon-mp3
+  https://github.com/gleitz/midi-js-soundfonts
+
+  Rendered from the FluidR3_GM SoundFont by Frank Wen, which is
+  distributed under the MIT licence. The midi-js-soundfonts repository
+  itself is MIT licensed.
+
+Why these files are hosted here instead of loaded from a CDN
+  The set previously used for this instrument (nbrosowsky/tonejs-
+  instruments) was measurably out of tune. Every sample was analysed
+  with FFT pitch detection and two were plainly wrong:
+
+    D5.mp3   +101.7 cents  (a full semitone sharp — it made a D major
+                            chord's top octave sound like a b9, which is
+                            how a user first reported the problem)
+    B1.mp3  +1196.3 cents  (an octave out: the file contains B2)
+
+  plus several samples drifting 9–13 cents. Hosting the files here
+  removes the third-party dependency, works with the offline sample
+  cache in sw.js, and means the tuning can be verified before shipping.
+
+Contents
+  A whole-tone grid from E2 to A5 (22 files), so Tone.Sampler never
+  pitch-shifts a note by more than one semitone. Every file was
+  pitch-measured before being committed and is within ±3.6 cents of
+  equal temperament; all but two are within ±1.6 cents.
+
+  File naming follows the convention used by the other self-hosted
+  instruments: sharps are written with "s" (F#2 -> Fs2.mp3). The
+  _assertSampleMaps() check in audio_engine.js enforces that every map
+  entry names its file after its own note, so a transcription slip
+  cannot silently transpose a voice again.
+
+Re-verifying
+  Decode each file and compare the detected fundamental against the
+  frequency its name implies. Anything beyond about 15 cents should be
+  treated as a bad sample and replaced rather than shipped.
