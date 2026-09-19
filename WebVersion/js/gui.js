@@ -308,6 +308,25 @@ class GUI {
         }
     }
 
+    // Staff colours come from CSS custom properties so the canvas follows the
+    // selected theme (the canvas can't inherit CSS the way the DOM does).
+    // Read once per draw rather than per note: getComputedStyle is not free.
+    _readThemeColors() {
+        const cs = getComputedStyle(document.documentElement);
+        const pick = (name, fallback) => (cs.getPropertyValue(name).trim() || fallback);
+        this.theme = {
+            bg:         pick('--staff-bg', '#050814'),
+            line:       pick('--staff-line', '#8A9FCF'),
+            keysig:     pick('--staff-keysig', '#B0C8EF'),
+            ledger:     pick('--staff-ledger', '#A5BAE6'),
+            noteStroke: pick('--staff-note-stroke', '#010205'),
+            gloss:      pick('--staff-gloss', '#FFFFFF'),
+            accidental: pick('--staff-accidental', '#FFFFFF'),
+            glow:       pick('--staff-glow', '#FFFFFF')
+        };
+        return this.theme;
+    }
+
     // ── Draw the clef + staff lines, return x where key sig / notes begin ──
     drawEmptyStaff(keySig) {
         this._sizeCanvas();
@@ -317,11 +336,12 @@ class GUI {
         const w = this.logicW;
         const h = this.logicH;
         this.ctx.clearRect(0, 0, w, h);
-        this.ctx.fillStyle = "#050814";
+        const th = this._readThemeColors();
+        this.ctx.fillStyle = th.bg;
         this.ctx.fillRect(0, 0, w, h);
-        this.ctx.strokeStyle = "#8A9FCF";
+        this.ctx.strokeStyle = th.line;
         this.ctx.lineWidth = 1;
-        this.ctx.fillStyle = "#8A9FCF";
+        this.ctx.fillStyle = th.line;
         this.ctx.textAlign = "left";
         this.ctx.textBaseline = "alphabetic";
         // Treble staff lines (Shifted +20px down)
@@ -356,7 +376,7 @@ class GUI {
         const trebleSteps = isSharp ? TREBLE_SHARP_STEPS : TREBLE_FLAT_STEPS;
         const bassSteps   = isSharp ? BASS_SHARP_STEPS : BASS_FLAT_STEPS;
 
-        this.ctx.fillStyle = "#B0C8EF";
+        this.ctx.fillStyle = (this.theme || this._readThemeColors()).keysig;
         this.ctx.font = "bold 26px Arial";
 
         let x = 112; // start x after clef
@@ -394,6 +414,8 @@ class GUI {
             : null;
 
         const noteStartX = this.drawEmptyStaff(keySig);
+        // drawEmptyStaff has just refreshed this.theme for the current theme.
+        const th = this.theme;
 
         if (!chords || chords.length === 0) return;
 
@@ -413,7 +435,7 @@ class GUI {
                 let x = xBase;
 
                 // Ledger lines
-                this.ctx.strokeStyle = "#A5BAE6";
+                this.ctx.strokeStyle = th.ledger;
                 this.ctx.lineWidth = 2;
                 if (j === 0) {
                     if (y >= 433) for (let ly = 433; ly <= y+5; ly += 34) { this.ctx.beginPath(); this.ctx.moveTo(x-8,ly); this.ctx.lineTo(x+28,ly); this.ctx.stroke(); }
@@ -428,13 +450,13 @@ class GUI {
                 this.ctx.beginPath();
                 this.ctx.ellipse(x + 10, y, 11, 9, 0, 0, 2 * Math.PI);
                 if (window.activeGlows.has(j + "-" + i)) {
-                    this.ctx.shadowColor = "white";
+                    this.ctx.shadowColor = th.glow;
                     this.ctx.shadowBlur = 18;
-                    this.ctx.strokeStyle = "white";
+                    this.ctx.strokeStyle = th.glow;
                     this.ctx.lineWidth = 2;
                 } else {
                     this.ctx.shadowBlur = 0;
-                    this.ctx.strokeStyle = "#010205";
+                    this.ctx.strokeStyle = th.noteStroke;
                     this.ctx.lineWidth = 1;
                 }
                 this.ctx.fill();
@@ -442,7 +464,7 @@ class GUI {
                 this.ctx.shadowBlur = 0;
 
                 // Gloss
-                this.ctx.fillStyle = "#FFFFFF";
+                this.ctx.fillStyle = th.gloss;
                 this.ctx.beginPath();
                 this.ctx.ellipse(x + 5, y - 2, 4, 3, 0, 0, 2 * Math.PI);
                 this.ctx.fill();
@@ -453,7 +475,7 @@ class GUI {
                 // Accidental — suppress if covered by key signature
                 const accSymbol = shouldShowAccidental(n.accidental, n.name ? n.name[0] : '', keySig);
                 if (accSymbol) {
-                    this.ctx.fillStyle = "white";
+                    this.ctx.fillStyle = th.accidental;
                     this.ctx.font = "bold 22px Arial";
                     this.ctx.fillText(accSymbol, x - 24, y + 8);
                 }

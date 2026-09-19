@@ -40,7 +40,7 @@
     <meta name="description" content="Ear training reimagined. Different instruments for each voice make chords transparent. No timers, no pressure — learn at your pace.">
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Courier+Prime:wght@700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=22">
+    <link rel="stylesheet" href="css/style.css?v=23">
 
     <!-- WebAudioFontPlayer (cross-browser, iOS-compatible) -->
     <script src="https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js"></script>
@@ -78,14 +78,12 @@
             <!-- Row 1: Dropdowns + Progress -->
             <div class="header-row-1">
                 <div class="flex-row gap-small header-left">
-                    <span class="label text-bold">Level:</span>
-                    <select id="level_select" class="dropdown"></select>
-                    <select id="play_mode_menu" class="dropdown purple-btn mode-select">
-                        <option>Single Chord</option>
-                        <option>Progression</option>
-                    </select>
-                    <select id="style_menu" class="dropdown mode-select" title="Progression style" style="display:none; background:#2D5A9E;"></select>
-                    <select id="key_select" class="dropdown" title="Tonalità / Key" style="background:#3A7D5A;"></select>
+                    <!-- Opens the exercise sheet; the selects themselves live
+                         there so each one gets a full-width, readable row. -->
+                    <button id="exercise_btn" class="exercise-btn" aria-haspopup="dialog">
+                        <span class="exercise-btn-label">Esercizio</span>
+                        <span id="exercise_summary" class="exercise-summary">…</span>
+                    </button>
                 </div>
                 <div class="progress-unified" id="progress_unified">
                     <div class="progress-bar"><div id="progress_fill" class="progress-fill" style="width:0%;"></div></div>
@@ -133,6 +131,11 @@
                     <option value="0.45">Low</option>
                     <option value="0.70" selected>Medium</option>
                     <option value="1.00">High</option>
+                </select>
+                <span class="label">Tema:</span>
+                <select id="theme_menu" class="dropdown">
+                    <option value="night">🌙 Notte</option>
+                    <option value="pastel">🌸 Pastello</option>
                 </select>
                 <span class="label">Notazione:</span>
                 <select id="notation_menu" class="dropdown">
@@ -263,12 +266,12 @@
     </div>
 
     <!-- PWA Fullscreen Start Overlay -->
-    <div id="start_overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg-main);z-index:9999;display:flex;align-items:center;justify-content:center;color:white;flex-direction:column;gap:28px;">
+    <div id="start_overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg-main);z-index:9999;display:flex;align-items:center;justify-content:center;color:var(--text-primary);flex-direction:column;gap:28px;">
         <img src="assets/icons/cv-app-icon.png" alt="ClearVoicing" width="80" height="80" style="border-radius: 18px; box-shadow: 0 4px 24px rgba(46, 196, 182, 0.2);" loading="eager">
         <img src="assets/logos/cv-logo-full.svg" alt="ClearVoicing" height="32" style="margin-top: 16px;">
-        <p style="color:#2EC4B6;font-size:12px;margin-top:-20px;font-family:monospace;">BUILD 2026-06-21 · v118 — rilascio context alla chiusura pagina</p>
-        <p style="color:#8899BB;font-size:15px;margin:0;text-align:center;">Start hearing every single voice.</p>
-        <button style="background:linear-gradient(135deg,#4A65A5,#2EC4B6);color:white;border:none;border-radius:16px;font-size:20px;font-weight:700;padding:18px 44px;cursor:pointer;letter-spacing:0.04em;box-shadow:0 0 24px rgba(74,101,165,0.5);margin-top:12px;">▶ START TRAINING</button>
+        <p style="color:var(--cyan);font-size:12px;margin-top:-20px;font-family:monospace;">BUILD 2026-09-19 · v119 — pannello esercizio + tema pastello</p>
+        <p style="color:var(--text-muted);font-size:15px;margin:0;text-align:center;">Start hearing every single voice.</p>
+        <button style="background:linear-gradient(135deg,var(--start-from),var(--start-to));color:#fff;border:none;border-radius:16px;font-size:20px;font-weight:700;padding:18px 44px;cursor:pointer;letter-spacing:0.04em;box-shadow:0 0 24px rgba(74,101,165,0.5);margin-top:12px;">▶ START TRAINING</button>
         
         <!-- TEMPORARY TELEPROMPTER LINKS -->
         <div style="margin-top: 15px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; max-width: 90vw;">
@@ -282,6 +285,38 @@
             <a href="teleprompter.html?sim=v6c" target="_blank" style="background:#333; color:white; padding:8px; text-decoration:none; font-size:12px; border-radius:6px; text-align:center; font-weight:bold;">6C</a>
             <a href="teleprompter.html?sim=v6d" target="_blank" style="background:#333; color:white; padding:8px; text-decoration:none; font-size:12px; border-radius:6px; text-align:center; font-weight:bold;">6D</a>
             <a href="teleprompter.html?sim=v6e" target="_blank" style="background:#333; color:white; padding:8px; text-decoration:none; font-size:12px; border-radius:6px; text-align:center; font-weight:bold;">6E</a>
+        </div>
+    </div>
+
+    <!-- Exercise picker sheet. These are the same <select> elements that used
+         to sit in the header — same IDs, so every existing handler, the level
+         repopulation and the Tonalità logic keep working unchanged. -->
+    <div id="exercise_modal" class="sheet-overlay" hidden>
+        <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="exercise_sheet_title">
+            <div class="sheet-header">
+                <h2 id="exercise_sheet_title">Scegli l'esercizio</h2>
+                <button id="exercise_close" class="sheet-close" aria-label="Chiudi">&times;</button>
+            </div>
+            <label class="sheet-row" id="row_mode">
+                <span class="sheet-label">Tipo di esercizio</span>
+                <select id="play_mode_menu" class="dropdown sheet-control purple-btn">
+                    <option>Single Chord</option>
+                    <option>Progression</option>
+                </select>
+            </label>
+            <label class="sheet-row" id="row_style">
+                <span class="sheet-label">Stile</span>
+                <select id="style_menu" class="dropdown sheet-control" title="Progression style"></select>
+            </label>
+            <label class="sheet-row" id="row_level">
+                <span class="sheet-label">Livello</span>
+                <select id="level_select" class="dropdown sheet-control"></select>
+            </label>
+            <label class="sheet-row" id="row_key">
+                <span class="sheet-label">Tonalità</span>
+                <select id="key_select" class="dropdown sheet-control" title="Tonalità / Key"></select>
+            </label>
+            <button id="exercise_done" class="sheet-done">Fatto</button>
         </div>
     </div>
 
@@ -299,13 +334,13 @@
         </div>
     </div>
 
-    <script src="js/supabase-client.js?v=114"></script>
-    <script src="js/adaptive.js?v=114"></script>
-    <script src="js/audio_engine.js?v=114"></script>
-    <script src="js/music_engine.js?v=114"></script>
-    <script src="js/gui.js?v=114"></script>
-    <script src="js/coach.js?v=114"></script>
-    <script src="js/main.js?v=114"></script>
+    <script src="js/supabase-client.js?v=115"></script>
+    <script src="js/adaptive.js?v=115"></script>
+    <script src="js/audio_engine.js?v=115"></script>
+    <script src="js/music_engine.js?v=115"></script>
+    <script src="js/gui.js?v=115"></script>
+    <script src="js/coach.js?v=115"></script>
+    <script src="js/main.js?v=115"></script>
 
 </body>
 </html>

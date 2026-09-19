@@ -935,9 +935,65 @@ document.addEventListener("DOMContentLoaded", async () => {
         else if (saved && keys.includes(saved)) levelSelect.value = saved;
     }
 
+    // Style only applies to progressions — hide the whole labelled row in the
+    // sheet, not just the control, or an orphan label is left behind.
     function syncStyleVisibility() {
         const isProg = document.getElementById("play_mode_menu").value.includes("Progression");
-        if (styleSelect) styleSelect.style.display = isProg ? "" : "none";
+        const row = document.getElementById("row_style");
+        if (row) row.hidden = !isProg;
+    }
+
+    // ── Exercise picker sheet ───────────────────────────────────────────────
+    // One header button replaces four inline selects that no longer fit on a
+    // phone; it shows what is currently selected so the choice stays visible
+    // without opening the sheet.
+    function updateExerciseSummary() {
+        const el = document.getElementById("exercise_summary");
+        if (!el) return;
+        const isProg = document.getElementById("play_mode_menu").value.includes("Progression");
+        const parts = [];
+        if (levelSelect.value) parts.push(levelSelect.value.replace(/^\d+:\s*/, ""));
+        if (isProg) parts.push(getProgStyle());
+        const keySel = document.getElementById("key_select");
+        if (keySel && keySel.value && keySel.value !== "auto") {
+            const opt = keySel.options[keySel.selectedIndex];
+            if (opt) parts.push(opt.text);
+        }
+        el.textContent = parts.join(" · ") || "…";
+    }
+
+    function openExerciseSheet() {
+        const m = document.getElementById("exercise_modal");
+        if (!m) return;
+        syncStyleVisibility();
+        m.hidden = false;
+    }
+    function closeExerciseSheet() {
+        const m = document.getElementById("exercise_modal");
+        if (m) m.hidden = true;
+        updateExerciseSummary();
+    }
+
+    document.getElementById("exercise_btn")?.addEventListener("click", openExerciseSheet);
+    document.getElementById("exercise_close")?.addEventListener("click", closeExerciseSheet);
+    document.getElementById("exercise_done")?.addEventListener("click", closeExerciseSheet);
+    // Tapping the dimmed backdrop closes; taps inside the sheet must not.
+    document.getElementById("exercise_modal")?.addEventListener("click", (e) => {
+        if (e.target.id === "exercise_modal") closeExerciseSheet();
+    });
+
+    // ── Theme ───────────────────────────────────────────────────────────────
+    const THEME_KEY = 'cv_theme';
+    function applyTheme(name) {
+        const theme = name === 'pastel' ? 'pastel' : 'night';
+        document.documentElement.dataset.theme = theme;
+        // Keep the browser/status-bar chrome in step with the page.
+        const meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', theme === 'pastel' ? '#FFF4FA' : '#2EC4B6');
+        // The staff is a canvas: it can't inherit CSS, so it must be redrawn.
+        if (window.gui && window.gui.drawPitches) {
+            window.gui.drawPitches(window.lastChords || [], window.lastKeyContext || null);
+        }
     }
 
     // ── Tonalità selector ───────────────────────────────────────────────────
@@ -993,9 +1049,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     const notationMenu = document.getElementById('notation_menu');
     if (notationMenu) notationMenu.value = localStorage.getItem(NOTATION_KEY) || 'en';
 
+    const themeMenu = document.getElementById('theme_menu');
+    const savedTheme = localStorage.getItem(THEME_KEY) || 'night';
+    if (themeMenu) themeMenu.value = savedTheme;
+    applyTheme(savedTheme);
+    themeMenu?.addEventListener('change', (e) => {
+        localStorage.setItem(THEME_KEY, e.target.value);
+        applyTheme(e.target.value);
+    });
+
     syncStyleVisibility();
     repopulateLevels();
     repopulateKeys();
+    updateExerciseSummary();
 
     // ── Reactive Auto-Regeneration ──────────────────────────
     function handleReactiveRegen() {
@@ -1015,23 +1081,30 @@ document.addEventListener("DOMContentLoaded", async () => {
         syncStyleVisibility();
         repopulateLevels();
         repopulateKeys();
+        updateExerciseSummary();
         handleReactiveRegen();
     });
     document.getElementById("level_select")?.addEventListener("change", () => {
         localStorage.setItem(LEVEL_KEY, levelSelect.value);
         repopulateKeys();
+        updateExerciseSummary();
         handleReactiveRegen();
     });
-    document.getElementById("key_select")?.addEventListener("change", handleReactiveRegen);
+    document.getElementById("key_select")?.addEventListener("change", () => {
+        updateExerciseSummary();
+        handleReactiveRegen();
+    });
     document.getElementById("notation_menu")?.addEventListener("change", (e) => {
         localStorage.setItem(NOTATION_KEY, e.target.value);
         repopulateKeys();
+        updateExerciseSummary();
         relabelAnswers();
     });
     styleSelect?.addEventListener("change", () => {
         localStorage.setItem(PROG_STYLE_KEY, styleSelect.value);
         repopulateLevels();
         repopulateKeys();
+        updateExerciseSummary();
         handleReactiveRegen();
     });
     

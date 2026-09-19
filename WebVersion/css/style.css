@@ -29,6 +29,119 @@
     --hw-play-bot: #182A4A;
     --hw-arp-top:  #C26A23;
     --hw-arp-bot:  #66340B;
+
+    /* ── Themeable surfaces ───────────────────────────────────────────
+     * Everything below is overridden wholesale by [data-theme="pastel"].
+     * Text sitting on a saturated accent stays white in both themes;
+     * text on a neutral surface flips, hence the separate tokens. */
+    --text-on-accent: #fff;
+    --text-on-answer: #fff;
+    --answer-border: #4A5E7A;
+    --answer-hover-bg: #4A5E7A;
+    --answer-hover-border: #6A7EA0;
+    --answer-feedback-text: #0a1128;
+
+    --solo-bg: #2A3A55;
+    --solo-border: #3A5080;
+
+    /* Translucent washes. On a dark theme these lighten, on a light one
+     * they must darken, so they are tokens rather than literal whites. */
+    --overlay-soft: rgba(255,255,255,0.08);
+    --overlay-mid: rgba(255,255,255,0.16);
+    --overlay-border: rgba(255,255,255,0.22);
+    --overlay-border-strong: rgba(255,255,255,0.35);
+    --overlay-backdrop: rgba(0,0,0,0.85);
+
+    --panel-inset: inset 0 1px 0 rgba(255,255,255,0.05);
+    --panel-shadow: 0 5px 15px rgba(0,0,0,0.4);
+
+    --progress-track: rgba(0,0,0,0.4);
+    --progress-from: #1a2f60;
+
+    /* Staff canvas — read at draw time by gui.js, not by CSS */
+    --staff-bg: #050814;
+    --staff-line: #8A9FCF;
+    --staff-keysig: #B0C8EF;
+    --staff-ledger: #A5BAE6;
+    --staff-note-stroke: #010205;
+    --staff-gloss: #FFFFFF;
+    --staff-accidental: #FFFFFF;
+    --staff-glow: #FFFFFF;
+
+    --start-from: #4A65A5;
+    --start-to:   #2EC4B6;
+
+    --staff-frame-border: #101A35;
+    --staff-inset: inset 0 0 15px rgba(0,0,0,0.8);
+}
+
+/* ── Pastel theme ─────────────────────────────────────────────────────
+ * A daylight theme for younger students: soft surfaces, deep plum text
+ * for contrast, and accents kept saturated enough that white button text
+ * still passes AA. Selected from Settings, persisted in localStorage. */
+:root[data-theme="pastel"] {
+    --bg-main: #FFF4FA;
+    --bg-panel: #FFFFFF;
+    --border-panel: #F2D8E8;
+
+    --text-primary: #46304E;
+    --text-muted: #7C6686;
+
+    --cyan: #0E9384;
+    --blue: #6C8FE0;
+    --blue-dark: #7B6FD0;
+    --purple: #A961C8;
+    --purple-dark: #C9A6E8;
+
+    --color-correct: #2E8B40;
+    --color-wrong:   #C0392B;
+    --green: #2E8B40;
+    --red:   #C0392B;
+
+    --orange: #D97E2B;
+    --orange-dark: #B5641C;
+
+    --bg-answer: #FDEBF5;
+    --text-on-answer: #46304E;
+    --answer-border: #EFC7DF;
+    --answer-hover-bg: #FADCEE;
+    --answer-hover-border: #E3A8CE;
+    --answer-feedback-text: #FFFFFF;
+
+    --solo-bg: #F6EAF8;
+    --solo-border: #E2CBE8;
+
+    --hw-play-top: #8FB0EC;
+    --hw-play-bot: #5B78C4;
+    --hw-arp-top:  #F0A868;
+    --hw-arp-bot:  #CF7A33;
+
+    --overlay-soft: rgba(116, 70, 130, 0.07);
+    --overlay-mid: rgba(116, 70, 130, 0.13);
+    --overlay-border: rgba(116, 70, 130, 0.18);
+    --overlay-border-strong: rgba(116, 70, 130, 0.32);
+    --overlay-backdrop: rgba(70, 48, 78, 0.55);
+
+    --panel-inset: inset 0 1px 0 rgba(255,255,255,0.9);
+    --panel-shadow: 0 4px 14px rgba(186, 146, 176, 0.30);
+
+    --progress-track: rgba(116, 70, 130, 0.15);
+    --progress-from: #F0A8D0;
+
+    --staff-bg: #FFFDFE;
+    --staff-line: #B99AC8;
+    --staff-keysig: #8A6A9C;
+    --staff-ledger: #CBB0D8;
+    --staff-note-stroke: #6A4A78;
+    --staff-gloss: rgba(255,255,255,0.85);
+    --staff-accidental: #46304E;
+    --staff-glow: #FF7FC4;
+
+    --start-from: #B8559E;
+    --start-to:   #6F62C8;
+
+    --staff-frame-border: #EBD3E6;
+    --staff-inset: inset 0 0 12px rgba(166, 130, 160, 0.18);
 }
 
 /*
@@ -68,12 +181,12 @@ body {
     top: 0; left: 0; right: 0;
     height: 4px;
     z-index: 99999;
-    background: rgba(0,0,0,0.4);
+    background: var(--progress-track);
 }
 #top_progress_fill {
     height: 100%;
     width: 0%;
-    background: linear-gradient(90deg, #1a2f60 0%, var(--cyan) 100%);
+    background: linear-gradient(90deg, var(--progress-from) 0%, var(--cyan) 100%);
     transition: width 0.35s ease;
     border-radius: 0 2px 2px 0;
 }
@@ -119,7 +232,7 @@ body {
     border-radius: 10px;
     padding: 2px 8px;
     flex-shrink: 0;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 5px 15px rgba(0,0,0,0.4);
+    box-shadow: var(--panel-inset), var(--panel-shadow);
 }
 
 /* ── Form elements ─────────────────────────────────────── */
@@ -131,7 +244,7 @@ body {
 
 .dropdown {
     background-color: var(--blue-dark);
-    color: #fff;
+    color: var(--text-on-accent);
     border: 1px solid rgba(255,255,255,0.15);
     border-radius: 6px;
     padding: 8px 12px;
@@ -218,15 +331,15 @@ body {
     justify-content: center;
     border: 1px solid rgba(255,255,255,0.18);
 }
-.coach-btn:hover { background: rgba(255,255,255,0.16); }
+.coach-btn:hover { background: var(--overlay-mid); }
 
 /* Mode select */
 .mode-select { font-size: 12px; padding: 6px 8px; }
 
 /* ── Solo buttons ──────────────────────────────────────── */
 .solo-btn {
-    background-color: #2A3A55;
-    border: 1px solid #3A5080;
+    background-color: var(--solo-bg);
+    border: 1px solid var(--solo-border);
     color: var(--text-primary);
     font-size: 13px;
     font-weight: 700;
@@ -235,7 +348,7 @@ body {
 }
 .solo-btn.active {
     background-color: var(--blue);
-    color: #fff;
+    color: var(--text-on-accent);
     border-color: var(--blue);
 }
 .solo-btn:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -283,7 +396,7 @@ body {
     white-space: nowrap;
     flex-shrink: 0;
 }
-.reveal-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
+.reveal-btn:hover { background: var(--overlay-mid); color: var(--text-primary); }
 
 /* ── Answers Grid ──────────────────────────────────────── */
 .answers-frame {
@@ -296,8 +409,8 @@ body {
 }
 .answer-btn {
     background-color: var(--bg-answer);
-    border: 1px solid #4A5E7A;
-    color: #fff;
+    border: 1px solid var(--answer-border);
+    color: var(--text-on-answer);
     font-size: 18px;
     font-weight: 800;
     padding: 6px 8px;
@@ -307,7 +420,7 @@ body {
     white-space: pre;
     line-height: 1.3;
 }
-.answer-btn:hover { background-color: #4A5E7A; border-color: #6A7EA0; }
+.answer-btn:hover { background-color: var(--answer-hover-bg); border-color: var(--answer-hover-border); }
 
 /* Answer feedback animations */
 @keyframes shake {
@@ -324,12 +437,12 @@ body {
 }
 .answer-btn.correct {
     background-color: var(--color-correct) !important;
-    color: #0a1128 !important;
+    color: var(--answer-feedback-text) !important;
     animation: correctPulse 0.6s ease-out;
 }
 .answer-btn.wrong {
     background-color: var(--color-wrong) !important;
-    color: #0a1128 !important; /* dark on red = 5.0:1 (AA / AAA large-text) vs white = 3.8:1 (fail) */
+    color: var(--answer-feedback-text) !important; /* dark on red = 5.0:1 (AA / AAA large-text) vs white = 3.8:1 (fail) */
     animation: shake 0.4s ease-out;
 }
 
@@ -342,15 +455,15 @@ body {
     position: relative;
 }
 .border-thick {
-    background-color: #050814;
-    border: 2px solid #101A35;
+    background-color: var(--staff-bg);
+    border: 2px solid var(--staff-frame-border);
     padding: 2px;
     border-radius: 12px;
 }
 canvas {
-    background-color: #050814;
+    background-color: var(--staff-bg);
     border-radius: 8px;
-    box-shadow: inset 0 0 15px rgba(0,0,0,0.8);
+    box-shadow: var(--staff-inset);
     display: block;
 }
 
@@ -375,21 +488,21 @@ canvas {
     padding: 7px 16px;
     font-size: 14px;
     font-weight: 700;
-    border: 1px solid rgba(255,255,255,0.22);
-    background: rgba(255,255,255,0.08);
+    border: 1px solid var(--overlay-border);
+    background: var(--overlay-soft);
     color: var(--text-primary);
     border-radius: 8px;
     cursor: pointer;
     transition: background 0.15s, border-color 0.15s;
 }
 .preset-btn:hover {
-    background: rgba(255,255,255,0.14);
-    border-color: rgba(255,255,255,0.35);
+    background: var(--overlay-mid);
+    border-color: var(--overlay-border-strong);
 }
 .preset-btn.active {
-    background: rgba(41, 128, 217, 0.35);
-    border-color: #2980D9;
-    color: #fff;
+    background: var(--blue);
+    border-color: var(--blue);
+    color: var(--text-on-accent);
 }
 
 /* ── Interval Legend ───────────────────────────────────── */
@@ -692,7 +805,7 @@ canvas {
 .session-overlay {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.85);
+    background: var(--overlay-backdrop);
     backdrop-filter: blur(8px);
     display: flex;
     justify-content: center;
@@ -792,7 +905,8 @@ canvas {
     /* Timbre row */
     .instruments-row { padding: 4px 8px; }
     .timbre-label    { font-size: 12px; margin-right: 4px; }
-    .timbre-presets  { gap: 4px; flex-wrap: nowrap; justify-content: space-between; }
+    .timbre-presets  { gap: 4px; flex-wrap: wrap; justify-content: flex-start; }
+    .preset-btn      { flex: 1 1 auto; min-width: 0; }
     .preset-btn      { font-size: 12px; padding: 5px 8px; white-space: nowrap; }
 
     /* Play frame */
@@ -1111,4 +1225,122 @@ canvas {
     font-size: 13px;
     color: var(--text-muted);
     padding: 8px 0;
+}
+
+/* ── Exercise picker ──────────────────────────────────────────────────
+ * The level/mode/style/key selects used to sit inline in the header. A
+ * native <select> is as wide as its longest option ("0: Maggiore o
+ * minore?"), so four of them overflowed the right edge on a phone and
+ * got clipped by .main-scrollable's overflow:hidden. The header now
+ * carries one summary button, and the selects live in a bottom sheet
+ * where each gets a full-width row and a readable label. */
+.exercise-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    background: var(--blue-dark);
+    color: var(--text-on-accent);
+    border: 1px solid var(--overlay-border);
+    border-radius: 10px;
+    padding: 5px 12px;
+    min-width: 0;
+    max-width: 100%;
+    cursor: pointer;
+    text-align: left;
+}
+.exercise-btn-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    opacity: 0.75;
+    line-height: 1.1;
+}
+.exercise-summary {
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.2;
+    max-width: 52vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sheet-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99997;
+    background: var(--overlay-backdrop);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+}
+.sheet-overlay[hidden] { display: none; }
+.sheet {
+    width: 100%;
+    max-width: 560px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-panel);
+    border-radius: 18px 18px 0 0;
+    padding: 14px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -8px 30px rgba(0,0,0,0.45);
+    max-height: 88vh;
+    overflow-y: auto;
+    animation: sheetUp 0.22s ease-out;
+}
+@keyframes sheetUp { from { transform: translateY(18px); opacity: 0.6; } to { transform: translateY(0); opacity: 1; } }
+.sheet-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+.sheet-header h2 {
+    font-size: 17px;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+.sheet-close {
+    width: 36px; height: 36px;
+    border: none;
+    background: var(--overlay-soft);
+    color: var(--text-primary);
+    font-size: 22px;
+    line-height: 1;
+    border-radius: 50%;
+    cursor: pointer;
+}
+.sheet-row {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-bottom: 12px;
+}
+.sheet-row[hidden] { display: none; }
+.sheet-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-muted);
+}
+/* Full width, comfortable target, 16px so iOS doesn't zoom on focus */
+.sheet-control {
+    width: 100%;
+    font-size: 16px;
+    padding: 12px 14px;
+    min-height: 48px;
+    border-radius: 10px;
+}
+.sheet-done {
+    width: 100%;
+    background: var(--blue);
+    color: var(--text-on-accent);
+    font-size: 16px;
+    font-weight: 800;
+    padding: 13px;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    margin-top: 2px;
 }
