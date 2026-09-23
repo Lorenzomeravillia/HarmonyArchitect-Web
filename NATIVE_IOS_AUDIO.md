@@ -66,6 +66,7 @@ be moved into `WebVersion/assets/samples/`.
 From the repository root:
 
 ```bash
+cd native-app
 npm install
 npm run ios:add
 npm run ios:sync
@@ -78,6 +79,7 @@ physical device.
 When web files or the plugin change:
 
 ```bash
+cd native-app
 npm run ios:sync
 ```
 
