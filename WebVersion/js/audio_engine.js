@@ -10,6 +10,7 @@ class AudioEngine {
         // and AVAudioEngine. On Safari/PWA/desktop the bridge is absent and all
         // existing web engines continue to work unchanged.
         this.nativeAudio = window.NativeAudioBridge || null;
+        this._nativeShell = !!this.nativeAudio?.isNativeIOS?.();
         this.useNativeAudio = false;
         this._nativeStatus = null;
 
@@ -475,7 +476,7 @@ class AudioEngine {
         if (!this._unlocked) {
             return { state: 'suspended', resume: async () => {}, currentTime: 0 };
         }
-        if (this.useNativeAudio) {
+        if (this._nativeShell) {
             // Compatibility shim for UI guards that only inspect ctx.state.
             return { state: 'running', resume: async () => {}, currentTime: 0 };
         }
@@ -769,7 +770,7 @@ class AudioEngine {
         // Inside the Capacitor iOS shell native audio is mandatory: do not
         // silently fall back to Web Audio, because that would re-introduce the
         // exact WebKit failure this build exists to avoid.
-        if (this.nativeAudio && this.nativeAudio.isNativeIOS()) {
+        if (this._nativeShell && this.nativeAudio) {
             if (!this.nativeAudio.isAvailable()) {
                 this.useNativeAudio = false;
                 this.ready = false;
@@ -914,7 +915,7 @@ class AudioEngine {
     async forceRecover() {
         this.logEvent('forceRecover() called, unlocked=' + this._unlocked
             + ', useNativeAudio=' + this.useNativeAudio + ', useFallback=' + this.useFallback);
-        if (this.nativeAudio && this.nativeAudio.isNativeIOS()) {
+        if (this._nativeShell && this.nativeAudio) {
             try {
                 const op = this.useNativeAudio ? 'activate' : 'initialize';
                 this._nativeStatus = await this.nativeAudio[op]();
@@ -955,7 +956,7 @@ class AudioEngine {
         const loaded = this._usableSamplerCount();
         const parts = [
             'engine=' + (this.useNativeAudio ? 'NativeAVAudio'
-                        : this.nativeAudio?.isNativeIOS?.() ? 'NativeAVAudio(unavailable)'
+                        : this._nativeShell ? 'NativeAVAudio(unavailable)'
                         : this.useElementFallback ? 'HTMLAudio'
                         : this.useFallback ? 'WebAudioFont'
                         : (window.Tone ? 'Tone' : 'none')),
@@ -1122,7 +1123,7 @@ class AudioEngine {
         const progs = this.PRESETS[name];
         if (!progs) return;
         progs.forEach((prog, i) => { this.channels[i] = prog; });
-        if (this.useNativeAudio) return;
+        if (this._nativeShell) return;
         if (this._unlocked) {
             // Guard: don't start loading if context is suspended — decodeAudioData would hang.
             if (window.Tone && Tone.context.state !== 'running') {
@@ -1152,7 +1153,7 @@ class AudioEngine {
         const prog = this.instrumentPrograms[instrumentName];
         if (prog === undefined) return;
         this.channels[channelIdx] = prog;
-        if (this._unlocked && !this.useNativeAudio) this.loadInstrument(prog);
+        if (this._unlocked && !this._nativeShell) this.loadInstrument(prog);
     }
 
     // ── HTMLAUDIO FALLBACK ────────────────────────────────────────────────
