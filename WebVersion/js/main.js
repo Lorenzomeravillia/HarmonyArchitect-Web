@@ -178,6 +178,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         }, 2000);
     }
 
+    window.addEventListener('cv-audio-failure', (event) => {
+        const status = event && event.detail && event.detail.status
+            ? event.detail.status
+            : (window.audioEngine ? window.audioEngine.getAudioStatus() : 'audio failure');
+        showAudioTrouble(status);
+    });
+
     function showAudioTrouble(status) {
         let b = document.getElementById('audio_trouble');
         if (!b) {
