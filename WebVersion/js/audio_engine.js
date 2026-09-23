@@ -5,6 +5,14 @@ class AudioEngine {
         this.lastAudioError = null;
         this._log = []; // timestamped event ring-buffer for on-device debugging
 
+        // Preferred engine inside the Capacitor iOS shell. This path never
+        // creates or resumes a JavaScript AudioContext: Swift owns AVAudioSession
+        // and AVAudioEngine. On Safari/PWA/desktop the bridge is absent and all
+        // existing web engines continue to work unchanged.
+        this.nativeAudio = window.NativeAudioBridge || null;
+        this.useNativeAudio = false;
+        this._nativeStatus = null;
+
         // Tone.js vars
         this.samplers = {};
         this.reverb = null;
@@ -222,6 +230,20 @@ class AudioEngine {
             this.logEvent('lifecycle event: ' + source + ', unlocked=' + this._unlocked);
             if (!this._unlocked) return;
 
+            if (this.useNativeAudio && this.nativeAudio) {
+                try {
+                    this._nativeStatus = await this.nativeAudio.activate();
+                    this.ready = !!this._nativeStatus?.engineRunning;
+                    this.lastAudioError = this.ready ? null : 'native-audio-not-running';
+                    this.logEvent('native lifecycle activate: running=' + this.ready);
+                } catch (e) {
+                    this.ready = false;
+                    this.lastAudioError = 'native-audio-activate: ' + e.message;
+                    this.logEvent('native lifecycle activate THREW: ' + e.message);
+                }
+                return;
+            }
+
             // iOS fires visibilitychange + pageshow + focus together on
             // foreground; without this guard each one runs its own resume/
             // rebuild and they trample each other.
@@ -300,6 +322,13 @@ class AudioEngine {
         // cheap because the samples are self-hosted and service-worker cached.
         const releaseSession = (source, hard) => {
             if (!this._unlocked || this.useFallback) return;
+            if (this.useNativeAudio && this.nativeAudio) {
+                this.logEvent('lifecycle: ' + source + ' — deactivating native AVAudioSession');
+                this.nativeAudio.deactivate().catch((e) =>
+                    this.logEvent('native deactivate THREW: ' + e.message)
+                );
+                return;
+            }
             this.logEvent('lifecycle: ' + source + ' — releasing audio session' + (hard ? ' (closing contexts)' : ''));
             try {
                 const el = document.getElementById('ios_audio_activator');
@@ -445,6 +474,10 @@ class AudioEngine {
     get ctx() {
         if (!this._unlocked) {
             return { state: 'suspended', resume: async () => {}, currentTime: 0 };
+        }
+        if (this.useNativeAudio) {
+            // Compatibility shim for UI guards that only inspect ctx.state.
+            return { state: 'running', resume: async () => {}, currentTime: 0 };
         }
         if (this.useFallback && this.fallbackCtx) return this.fallbackCtx;
         if (window.Tone) return Tone.context.rawContext;
@@ -733,6 +766,26 @@ class AudioEngine {
         this._unlocked = true;
         this.logEvent('unlockAndLoad: start, document.visibilityState=' + document.visibilityState);
 
+        // Native shell gets first refusal. If this succeeds we return before
+        // touching Tone.js/Web Audio, so the WebKit AudioContext bug is outside
+        // the playback architecture rather than something we keep retrying.
+        if (this.nativeAudio && this.nativeAudio.isAvailable()) {
+            try {
+                this._nativeStatus = await this.nativeAudio.initialize();
+                this.useNativeAudio = true;
+                this.ready = !!this._nativeStatus?.engineRunning;
+                this.lastAudioError = this.ready ? null : 'native-audio-not-running';
+                this.logEvent('native audio initialized: running=' + this.ready
+                    + ', sampleRate=' + (this._nativeStatus?.sampleRate || 'n/a')
+                    + ', channels=' + (this._nativeStatus?.outputChannels || 'n/a'));
+                if (this.ready) return;
+            } catch (e) {
+                this.useNativeAudio = false;
+                this.lastAudioError = 'native-audio-init: ' + e.message;
+                this.logEvent('native audio init THREW — falling back to web engine: ' + e.message);
+            }
+        }
+
         if (!window.Tone) {
             this.logEvent('Tone.js unavailable — falling back to WebAudioFont');
             this.useFallback = true;
@@ -851,7 +904,19 @@ class AudioEngine {
     // is a no-op once already unlocked, so a stuck-but-unlocked context needs the
     // same rebuild used by the automatic lifecycle handler, not another unlock call.
     async forceRecover() {
-        this.logEvent('forceRecover() called, unlocked=' + this._unlocked + ', useFallback=' + this.useFallback);
+        this.logEvent('forceRecover() called, unlocked=' + this._unlocked
+            + ', useNativeAudio=' + this.useNativeAudio + ', useFallback=' + this.useFallback);
+        if (this.useNativeAudio && this.nativeAudio) {
+            try {
+                this._nativeStatus = await this.nativeAudio.activate();
+                this.ready = !!this._nativeStatus?.engineRunning;
+                this.lastAudioError = this.ready ? null : 'native-audio-not-running';
+            } catch (e) {
+                this.ready = false;
+                this.lastAudioError = 'native-audio-recover: ' + e.message;
+            }
+            return;
+        }
         if (this.useFallback) {
             this._setupFallbackContext();
             return;
@@ -867,21 +932,26 @@ class AudioEngine {
     getAudioStatus() {
         let st = 'n/a';
         try {
-            st = this.useFallback
-                ? (this.fallbackCtx && this.fallbackCtx.state)
-                : (window.Tone && Tone.context.state);
+            st = this.useNativeAudio
+                ? (this._nativeStatus?.engineRunning ? 'running' : 'stopped')
+                : this.useFallback
+                    ? (this.fallbackCtx && this.fallbackCtx.state)
+                    : (window.Tone && Tone.context.state);
         } catch (e) {}
         // Count only samplers for the currently active channels (not every
         // instrument ever loaded across preset switches), so the number stays
         // bounded by the channel count and reads as a meaningful ratio.
         const loaded = this._usableSamplerCount();
         const parts = [
-            'engine=' + (this.useElementFallback ? 'HTMLAudio'
+            'engine=' + (this.useNativeAudio ? 'NativeAVAudio'
+                        : this.useElementFallback ? 'HTMLAudio'
                         : this.useFallback ? 'WebAudioFont'
                         : (window.Tone ? 'Tone' : 'none')),
             'ctx=' + st,
             'ready=' + (!!this.ready),
-            'samples=' + loaded + '/' + this.channels.length
+            this.useNativeAudio
+                ? 'nativeCache=' + (this._nativeStatus?.cachedBuffers ?? 'n/a')
+                : 'samples=' + loaded + '/' + this.channels.length
         ];
         if (this.lastAudioError) parts.push('err=' + this.lastAudioError);
         return parts.join(' · ');
@@ -1040,6 +1110,7 @@ class AudioEngine {
         const progs = this.PRESETS[name];
         if (!progs) return;
         progs.forEach((prog, i) => { this.channels[i] = prog; });
+        if (this.useNativeAudio) return;
         if (this._unlocked) {
             // Guard: don't start loading if context is suspended — decodeAudioData would hang.
             if (window.Tone && Tone.context.state !== 'running') {
@@ -1069,7 +1140,7 @@ class AudioEngine {
         const prog = this.instrumentPrograms[instrumentName];
         if (prog === undefined) return;
         this.channels[channelIdx] = prog;
-        if (this._unlocked) this.loadInstrument(prog);
+        if (this._unlocked && !this.useNativeAudio) this.loadInstrument(prog);
     }
 
     // ── HTMLAUDIO FALLBACK ────────────────────────────────────────────────
@@ -1115,6 +1186,33 @@ class AudioEngine {
             url: this._sampleBaseUrl(instName) + best.file,
             rate: Math.pow(2, (midi - best.midi) / 12)
         };
+    }
+
+    _nativeVoice(instName, midi, durationSec, gain, delayMs = 0) {
+        const pick = this._pickSample(instName, midi);
+        if (!pick) return null;
+        return {
+            samplePath: pick.url,
+            pitchCents: 1200 * Math.log2(pick.rate),
+            gain: Math.max(0, Math.min(1, gain)),
+            durationSec,
+            delayMs
+        };
+    }
+
+    async _playNativeVoices(voices, label) {
+        const playable = voices.filter(Boolean);
+        if (!playable.length || !this.nativeAudio) return false;
+        try {
+            const result = await this.nativeAudio.playVoices(playable);
+            this.logEvent(label + ': native scheduled=' + (result?.scheduled ?? playable.length));
+            return true;
+        } catch (e) {
+            this.ready = false;
+            this.lastAudioError = 'native-audio-play: ' + e.message;
+            this.logEvent(label + ': native playback THREW — ' + e.message);
+            return false;
+        }
     }
 
     // iOS only lets an <audio> element be played programmatically once it has
