@@ -40,8 +40,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: npm
-          cache-dependency-path: native-app/package-lock.json
       - name: Install native shell dependencies
         working-directory: native-app
         run: npm install
