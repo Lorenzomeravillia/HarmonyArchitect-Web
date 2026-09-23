@@ -18,6 +18,7 @@ export interface HarmonyNativeAudioPlugin {
   initialize(): Promise<NativeAudioStatus>;
   activate(): Promise<NativeAudioStatus>;
   playVoices(options: { voices: NativeVoice[] }): Promise<{ scheduled: number }>;
+  playTone(options: { frequency: number; durationSec?: number; gain?: number }): Promise<void>;
   stopAll(): Promise<void>;
   status(): Promise<NativeAudioStatus>;
   deactivate(): Promise<void>;
