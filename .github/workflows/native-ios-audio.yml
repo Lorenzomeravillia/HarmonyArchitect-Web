@@ -29,6 +29,35 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
-      - name: Compile HarmonyNativeAudio for iOS
+      - name: Compile HarmonyNativeAudio package for iOS
         working-directory: native/harmony-native-audio
-        run: xcodebuild -scheme HarmonyNativeAudio -destination 'generic/platform=iOS' build
+        run: xcodebuild -scheme HarmonyNativeAudio -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build
+
+  ios-app-integration:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: native-app/package-lock.json
+      - name: Install native shell dependencies
+        working-directory: native-app
+        run: npm install
+      - name: Generate and sync Capacitor iOS app
+        working-directory: native-app
+        run: |
+          npx cap add ios
+          npx cap sync ios
+      - name: Compile complete iOS app for simulator
+        working-directory: native-app
+        run: |
+          xcodebuild \
+            -workspace ios/App/App.xcworkspace \
+            -scheme App \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            build
