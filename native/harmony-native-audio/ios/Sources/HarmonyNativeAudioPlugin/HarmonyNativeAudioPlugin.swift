@@ -3,6 +3,7 @@ import AVFAudio
 import Capacitor
 import UIKit
 import Darwin
+import CryptoKit
 
 private struct NativeVoiceRequest: Decodable {
     let samplePath: String
@@ -14,6 +15,12 @@ private struct NativeVoiceRequest: Decodable {
 
 private struct PlayVoicesRequest: Decodable {
     let voices: [NativeVoiceRequest]
+}
+
+private struct ToneRequest: Decodable {
+    let frequency: Double
+    let durationSec: Double?
+    let gain: Double?
 }
 
 private struct NativeAudioStatus: Encodable {
@@ -198,6 +205,59 @@ private final class HarmonyNativeAudioEngine {
         return scheduled
     }
 
+    func playTone(frequency: Double, durationSec: Double, gain: Double) throws {
+        _ = try activate()
+
+        guard let slot = slots.last else { return }
+        slot.generation &+= 1
+        let generation = slot.generation
+
+        let sampleRate = session.sampleRate > 0 ? session.sampleRate : 44_100
+        let duration = max(0.005, min(1.0, durationSec))
+        let frameCount = AVAudioFrameCount(max(1, Int(sampleRate * duration)))
+
+        guard
+            let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1),
+            let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount)
+        else {
+            throw NSError(
+                domain: "HarmonyNativeAudio",
+                code: 500,
+                userInfo: [NSLocalizedDescriptionKey: "Could not create tone buffer"]
+            )
+        }
+
+        buffer.frameLength = frameCount
+        let amplitude = Float(clamp(gain, min: 0, max: 1))
+        let hz = max(20, min(20_000, frequency))
+        let total = Int(frameCount)
+
+        if let channel = buffer.floatChannelData?[0] {
+            for i in 0..<total {
+                let t = Double(i) / sampleRate
+                let phase = 2 * Double.pi * hz * t
+                // Short cosine envelope avoids clicks at both ends.
+                let x = total > 1 ? Double(i) / Double(total - 1) : 0
+                let envelope = sin(Double.pi * x) * sin(Double.pi * x)
+                channel[i] = Float(sin(phase) * envelope) * amplitude
+            }
+        }
+
+        slot.player.stop()
+        slot.pitch.pitch = 0
+        slot.pitch.rate = 1
+        slot.player.volume = 1
+        slot.player.scheduleBuffer(buffer, at: nil, options: [.interrupts], completionHandler: nil)
+
+        let startHost = mach_absolute_time() + AVAudioTime.hostTime(forSeconds: 0.01)
+        slot.player.play(at: AVAudioTime(hostTime: startHost))
+
+        releaseQueue.asyncAfter(deadline: .now() + duration + 0.03) { [weak slot] in
+            guard let slot, slot.generation == generation else { return }
+            slot.player.stop()
+        }
+    }
+
     func stopAll() {
         for slot in slots {
             slot.generation &+= 1
@@ -266,7 +326,7 @@ private final class HarmonyNativeAudioEngine {
             return cached
         }
 
-        guard let url = resolveURL(for: samplePath) else {
+        guard let url = try resolveURL(for: samplePath) else {
             throw NSError(
                 domain: "HarmonyNativeAudio",
                 code: 404,
@@ -302,7 +362,15 @@ private final class HarmonyNativeAudioEngine {
         return buffer
     }
 
-    private func resolveURL(for samplePath: String) -> URL? {
+    private func resolveURL(for samplePath: String) throws -> URL? {
+        if
+            let remote = URL(string: samplePath),
+            let scheme = remote.scheme?.lowercased(),
+            scheme == "https" || scheme == "http"
+        {
+            return try cachedRemoteURL(remote)
+        }
+
         if let resolved = resolveAssetURL?(samplePath), FileManager.default.fileExists(atPath: resolved.path) {
             return resolved
         }
@@ -313,6 +381,31 @@ private final class HarmonyNativeAudioEngine {
             .appendingPathComponent(samplePath)
 
         return FileManager.default.fileExists(atPath: candidate.path) ? candidate : nil
+    }
+
+    private func cachedRemoteURL(_ remote: URL) throws -> URL {
+        let fm = FileManager.default
+        let root = fm.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("HarmonyNativeAudio", isDirectory: true)
+
+        try fm.createDirectory(at: root, withIntermediateDirectories: true)
+
+        let digest = SHA256.hash(data: Data(remote.absoluteString.utf8))
+            .map { String(format: "%02x", $0) }
+            .joined()
+        let ext = remote.pathExtension.isEmpty ? "mp3" : remote.pathExtension
+        let target = root.appendingPathComponent(digest).appendingPathExtension(ext)
+
+        if fm.fileExists(atPath: target.path) {
+            return target
+        }
+
+        // This runs on the plugin's dedicated audio queue, never on the UI
+        // thread. It is only paid on the first use of a remote sample; later
+        // plays use the native file cache and decoded PCM cache.
+        let data = try Data(contentsOf: remote, options: [.mappedIfSafe])
+        try data.write(to: target, options: [.atomic])
+        return target
     }
 
     private func clamp(_ value: Double, min minValue: Double, max maxValue: Double) -> Double {
@@ -329,6 +422,7 @@ public class HarmonyNativeAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "initialize", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "activate", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "playVoices", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "playTone", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "stopAll", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "status", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "deactivate", returnType: CAPPluginReturnPromise)
@@ -389,6 +483,27 @@ public class HarmonyNativeAudioPlugin: CAPPlugin, CAPBridgedPlugin {
             }
         } catch {
             call.reject("Invalid native audio request", "NATIVE_AUDIO_REQUEST", error)
+        }
+    }
+
+    @objc public func playTone(_ call: CAPPluginCall) {
+        do {
+            let request = try call.decode(ToneRequest.self)
+            audioQueue.async { [weak self] in
+                guard let self else { return }
+                do {
+                    try self.implementation.playTone(
+                        frequency: request.frequency,
+                        durationSec: request.durationSec ?? 0.02,
+                        gain: request.gain ?? 0.3
+                    )
+                    call.resolve()
+                } catch {
+                    call.reject("Native tone playback failed", "NATIVE_AUDIO_TONE", error)
+                }
+            }
+        } catch {
+            call.reject("Invalid native tone request", "NATIVE_AUDIO_TONE_REQUEST", error)
         }
     }
 
