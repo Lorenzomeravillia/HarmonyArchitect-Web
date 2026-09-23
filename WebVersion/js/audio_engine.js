@@ -5,6 +5,18 @@ class AudioEngine {
         this.lastAudioError = null;
         this._log = []; // timestamped event ring-buffer for on-device debugging
 
+        // Record the environment in the on-device log. This is especially
+        // useful for WebKit bugs that differ between Safari tabs and Home
+        // Screen/standalone web apps.
+        try {
+            const standalone = navigator.standalone === true
+                || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+            const ios = navigator.userAgent.match(/OS (\d+)[._](\d+)(?:[._](\d+))?/);
+            this.logEvent('runtime: standalone=' + standalone
+                + ', iOS=' + (ios ? [ios[1], ios[2], ios[3]].filter(Boolean).join('.') : 'unknown')
+                + ', visibility=' + document.visibilityState);
+        } catch (e) {}
+
         // Tone.js vars
         this.samplers = {};
         this.reverb = null;
@@ -1352,6 +1364,11 @@ class AudioEngine {
                     if (!remaining) {
                         this.ready = false;
                         this._armGestureRecovery();
+                        try {
+                            window.dispatchEvent(new CustomEvent('cv-audio-failure', {
+                                detail: { status: this.getAudioStatus(), reason: 'htmlaudio-stalled' }
+                            }));
+                        } catch (e) {}
                     }
                 }
             }, 500);
