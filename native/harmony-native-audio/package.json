@@ -1,0 +1,34 @@
+{
+  "name": "@harmony/native-audio",
+  "version": "0.1.0",
+  "description": "Native iOS audio engine for ClearVoicing.",
+  "main": "dist/plugin.cjs.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/esm/index.d.ts",
+  "files": [
+    "dist/",
+    "ios/Sources/",
+    "Package.swift",
+    "HarmonyNativeAudio.podspec"
+  ],
+  "peerDependencies": {
+    "@capacitor/core": ">=8.0.0"
+  },
+  "capacitor": {
+    "ios": {
+      "src": "ios"
+    }
+  },
+  "keywords": [
+    "capacitor",
+    "ios",
+    "audio",
+    "avaudioengine"
+  ],
+  "license": "MIT",
+  "author": "Lorenzo Baldan",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Lorenzomeravillia/HarmonyArchitect-Web.git"
+  }
+}

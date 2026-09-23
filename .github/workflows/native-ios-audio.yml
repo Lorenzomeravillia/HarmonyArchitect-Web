@@ -1,0 +1,61 @@
+name: Native iOS Audio
+
+on:
+  pull_request:
+    paths:
+      - "WebVersion/js/audio_engine.js"
+      - "WebVersion/js/native_audio_bridge.js"
+      - "WebVersion/index.html"
+      - "native-app/**"
+      - "native/harmony-native-audio/**"
+      - ".github/workflows/native-ios-audio.yml"
+  workflow_dispatch:
+
+jobs:
+  javascript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Check JavaScript syntax
+        run: |
+          node --check WebVersion/js/native_audio_bridge.js
+          node --check WebVersion/js/audio_engine.js
+          node -e "JSON.parse(require('fs').readFileSync('native-app/package.json','utf8')); JSON.parse(require('fs').readFileSync('native-app/capacitor.config.json','utf8'));"
+
+  ios-plugin:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile HarmonyNativeAudio package for iOS
+        working-directory: native/harmony-native-audio
+        run: xcodebuild -scheme HarmonyNativeAudio -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build
+
+  ios-app-integration:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install native shell dependencies
+        working-directory: native-app
+        run: npm install
+      - name: Generate and sync Capacitor iOS app
+        working-directory: native-app
+        run: |
+          npx cap add ios
+          npx cap sync ios
+      - name: Compile complete iOS app for simulator
+        working-directory: native-app
+        run: |
+          xcodebuild \
+            -workspace ios/App/App.xcworkspace \
+            -scheme App \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            build
