@@ -551,6 +551,17 @@ class AudioEngine {
                 if (el && el.paused) el.play().catch(() => {});
             } catch (e) {}
             (async () => {
+                // Once HTMLAudio is the active engine, the gesture is more
+                // valuable for re-blessing failed media elements than for
+                // churning AudioContexts that WebKit cannot revive.
+                if (this.useElementFallback) {
+                    await new Promise(r => setTimeout(r, 250));
+                    const usable = (this._elPool || []).filter(s => s.blessed && !s.dead && !s.blessing).length;
+                    this.ready = usable > 0;
+                    this.lastAudioError = usable ? null : 'htmlaudio-unavailable';
+                    this.logEvent('gesture recovery: HTMLAudio usable=' + usable);
+                    return;
+                }
                 if (!window.Tone || Tone.context.state === 'running') return;
                 await this._raceTimeout(() => Tone.context.resume(), 1000, 'gesture-recovery resume()');
                 let waited = 0;
@@ -831,18 +842,33 @@ class AudioEngine {
     // app sounds from one chord to the next.
     _enableElementFallback(why) {
         if (this.useElementFallback) return;
-        const usable = (this._elPool || []).filter(s => !s.dead).length;
+        const pool = this._elPool || [];
+        const usable = pool.filter(s => s.blessed && !s.dead && !s.blessing).length;
+        const pending = pool.filter(s => s.blessing).length;
+
+        if (!usable && pending) {
+            // unlockAndLoad normally reaches this only after >1s of WebAudio
+            // attempts, but do not race the media play() promises on a slow
+            // device. Re-check shortly instead of declaring an unverified slot
+            // usable.
+            clearTimeout(this._elFallbackWaitTimer);
+            this._elFallbackWaitTimer = setTimeout(
+                () => this._enableElementFallback(why + ' / after pool settle'),
+                250
+            );
+            this.logEvent('elementFallback: waiting for ' + pending + ' pool blessing promise(s)');
+            return;
+        }
+
         if (!usable) {
-            // Nothing was blessed inside a gesture, so element playback would
-            // be rejected too. Stay put and report the real problem.
-            this.logEvent('elementFallback: no usable elements — cannot switch (' + why + ')');
-            this.lastAudioError = 'context-suspended (iOS did not resume audio)';
+            this.logEvent('elementFallback: no BLESSED elements — cannot switch (' + why + ')');
+            this.lastAudioError = 'context-suspended + htmlaudio-unavailable';
             return;
         }
         this.useElementFallback = true;
         this.ready = true;
         this.lastAudioError = null;
-        this.logEvent('SWITCHING TO HTMLAudio playback (' + usable + ' elements) — ' + why);
+        this.logEvent('SWITCHING TO HTMLAudio playback (' + usable + ' blessed elements) — ' + why);
         const banner = document.getElementById('audio_trouble');
         if (banner) banner.remove();
     }
@@ -851,7 +877,23 @@ class AudioEngine {
     // is a no-op once already unlocked, so a stuck-but-unlocked context needs the
     // same rebuild used by the automatic lifecycle handler, not another unlock call.
     async forceRecover() {
-        this.logEvent('forceRecover() called, unlocked=' + this._unlocked + ', useFallback=' + this.useFallback);
+        this.logEvent('forceRecover() called, unlocked=' + this._unlocked
+            + ', useFallback=' + this.useFallback
+            + ', useElementFallback=' + this.useElementFallback);
+
+        // Retry is itself a user gesture. If we already routed around WebAudio,
+        // spend that gesture repairing the HTMLMediaElement pool instead of
+        // creating yet another AudioContext in an OS state where resume() is
+        // known to hang.
+        if (this.useElementFallback) {
+            this._unlockElementPool();
+            await new Promise(r => setTimeout(r, 300));
+            const usable = (this._elPool || []).filter(s => s.blessed && !s.dead && !s.blessing).length;
+            this.ready = usable > 0;
+            this.lastAudioError = usable ? null : 'htmlaudio-unavailable';
+            this.logEvent('forceRecover: HTMLAudio re-bless complete, usable=' + usable);
+            return;
+        }
         if (this.useFallback) {
             this._setupFallbackContext();
             return;
@@ -1123,47 +1165,109 @@ class AudioEngine {
     // run synchronously inside the tap — hence it happens at the very start
     // of unlockAndLoad, before we know whether Web Audio will fail at all.
     _unlockElementPool(size = 8) {
-        if (this._elPool) return;
-        this._elPool = [];
-        this._elBlessed = 0;
-        this._elRejected = 0;
+        // IMPORTANT: do not make this a one-shot initializer. On iOS each
+        // HTMLMediaElement is unlocked individually by a user gesture. Some
+        // slots can fail their first play() (we have seen NotSupportedError on
+        // device), and the next real tap is our chance to replace/re-bless only
+        // those failed slots. The previous early-return here made the advertised
+        // "second chance" in _armGestureRecovery() a no-op.
+        if (!this._elPool) this._elPool = [];
+
+        const recount = () => {
+            this._elBlessed = this._elPool.filter(s => s.blessed && !s.dead).length;
+            this._elRejected = this._elPool.filter(s => s.dead).length;
+        };
+
         try {
-            for (let i = 0; i < size; i++) {
-                const el = new Audio('assets/silence.wav');
+            while (this._elPool.length < size) {
+                this._elPool.push({ el: null, busy: false, until: 0, blessed: false, blessing: false, dead: false });
+            }
+
+            this._elPool.forEach((slot, i) => {
+                // A successfully unlocked element remains usable when src is
+                // changed, so leave good slots alone. Failed/pending slots get
+                // another attempt only when this method is called from a fresh
+                // user gesture.
+                if (slot.blessed && !slot.dead) return;
+                if (slot.blessing) return;
+
+                // A media element that returned NotSupportedError is replaced,
+                // rather than trusting an object WebKit may already have wedged.
+                if (!slot.el || slot.dead) {
+                    slot.el = new Audio();
+                }
+                const el = slot.el;
+                slot.dead = false;
+                slot.blessed = false;
+                slot.blessing = true;
+                slot.busy = false;
+
+                clearTimeout(slot.stopTimer);
+                clearInterval(slot.fadeTimer);
+                try { el.pause(); } catch (e) {}
+
+                // Re-assign src immediately before the gesture-bound play().
+                // This also mirrors the workaround reported in WebKit #295518.
                 el.preload = 'auto';
-                el.volume = 0;
-                const slot = { el, busy: false, until: 0 };
-                // Pause only once play() has actually started. Pausing
-                // synchronously aborts the play, and an aborted play may not
-                // count as the gesture-blessing iOS requires — which would
-                // leave the pool useless precisely when it is needed.
-                const p = el.play();
+                el.src = 'assets/silence.wav';
+                try { el.currentTime = 0; } catch (e) {}
+
+                // silence.wav is actually silent; avoid volume=0 here because
+                // WebKit may treat a zero-volume element as non-audible and not
+                // activate the media session. (On iPhone the volume setter is
+                // not a dependable mixer anyway.)
+                try { el.volume = 1; } catch (e) {}
+
+                let p;
+                try {
+                    p = el.play(); // MUST execute synchronously in the gesture.
+                } catch (err) {
+                    slot.blessing = false;
+                    slot.dead = true;
+                    recount();
+                    this.logEvent('HTMLAudio pool slot#' + i + ' play() THREW — ' + (err && err.name ? err.name : err));
+                    return;
+                }
+
                 if (p && p.then) {
                     p.then(() => {
-                        this._elBlessed++;
+                        slot.blessing = false;
                         slot.blessed = true;
+                        slot.dead = false;
+                        recount();
                         el.pause();
                         try { el.currentTime = 0; } catch (e) {}
                     }).catch((err) => {
-                        // Not blessed by the gesture (or the source failed to
-                        // decode) — never hand this one out, it would be mute.
-                        this._elRejected++;
+                        slot.blessing = false;
+                        slot.blessed = false;
                         slot.dead = true;
-                        if (this._elRejected === 1) {
-                            this.logEvent('HTMLAudio pool: play() rejected — ' + (err && err.name ? err.name : err));
-                        }
+                        recount();
+                        this.logEvent('HTMLAudio pool slot#' + i + ' rejected — '
+                            + (err && err.name ? err.name : err));
                     });
                 } else {
-                    this._elBlessed++;
+                    slot.blessing = false;
                     slot.blessed = true;
+                    recount();
                     el.pause();
+                    try { el.currentTime = 0; } catch (e) {}
                 }
-                this._elPool.push(slot);
-            }
-            this.logEvent('HTMLAudio pool: created ' + size + ' elements');
-            // Report the outcome once the play() promises have settled.
-            setTimeout(() => this.logEvent('HTMLAudio pool: blessed=' + this._elBlessed
-                + ' rejected=' + this._elRejected + '/' + size), 800);
+            });
+
+            recount();
+            this.logEvent('HTMLAudio pool: unlock attempt, slots=' + this._elPool.length
+                + ', alreadyBlessed=' + this._elBlessed);
+
+            // Report once the play() promises should have settled. Unlike the
+            // previous counters this is a snapshot of real slot state, so
+            // retries cannot inflate it.
+            setTimeout(() => {
+                recount();
+                const pending = this._elPool.filter(s => s.blessing).length;
+                this.logEvent('HTMLAudio pool: blessed=' + this._elBlessed
+                    + ' rejected=' + this._elRejected
+                    + ' pending=' + pending + '/' + this._elPool.length);
+            }, 800);
         } catch (e) {
             this.logEvent('HTMLAudio pool unlock THREW: ' + e.message);
         }
@@ -1172,7 +1276,9 @@ class AudioEngine {
     _takeElement() {
         if (!this._elPool) return null;
         const now = Date.now();
-        const usable = this._elPool.filter(s => !s.dead);
+        // Never hand out a merely "not dead" slot. Before its first play()
+        // settles it is not yet known to be gesture-unlocked.
+        const usable = this._elPool.filter(s => s.blessed && !s.dead && !s.blessing);
         if (!usable.length) return null;
         let slot = usable.find(s => !s.busy);
         // All busy: steal the one that has been sounding longest.
@@ -1190,7 +1296,12 @@ class AudioEngine {
         const el = slot.el;
         slot.until = Date.now() + durationSec * 1000;
         try {
-            if (el.dataset.cvSrc !== pick.url) { el.src = pick.url; el.dataset.cvSrc = pick.url; }
+            // WebKit #295518 reports a PWA reproducer that stayed healthier
+            // when src was assigned immediately before every play(), including
+            // replaying the same file. Do it unconditionally instead of
+            // optimizing away same-src assignments.
+            el.src = pick.url;
+            el.dataset.cvSrc = pick.url;
             try { el.currentTime = 0; } catch (e) {}
             // playbackRate must shift pitch, which is the opposite of what
             // browsers do by default for media elements.
@@ -1200,30 +1311,50 @@ class AudioEngine {
             el.playbackRate = pick.rate;
             const vol = Math.max(0, Math.min(1, gain));
             el.volume = vol;
+            const probeStart = el.currentTime || 0;
             const p = el.play();
             if (p && p.catch) {
                 p.catch((err) => {
+                    slot.dead = true;
+                    slot.blessed = false;
+                    slot.busy = false;
                     if (!this._elNoteErrLogged) {
                         this._elNoteErrLogged = true;
                         this.logEvent('HTMLAudio note play() REJECTED — ' + (err && err.name ? err.name : err));
                     }
                 });
             }
-            // Once, prove whether the element is really advancing. play()
-            // resolving is not proof of sound; currentTime moving is. Also
-            // report the volume actually in effect: iOS treats .volume as
-            // read-only, so it may not be the value we asked for.
-            if (!this._elProbed) {
-                this._elProbed = true;
-                setTimeout(() => {
-                    this.logEvent('HTMLAudio probe: paused=' + el.paused
-                        + ' currentTime=' + (el.currentTime || 0).toFixed(2)
-                        + ' rate=' + el.playbackRate.toFixed(3)
-                        + ' vol=' + el.volume
-                        + ' readyState=' + el.readyState
-                        + ' src=' + String(el.currentSrc || el.src).split('/').slice(-2).join('/'));
-                }, 300);
-            }
+
+            // Functional liveness probe. On the iOS 26 PWA media regression
+            // play() can resolve even though nothing progresses, so Promise
+            // success is not evidence that the fallback works. currentTime
+            // advancing is the strongest observation available without asking
+            // for microphone permission / acoustic loopback.
+            setTimeout(() => {
+                const ct = el.currentTime || 0;
+                const advanced = !el.paused && ct > probeStart + 0.02;
+                this.logEvent('HTMLAudio probe: advanced=' + advanced
+                    + ' paused=' + el.paused
+                    + ' currentTime=' + ct.toFixed(2)
+                    + ' rate=' + el.playbackRate.toFixed(3)
+                    + ' vol=' + el.volume
+                    + ' readyState=' + el.readyState
+                    + ' src=' + String(el.currentSrc || el.src).split('/').slice(-2).join('/'));
+                if (!advanced && slot.busy) {
+                    // Do not keep recycling a media object that looks wedged.
+                    // The next real user tap can replace and re-bless it.
+                    slot.dead = true;
+                    slot.blessed = false;
+                    slot.busy = false;
+                    const remaining = (this._elPool || []).filter(s => s.blessed && !s.dead).length;
+                    this.lastAudioError = 'htmlaudio-stalled (' + remaining + ' usable slots remain)';
+                    this.logEvent('HTMLAudio slot stalled — marked dead, usable=' + remaining);
+                    if (!remaining) {
+                        this.ready = false;
+                        this._armGestureRecovery();
+                    }
+                }
+            }, 500);
 
             // No gain nodes here, so fade by stepping .volume, otherwise the
             // cut-off clicks audibly.
@@ -1423,6 +1554,18 @@ class AudioEngine {
 
     stopAll() {
         if (!this._unlocked) return;
+        if (this.useElementFallback) {
+            (this._elPool || []).forEach(slot => {
+                clearTimeout(slot.stopTimer);
+                clearInterval(slot.fadeTimer);
+                try {
+                    slot.el.pause();
+                    slot.el.currentTime = 0;
+                } catch (e) {}
+                slot.busy = false;
+            });
+            return;
+        }
         if (this.useFallback) {
             if (this.player && this.fallbackCtx) this.player.cancelQueue(this.fallbackCtx);
         } else {
