@@ -8,7 +8,8 @@
   "files": [
     "dist/",
     "ios/Sources/",
-    "Package.swift"
+    "Package.swift",
+    "HarmonyNativeAudio.podspec"
   ],
   "peerDependencies": {
     "@capacitor/core": ">=8.0.0"
@@ -24,5 +25,10 @@
     "audio",
     "avaudioengine"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "author": "Lorenzo Baldan",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Lorenzomeravillia/HarmonyArchitect-Web.git"
+  }
 }
