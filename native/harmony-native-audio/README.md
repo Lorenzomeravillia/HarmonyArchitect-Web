@@ -24,14 +24,17 @@ depend on AudioContext.resume(), autoplay unlocking, or Tone.js lifecycle recove
 - Session deactivation on app background / reactivation on foreground
 - Interruption and route-change handling
 
-The plugin resolves sample paths from the same WebVersion/assets tree that Capacitor
-copies into the iOS application bundle.
+The plugin resolves self-hosted sample paths from the same WebVersion/assets tree that
+Capacitor copies into the iOS application bundle. Existing HTTPS sample URLs are
+downloaded once on the plugin queue and cached natively, so current presets keep working
+while the remaining CDN instruments are progressively moved into the app bundle.
 
 ## App setup
 
 From the repository root on macOS with Xcode installed:
 
 ```bash
+cd native-app
 npm install
 npm run ios:add
 npm run ios:sync
