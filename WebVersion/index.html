@@ -320,8 +320,22 @@
         </div>
     </div>
 
-    <!-- Tone.js (High quality sampler and audio context management) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/15.1.22/Tone.js"></script>
+    <!-- Tone.js is intentionally NOT loaded inside the Capacitor iOS app.
+         Native iOS playback must stay completely outside WebKit/AudioContext.
+         Browsers and PWAs keep the existing Tone.js engine. -->
+    <script>
+        (function () {
+            const cap = window.Capacitor;
+            const nativeIOS = !!(cap
+                && typeof cap.isNativePlatform === 'function'
+                && cap.isNativePlatform()
+                && ((typeof cap.getPlatform === 'function' && cap.getPlatform() === 'ios')
+                    || cap.platform === 'ios'));
+            if (!nativeIOS) {
+                document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/15.1.22/Tone.js"><\\/script>');
+            }
+        })();
+    </script>
 
     <!-- Join Class Modal -->
     <div id="join_class_modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:10001; align-items:center; justify-content:center; flex-direction:column;">
