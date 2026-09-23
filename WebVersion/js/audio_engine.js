@@ -766,10 +766,17 @@ class AudioEngine {
         this._unlocked = true;
         this.logEvent('unlockAndLoad: start, document.visibilityState=' + document.visibilityState);
 
-        // Native shell gets first refusal. If this succeeds we return before
-        // touching Tone.js/Web Audio, so the WebKit AudioContext bug is outside
-        // the playback architecture rather than something we keep retrying.
-        if (this.nativeAudio && this.nativeAudio.isAvailable()) {
+        // Inside the Capacitor iOS shell native audio is mandatory: do not
+        // silently fall back to Web Audio, because that would re-introduce the
+        // exact WebKit failure this build exists to avoid.
+        if (this.nativeAudio && this.nativeAudio.isNativeIOS()) {
+            if (!this.nativeAudio.isAvailable()) {
+                this.useNativeAudio = false;
+                this.ready = false;
+                this.lastAudioError = 'native-audio-plugin-unavailable';
+                this.logEvent('native iOS shell detected but HarmonyNativeAudio plugin is unavailable');
+                return;
+            }
             try {
                 this._nativeStatus = await this.nativeAudio.initialize();
                 this.useNativeAudio = true;
@@ -778,12 +785,13 @@ class AudioEngine {
                 this.logEvent('native audio initialized: running=' + this.ready
                     + ', sampleRate=' + (this._nativeStatus?.sampleRate || 'n/a')
                     + ', channels=' + (this._nativeStatus?.outputChannels || 'n/a'));
-                if (this.ready) return;
             } catch (e) {
                 this.useNativeAudio = false;
+                this.ready = false;
                 this.lastAudioError = 'native-audio-init: ' + e.message;
-                this.logEvent('native audio init THREW — falling back to web engine: ' + e.message);
+                this.logEvent('native audio init THREW: ' + e.message);
             }
+            return;
         }
 
         if (!window.Tone) {
@@ -906,12 +914,15 @@ class AudioEngine {
     async forceRecover() {
         this.logEvent('forceRecover() called, unlocked=' + this._unlocked
             + ', useNativeAudio=' + this.useNativeAudio + ', useFallback=' + this.useFallback);
-        if (this.useNativeAudio && this.nativeAudio) {
+        if (this.nativeAudio && this.nativeAudio.isNativeIOS()) {
             try {
-                this._nativeStatus = await this.nativeAudio.activate();
+                const op = this.useNativeAudio ? 'activate' : 'initialize';
+                this._nativeStatus = await this.nativeAudio[op]();
+                this.useNativeAudio = true;
                 this.ready = !!this._nativeStatus?.engineRunning;
                 this.lastAudioError = this.ready ? null : 'native-audio-not-running';
             } catch (e) {
+                this.useNativeAudio = false;
                 this.ready = false;
                 this.lastAudioError = 'native-audio-recover: ' + e.message;
             }
@@ -944,6 +955,7 @@ class AudioEngine {
         const loaded = this._usableSamplerCount();
         const parts = [
             'engine=' + (this.useNativeAudio ? 'NativeAVAudio'
+                        : this.nativeAudio?.isNativeIOS?.() ? 'NativeAVAudio(unavailable)'
                         : this.useElementFallback ? 'HTMLAudio'
                         : this.useFallback ? 'WebAudioFont'
                         : (window.Tone ? 'Tone' : 'none')),
