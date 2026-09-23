@@ -986,6 +986,40 @@ class AudioEngine {
         if (this._unlocked) this.loadInstrument(prog);
     }
 
+    // Load every sampler a chord needs BEFORE its schedule is fixed.
+    //
+    // The chord methods used to compute `startTime = Tone.now() + 0.1` and
+    // only then await loadInstrument() per voice. Loading takes far longer
+    // than that 100ms lead — and takes it on EVERY chord right after a context
+    // rebuild, which clears the sampler cache — so by the time the notes were
+    // triggered their start time was already in the past. Tone drops notes
+    // scheduled in the past, so the chord went silent while the answer earcons
+    // (plain oscillators scheduled at the instant they fire, straight to the
+    // raw context) kept working. That is exactly the "only the chords stopped"
+    // symptom, and why it appeared right after audio seemed to recover.
+    //
+    // Returns one entry per input note (null where the voice can't sound, so
+    // indices — and therefore the onset stagger — stay put), or null if the
+    // user moved on while we were loading.
+    async _resolveVoices(notesArray, label) {
+        const session = window._playbackSessionId;
+        const voices = await Promise.all(notesArray.map(async (item) => {
+            const instName = this.channels[item.voiceIdx];
+            if (!instName) return null;
+            const sampler = await this.loadInstrument(instName);
+            if (!sampler || !sampler.loaded) return null;
+            const freq = item.frequency || item.freq;
+            const midi = Math.round(69 + 12 * Math.log2(freq / 440));
+            return { item, freq, sampler, note: Tone.Frequency(midi, "midi").toNote() };
+        }));
+        // Awaiting above opens a window in which the challenge may have changed.
+        if (window._playbackSessionId !== session) return null;
+
+        const missing = voices.filter(v => !v).length;
+        if (missing) this.logEvent(label + ': ' + missing + '/' + voices.length + ' voci senza campione — non suonano');
+        return voices;
+    }
+
     _getVolume() {
         const sel = document.getElementById('volume_menu');
         return sel ? parseFloat(sel.value) : 0.70;
@@ -1071,26 +1105,20 @@ class AudioEngine {
 
         if (Tone.context.state !== 'running') await this._ensureContextRunning('playChord');
 
+        const voices = await this._resolveVoices(notesArray, 'playChord');
+        if (!voices) return;   // the user moved on while samplers were loading
+
         const lead = Tone.context.state === 'running' ? 0.1 : 0.4;
         const startTime = Tone.now() + lead;
 
-        notesArray.forEach(async (item, idx) => {
-            const freq = item.frequency || item.freq;
-            const midi = Math.round(69 + 12 * Math.log2(freq / 440));
-            const instName = this.channels[item.voiceIdx];
-            if (!instName) return;
-
-            const sampler = await this.loadInstrument(instName);
-            if (!sampler || !sampler.loaded) return;
-
-            const noteObj = Tone.Frequency(midi, "midi").toNote();
-
+        voices.forEach((v, idx) => {
+            if (!v) return;
             const triggerTime = startTime + idx * SPREAD_SEC;
-            sampler.triggerAttackRelease(noteObj, dur, triggerTime, vol * this._channelGain(item.voiceIdx));
+            v.sampler.triggerAttackRelease(v.note, dur, triggerTime, vol * this._channelGain(v.item.voiceIdx));
 
             if (window.gui?.highlight) {
                 setTimeout(
-                    () => window.gui.highlight(item.voiceIdx, freq, dur * 800, chordIdx),
+                    () => window.gui.highlight(v.item.voiceIdx, v.freq, dur * 800, chordIdx),
                     (lead + idx * SPREAD_SEC) * 1000
                 );
             }
@@ -1161,29 +1189,22 @@ class AudioEngine {
 
         if (Tone.context.state !== 'running') await this._ensureContextRunning('playChordWithVolumes');
 
+        const audible = notesArray.filter(item => (volumeMap[item.voiceIdx] ?? 1.0) > 0);
+        const voices = await this._resolveVoices(audible, 'playChordWithVolumes');
+        if (!voices) return;   // the user moved on while samplers were loading
+
         const lead = Tone.context.state === 'running' ? 0.1 : 0.4;
         const startTime = Tone.now() + lead;
 
-        notesArray.forEach(async (item, idx) => {
-            const volMult = volumeMap[item.voiceIdx] ?? 1.0;
-            if (volMult <= 0) return;
-
-            const freq = item.frequency || item.freq;
-            const midi = Math.round(69 + 12 * Math.log2(freq / 440));
-            const instName = this.channels[item.voiceIdx];
-            if (!instName) return;
-
-            const sampler = await this.loadInstrument(instName);
-            if (!sampler || !sampler.loaded) return;
-
-            const noteObj = Tone.Frequency(midi, "midi").toNote();
-
+        voices.forEach((v, idx) => {
+            if (!v) return;
+            const volMult = volumeMap[v.item.voiceIdx] ?? 1.0;
             const triggerTime = startTime + idx * SPREAD_SEC;
-            sampler.triggerAttackRelease(noteObj, dur, triggerTime, vol * this._channelGain(item.voiceIdx) * volMult);
-            
+            v.sampler.triggerAttackRelease(v.note, dur, triggerTime, vol * this._channelGain(v.item.voiceIdx) * volMult);
+
             if (window.gui?.highlight) {
                 setTimeout(
-                    () => window.gui.highlight(item.voiceIdx, freq, dur * 800, chordIdx),
+                    () => window.gui.highlight(v.item.voiceIdx, v.freq, dur * 800, chordIdx),
                     (lead + idx * SPREAD_SEC) * 1000
                 );
             }
