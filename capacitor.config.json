@@ -1,0 +1,8 @@
+{
+  "appId": "com.lorenzomeravillia.clearvoicing",
+  "appName": "ClearVoicing",
+  "webDir": "WebVersion",
+  "ios": {
+    "contentInset": "automatic"
+  }
+}
