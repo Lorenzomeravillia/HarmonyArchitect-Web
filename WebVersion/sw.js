@@ -10,7 +10,7 @@
 // dispositivo. Quando una release modifica il set (strumenti, mappe, URL),
 // bumpare SAMPLES_VERSION: alla prima visita dopo l'aggiornamento la cache
 // vecchia viene eliminata e i campioni aggiornati vengono riscaricati.
-const SAMPLES_VERSION = 'v1';
+const SAMPLES_VERSION = 'v2';
 const CACHE_NAME = 'cv-samples-' + SAMPLES_VERSION;
 
 const SAMPLE_URL_PATTERNS = [
@@ -42,6 +42,15 @@ self.addEventListener('fetch', (event) => {
     if (event.request.method !== 'GET') return;
     const url = event.request.url;
     if (!SAMPLE_URL_PATTERNS.some(re => re.test(url))) return;
+
+    // Never answer a ranged request from the cache. Safari fetches media for
+    // an <audio> element with a Range header and expects a 206 with the bytes
+    // it asked for; handing it a complete 200 from the cache makes playback
+    // fail silently. Tone.js loads samples with fetch/XHR and is unaffected,
+    // which is why this only bites the <audio> fallback engine — the exact
+    // path that has to keep working when Web Audio is wedged. Let these go
+    // straight to the network (and to the HTTP cache, which handles ranges).
+    if (event.request.headers.get('range')) return;
 
     event.respondWith((async () => {
         const cache = await caches.open(CACHE_NAME);

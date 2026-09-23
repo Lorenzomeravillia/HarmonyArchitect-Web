@@ -1106,21 +1106,43 @@ class AudioEngine {
     // src changes, so we bless a pool up front and then reuse it. This must
     // run synchronously inside the tap — hence it happens at the very start
     // of unlockAndLoad, before we know whether Web Audio will fail at all.
-    _unlockElementPool(size = 10) {
+    _unlockElementPool(size = 6) {
         if (this._elPool) return;
         this._elPool = [];
+        this._elBlessed = 0;
+        this._elRejected = 0;
         try {
             for (let i = 0; i < size; i++) {
                 const el = new Audio('assets/silence.wav');
                 el.preload = 'auto';
                 el.volume = 0;
+                const slot = { el, busy: false, until: 0 };
+                // Pause only once play() has actually started. Pausing
+                // synchronously aborts the play, and an aborted play may not
+                // count as the gesture-blessing iOS requires — which would
+                // leave the pool useless precisely when it is needed.
                 const p = el.play();
-                if (p && p.catch) p.catch(() => {});
-                el.pause();
-                try { el.currentTime = 0; } catch (e) {}
-                this._elPool.push({ el, busy: false, until: 0 });
+                if (p && p.then) {
+                    p.then(() => {
+                        this._elBlessed++;
+                        el.pause();
+                        try { el.currentTime = 0; } catch (e) {}
+                    }).catch((err) => {
+                        this._elRejected++;
+                        if (this._elRejected === 1) {
+                            this.logEvent('HTMLAudio pool: play() rejected — ' + (err && err.name ? err.name : err));
+                        }
+                    });
+                } else {
+                    this._elBlessed++;
+                    el.pause();
+                }
+                this._elPool.push(slot);
             }
-            this.logEvent('HTMLAudio pool unlocked (' + size + ' elements)');
+            this.logEvent('HTMLAudio pool: created ' + size + ' elements');
+            // Report the outcome once the play() promises have settled.
+            setTimeout(() => this.logEvent('HTMLAudio pool: blessed=' + this._elBlessed
+                + ' rejected=' + this._elRejected + '/' + size), 800);
         } catch (e) {
             this.logEvent('HTMLAudio pool unlock THREW: ' + e.message);
         }
@@ -1156,7 +1178,29 @@ class AudioEngine {
             const vol = Math.max(0, Math.min(1, gain));
             el.volume = vol;
             const p = el.play();
-            if (p && p.catch) p.catch(() => {});
+            if (p && p.catch) {
+                p.catch((err) => {
+                    if (!this._elNoteErrLogged) {
+                        this._elNoteErrLogged = true;
+                        this.logEvent('HTMLAudio note play() REJECTED — ' + (err && err.name ? err.name : err));
+                    }
+                });
+            }
+            // Once, prove whether the element is really advancing. play()
+            // resolving is not proof of sound; currentTime moving is. Also
+            // report the volume actually in effect: iOS treats .volume as
+            // read-only, so it may not be the value we asked for.
+            if (!this._elProbed) {
+                this._elProbed = true;
+                setTimeout(() => {
+                    this.logEvent('HTMLAudio probe: paused=' + el.paused
+                        + ' currentTime=' + (el.currentTime || 0).toFixed(2)
+                        + ' rate=' + el.playbackRate.toFixed(3)
+                        + ' vol=' + el.volume
+                        + ' readyState=' + el.readyState
+                        + ' src=' + String(el.currentSrc || el.src).split('/').slice(-2).join('/'));
+                }, 300);
+            }
 
             // No gain nodes here, so fade by stepping .volume, otherwise the
             // cut-off clicks audibly.
