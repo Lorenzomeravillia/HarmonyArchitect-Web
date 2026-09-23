@@ -9,6 +9,14 @@ class AudioEngine {
         this.samplers = {};
         this.reverb = null;
 
+        // Last-resort playback path: plain <audio> elements. See the
+        // HTMLAUDIO section below for why this exists.
+        this.useElementFallback = false;
+        this._elPool = null;
+
+        // Instruments served from our own assets/ rather than the CDN.
+        this.SELF_HOSTED = ['bass-electric', 'trumpet', 'french-horn', 'flute', 'guitar-nylon'];
+
         // Fallback vars (WebAudioFont)
         this.useFallback = false;
         this.fallbackCtx = null;
@@ -411,6 +419,7 @@ class AudioEngine {
             if (!this.ready) this.lastAudioError = Tone.context.state !== 'running' ? 'context-suspended (iOS did not resume audio)' : 'rebuild-failed';
             this.logEvent('_rebuildContext: done, loadedCount=' + loadedCount + ', ctxState=' + Tone.context.state + ', ready=' + this.ready);
             if (Tone.context.state !== 'running') {
+                this._enableElementFallback('rebuild: context never reached running');
                 this._startContextWatchdog();
                 this._armGestureRecovery();
             }
@@ -533,6 +542,9 @@ class AudioEngine {
             document.removeEventListener('click', handler, true);
             this._gestureRecoveryArmed = false;
             this.logEvent('gesture recovery: tap received — re-kicking in-gesture');
+            // A real gesture: last chance to bless the <audio> pool if the
+            // start tap never managed to.
+            this._unlockElementPool();
             // Synchronous inside the gesture — this play() is user-activated.
             try {
                 const el = document.getElementById('ios_audio_activator');
@@ -704,7 +716,10 @@ class AudioEngine {
                 clearInterval(this._watchdogTimer);
                 this._watchdogTimer = null;
                 this.logEvent('context watchdog: gave up after 5min, state=' + ctx.state);
-                this.lastAudioError = 'audio-system-wedged (riavvia il telefono)';
+                this._enableElementFallback('watchdog gave up');
+                if (!this.useElementFallback) {
+                    this.lastAudioError = 'audio-system-wedged (riavvia il telefono)';
+                }
                 this._armGestureRecovery();
             }
         }, 2000);
@@ -726,6 +741,11 @@ class AudioEngine {
         }
 
         this.logEvent('unlockAndLoad: page-load context state=' + Tone.context.state);
+
+        // Bless the <audio> pool now, while we are still inside the tap. We
+        // do not yet know whether Web Audio will come up, and by the time we
+        // find out the gesture is long gone — so this has to be unconditional.
+        this._unlockElementPool();
 
         // ── iOS: session kick FIRST, fresh context SECOND ───────────────────
         // On-device experiments pinned the ordering down precisely:
@@ -779,11 +799,36 @@ class AudioEngine {
         if (loadedCount > 0 && Tone.context.state === 'running') {
             this.ready = true;
         } else if (Tone.context.state !== 'running') {
-            this.lastAudioError = 'context-suspended (iOS did not resume audio)';
+            // Web Audio is wedged. Rather than leave the app silent, switch to
+            // the <audio> element path, which keeps working through this (the
+            // silence activator plays in every log where the context is dead).
+            // The watchdog still runs: if the context frees up later, the next
+            // reload gets the better engine back.
+            this._enableElementFallback('unlock: context never reached running');
             this._startContextWatchdog();
         } else if (!this.lastAudioError) {
             this.lastAudioError = 'no samples decoded';
         }
+    }
+
+    // Switch to <audio> element playback for the rest of this page session.
+    // Deliberately sticky: flipping engines mid-session would change how the
+    // app sounds from one chord to the next.
+    _enableElementFallback(why) {
+        if (this.useElementFallback) return;
+        if (!this._elPool) {
+            // Never blessed inside a gesture, so element playback would be
+            // rejected too. Stay put and report the real problem.
+            this.logEvent('elementFallback: no unlocked pool — cannot switch (' + why + ')');
+            this.lastAudioError = 'context-suspended (iOS did not resume audio)';
+            return;
+        }
+        this.useElementFallback = true;
+        this.ready = true;
+        this.lastAudioError = null;
+        this.logEvent('SWITCHING TO HTMLAudio playback — ' + why);
+        const banner = document.getElementById('audio_trouble');
+        if (banner) banner.remove();
     }
 
     // Manual recovery path for the on-screen "tap to retry" banner. unlockAndLoad()
@@ -815,7 +860,9 @@ class AudioEngine {
         // bounded by the channel count and reads as a meaningful ratio.
         const loaded = this._usableSamplerCount();
         const parts = [
-            'engine=' + (this.useFallback ? 'WebAudioFont' : (window.Tone ? 'Tone' : 'none')),
+            'engine=' + (this.useElementFallback ? 'HTMLAudio'
+                        : this.useFallback ? 'WebAudioFont'
+                        : (window.Tone ? 'Tone' : 'none')),
             'ctx=' + st,
             'ready=' + (!!this.ready),
             'samples=' + loaded + '/' + this.channels.length
@@ -925,8 +972,8 @@ class AudioEngine {
         }
         
         // Define locally hosted reliable priority samples vs CDN lazy loads
-        const SELF_HOSTED = ['bass-electric', 'trumpet', 'french-horn', 'flute', 'guitar-nylon'];
-        const baseUrl = SELF_HOSTED.includes(name) 
+        const SELF_HOSTED = this.SELF_HOSTED;
+        const baseUrl = SELF_HOSTED.includes(name)
             ? `assets/samples/${name}/`
             : `https://nbrosowsky.github.io/tonejs-instruments/samples/${name}/`;
 
@@ -1009,6 +1056,151 @@ class AudioEngine {
         if (this._unlocked) this.loadInstrument(prog);
     }
 
+    // ── HTMLAUDIO FALLBACK ────────────────────────────────────────────────
+    // On some iOS devices Web Audio gets wedged system-wide: every
+    // AudioContext, including brand-new ones, is born 'suspended' and its
+    // resume() promise never settles, and only a device reboot clears it.
+    // Through all of it one thing kept working in every on-device log — the
+    // silence <audio> element played on demand. HTMLMediaElement playback
+    // goes through a different path from Web Audio, so it survives the wedge.
+    //
+    // This is the escape hatch: play the very same mp3 samples through plain
+    // <audio> elements. No reverb and coarser timing than Tone, but it makes
+    // a sound, which beats a silent app.
+
+    _sampleBaseUrl(name) {
+        return this.SELF_HOSTED.includes(name)
+            ? `assets/samples/${name}/`
+            : `https://nbrosowsky.github.io/tonejs-instruments/samples/${name}/`;
+    }
+
+    _noteNameToMidi(n) {
+        const m = String(n).match(/^([A-G])(#|b)?(-?\d+)$/);
+        if (!m) return null;
+        const semis = { C:0, D:2, E:4, F:5, G:7, A:9, B:11 }[m[1]];
+        const acc = m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0;
+        return semis + acc + (parseInt(m[3], 10) + 1) * 12;
+    }
+
+    // Nearest available sample for a pitch, plus the playbackRate that bends
+    // it there. Our own sample sets are spaced no more than a whole tone
+    // apart, so the shift stays within a semitone and barely alters length.
+    _pickSample(instName, midi) {
+        const map = this.INSTRUMENT_MAPS[instName] || { 'C4': 'C4.mp3' };
+        let best = null, bestDist = Infinity;
+        for (const note in map) {
+            const nm = this._noteNameToMidi(note);
+            if (nm === null) continue;
+            const d = Math.abs(nm - midi);
+            if (d < bestDist) { bestDist = d; best = { file: map[note], midi: nm }; }
+        }
+        if (!best) return null;
+        return {
+            url: this._sampleBaseUrl(instName) + best.file,
+            rate: Math.pow(2, (midi - best.midi) / 12)
+        };
+    }
+
+    // iOS only lets an <audio> element be played programmatically once it has
+    // been played inside a user gesture. An element stays blessed when its
+    // src changes, so we bless a pool up front and then reuse it. This must
+    // run synchronously inside the tap — hence it happens at the very start
+    // of unlockAndLoad, before we know whether Web Audio will fail at all.
+    _unlockElementPool(size = 10) {
+        if (this._elPool) return;
+        this._elPool = [];
+        try {
+            for (let i = 0; i < size; i++) {
+                const el = new Audio('assets/silence.wav');
+                el.preload = 'auto';
+                el.volume = 0;
+                const p = el.play();
+                if (p && p.catch) p.catch(() => {});
+                el.pause();
+                try { el.currentTime = 0; } catch (e) {}
+                this._elPool.push({ el, busy: false, until: 0 });
+            }
+            this.logEvent('HTMLAudio pool unlocked (' + size + ' elements)');
+        } catch (e) {
+            this.logEvent('HTMLAudio pool unlock THREW: ' + e.message);
+        }
+    }
+
+    _takeElement() {
+        if (!this._elPool) return null;
+        const now = Date.now();
+        let slot = this._elPool.find(s => !s.busy);
+        // All busy: steal the one that has been sounding longest.
+        if (!slot) slot = this._elPool.reduce((a, b) => (a.until <= b.until ? a : b));
+        if (slot.busy) { try { slot.el.pause(); } catch (e) {} }
+        slot.busy = true;
+        slot.until = now;
+        return slot;
+    }
+
+    _playElementNote(instName, midi, durationSec, gain) {
+        const pick = this._pickSample(instName, midi);
+        const slot = this._takeElement();
+        if (!pick || !slot) return;
+        const el = slot.el;
+        slot.until = Date.now() + durationSec * 1000;
+        try {
+            if (el.dataset.cvSrc !== pick.url) { el.src = pick.url; el.dataset.cvSrc = pick.url; }
+            try { el.currentTime = 0; } catch (e) {}
+            // playbackRate must shift pitch, which is the opposite of what
+            // browsers do by default for media elements.
+            el.preservesPitch = false;
+            el.mozPreservesPitch = false;
+            el.webkitPreservesPitch = false;
+            el.playbackRate = pick.rate;
+            const vol = Math.max(0, Math.min(1, gain));
+            el.volume = vol;
+            const p = el.play();
+            if (p && p.catch) p.catch(() => {});
+
+            // No gain nodes here, so fade by stepping .volume, otherwise the
+            // cut-off clicks audibly.
+            clearTimeout(slot.stopTimer);
+            clearInterval(slot.fadeTimer);
+            slot.stopTimer = setTimeout(() => {
+                let v = vol;
+                slot.fadeTimer = setInterval(() => {
+                    v -= vol / 6;
+                    if (v <= 0) {
+                        clearInterval(slot.fadeTimer);
+                        try { el.pause(); el.currentTime = 0; } catch (e) {}
+                        slot.busy = false;
+                    } else {
+                        try { el.volume = Math.max(0, v); } catch (e) {}
+                    }
+                }, 25);
+            }, Math.max(60, durationSec * 1000 - 150));
+        } catch (e) {
+            slot.busy = false;
+            this.logEvent('HTMLAudio note THREW: ' + e.message);
+        }
+    }
+
+    // Chord playback through the element pool. Timing comes from setTimeout
+    // rather than the audio clock, so the onset stagger is approximate — but
+    // it is still audible, and it is the feature the app is built around.
+    _playChordViaElements(notesArray, dur, vol, chordIdx, volumeMap, spreadSec) {
+        notesArray.forEach((item, idx) => {
+            const volMult = volumeMap ? (volumeMap[item.voiceIdx] ?? 1.0) : 1.0;
+            if (volMult <= 0) return;
+            const instName = this.channels[item.voiceIdx];
+            if (!instName) return;
+            const freq = item.frequency || item.freq;
+            const midi = Math.round(69 + 12 * Math.log2(freq / 440));
+            const gain = vol * this._channelGain(item.voiceIdx) * volMult;
+            const delay = idx * spreadSec * 1000;
+            setTimeout(() => this._playElementNote(instName, midi, dur, gain), delay);
+            if (window.gui?.highlight) {
+                setTimeout(() => window.gui.highlight(item.voiceIdx, freq, dur * 800, chordIdx), delay);
+            }
+        });
+    }
+
     // Load every sampler a chord needs BEFORE its schedule is fixed.
     //
     // The chord methods used to compute `startTime = Tone.now() + 0.1` and
@@ -1070,6 +1262,15 @@ class AudioEngine {
             return;
         }
 
+        if (this.useElementFallback) {
+            const inst = this.channels[channelIdx];
+            if (!inst) return;
+            const gain = (velocity / 127) * this._getVolume() * this._channelGain(channelIdx);
+            this._playElementNote(inst, midiPitch, duration, gain);
+            if (window.gui?.highlight) window.gui.highlight(channelIdx, 440 * Math.pow(2, (midiPitch - 69) / 12), duration * 1000, chordIdx);
+            return;
+        }
+
         // Tone.js Standard Execution
         if (Tone.context.state !== 'running') {
             const running = await this._ensureContextRunning('playMidi');
@@ -1123,6 +1324,11 @@ class AudioEngine {
                     setTimeout(() => window.gui.highlight(item.voiceIdx, freq, dur * 800, chordIdx), (0.1 + idx * SPREAD_SEC) * 1000);
                 }
             });
+            return;
+        }
+
+        if (this.useElementFallback) {
+            this._playChordViaElements(notesArray, dur, vol, chordIdx, null, SPREAD_SEC);
             return;
         }
 
@@ -1207,6 +1413,11 @@ class AudioEngine {
                     setTimeout(() => window.gui.highlight(item.voiceIdx, freq, dur * 800, chordIdx), (0.1 + idx * SPREAD_SEC) * 1000);
                 }
             });
+            return;
+        }
+
+        if (this.useElementFallback) {
+            this._playChordViaElements(notesArray, dur, vol, chordIdx, volumeMap, SPREAD_SEC);
             return;
         }
 
