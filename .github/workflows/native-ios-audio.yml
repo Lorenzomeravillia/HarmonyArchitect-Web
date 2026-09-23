@@ -1,0 +1,34 @@
+name: Native iOS Audio
+
+on:
+  pull_request:
+    paths:
+      - "WebVersion/js/audio_engine.js"
+      - "WebVersion/js/native_audio_bridge.js"
+      - "WebVersion/index.html"
+      - "native-app/**"
+      - "native/harmony-native-audio/**"
+      - ".github/workflows/native-ios-audio.yml"
+  workflow_dispatch:
+
+jobs:
+  javascript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Check JavaScript syntax
+        run: |
+          node --check WebVersion/js/native_audio_bridge.js
+          node --check WebVersion/js/audio_engine.js
+          node -e "JSON.parse(require('fs').readFileSync('native-app/package.json','utf8')); JSON.parse(require('fs').readFileSync('native-app/capacitor.config.json','utf8'));"
+
+  ios-plugin:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile HarmonyNativeAudio for iOS
+        working-directory: native/harmony-native-audio
+        run: xcodebuild -scheme HarmonyNativeAudio -destination 'generic/platform=iOS' build
