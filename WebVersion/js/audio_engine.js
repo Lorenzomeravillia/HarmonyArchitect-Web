@@ -311,8 +311,29 @@ class AudioEngine {
             });
             this._createdCtxs = [];
         };
+        // A force-quit from the app switcher usually kills the process WITHOUT
+        // ever firing pagehide, so relying on pagehide to close the contexts
+        // leaves the session orphaned in exactly the case the user hits: quit
+        // the app, reopen, audio dead. 'hidden' is the last event we are
+        // guaranteed to get. Suspending immediately is cheap and reversible;
+        // after a short grace period — long enough that flicking to another app
+        // and straight back costs nothing — we do the full release, because by
+        // then this is a real backgrounding and the kill may come at any
+        // moment. Coming back cancels it, and a rebuild is now cheap: the
+        // samples are local and service-worker cached.
+        const HIDDEN_RELEASE_MS = 2500;
         document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'hidden') releaseSession('visibilitychange-hidden', false);
+            if (document.visibilityState === 'hidden') {
+                releaseSession('visibilitychange-hidden', false);
+                clearTimeout(this._hiddenReleaseTimer);
+                this._hiddenReleaseTimer = setTimeout(() => {
+                    if (document.visibilityState === 'hidden') {
+                        releaseSession('still hidden after ' + HIDDEN_RELEASE_MS + 'ms', true);
+                    }
+                }, HIDDEN_RELEASE_MS);
+            } else {
+                clearTimeout(this._hiddenReleaseTimer);
+            }
         });
         window.addEventListener('pagehide', () => releaseSession('pagehide', true));
 
@@ -562,13 +583,15 @@ class AudioEngine {
 
     async _freshContextAttempts(label) {
         for (let attempt = 1; attempt <= 2; attempt++) {
-            // Hard budget on contexts minted per page session. iOS tracks live
-            // contexts beyond the page (audio daemon side); churning through
-            // them is what likely wedged the device's Web Audio system-wide in
-            // the first place. Better to stop and say so than to make it worse.
-            this._ctxCount = (this._ctxCount || 1) + 1;   // starts at 1 = page-load context
-            if (this._ctxCount > 5) {
-                this.logEvent(label + ': context budget exhausted (' + this._ctxCount + ' this session) — not creating more');
+            // Cap how many contexts are ALIVE AT ONCE, not how many have ever
+            // been created. What wedges iOS is accumulating live contexts, and
+            // every abandoned one is closed now — so normal churn across app
+            // switches is harmless, while a genuine leak still trips the guard.
+            // (Counting cumulative creations instead made a handful of
+            // background/foreground cycles exhaust the budget on their own.)
+            const live = (this._createdCtxs || []).filter(c => c && c.state !== 'closed').length;
+            if (live >= 4) {
+                this.logEvent(label + ': ' + live + ' contexts still alive — refusing to create more');
                 this.lastAudioError = 'audio-system-wedged (riavvia il telefono)';
                 return false;
             }
