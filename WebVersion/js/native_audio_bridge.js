@@ -54,6 +54,10 @@
             return call('playVoices', { voices });
         },
 
+        async playTone(frequency, durationSec = 0.02, gain = 0.3) {
+            return call('playTone', { frequency, durationSec, gain });
+        },
+
         async stopAll() {
             return call('stopAll');
         },
