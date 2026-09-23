@@ -1416,6 +1416,25 @@ class AudioEngine {
     async playMidi(channelIdx, midiPitch, velocity, duration, chordIdx) {
         if (!this._unlocked) return;
 
+        if (this.useNativeAudio) {
+            const inst = this.channels[channelIdx];
+            if (!inst) return;
+            const gain = (velocity / 127) * this._getVolume() * this._channelGain(channelIdx);
+            await this._playNativeVoices(
+                [this._nativeVoice(inst, midiPitch, duration, gain, 0)],
+                'playMidi'
+            );
+            if (window.gui?.highlight) {
+                window.gui.highlight(
+                    channelIdx,
+                    440 * Math.pow(2, (midiPitch - 69) / 12),
+                    duration * 1000,
+                    chordIdx
+                );
+            }
+            return;
+        }
+
         // Fallback Logic Execution
         if (this.useFallback) {
             if (this.fallbackCtx.state === 'suspended') this.fallbackCtx.resume();
@@ -1471,6 +1490,34 @@ class AudioEngine {
         const dur = durationOverride !== null ? durationOverride : 1.87;
         const vol = this._getVolume();
 
+        if (this.useNativeAudio) {
+            const nativeVoices = notesArray.map((item, idx) => {
+                const freq = item.frequency || item.freq;
+                const midi = Math.round(69 + 12 * Math.log2(freq / 440));
+                const inst = this.channels[item.voiceIdx];
+                if (!inst) return null;
+                return this._nativeVoice(
+                    inst,
+                    midi,
+                    dur,
+                    vol * this._channelGain(item.voiceIdx),
+                    idx * SPREAD_SEC * 1000
+                );
+            });
+            await this._playNativeVoices(nativeVoices, 'playChord');
+
+            notesArray.forEach((item, idx) => {
+                const freq = item.frequency || item.freq;
+                if (window.gui?.highlight) {
+                    setTimeout(
+                        () => window.gui.highlight(item.voiceIdx, freq, dur * 800, chordIdx),
+                        idx * SPREAD_SEC * 1000
+                    );
+                }
+            });
+            return;
+        }
+
         if (this.useFallback) {
             this.fallbackCtx.resume();
             const lead = this.fallbackCtx.state === 'running' ? 0.1 : 0.4;
@@ -1521,6 +1568,12 @@ class AudioEngine {
 
     stopAll() {
         if (!this._unlocked) return;
+        if (this.useNativeAudio && this.nativeAudio) {
+            this.nativeAudio.stopAll().catch((e) =>
+                this.logEvent('native stopAll THREW: ' + e.message)
+            );
+            return;
+        }
         if (this.useFallback) {
             if (this.player && this.fallbackCtx) this.player.cancelQueue(this.fallbackCtx);
         } else {
@@ -1533,6 +1586,12 @@ class AudioEngine {
     }
 
     playClick(duration = 0.02) {
+        if (this.useNativeAudio && this.nativeAudio?.playTone) {
+            this.nativeAudio.playTone(1000, duration, 0.3).catch((e) =>
+                this.logEvent('native playClick THREW: ' + e.message)
+            );
+            return;
+        }
         try {
             const ctx = this.ctx;
             if (!ctx || ctx.state === 'suspended' || !ctx.createOscillator) return;
@@ -1556,6 +1615,35 @@ class AudioEngine {
         const SPREAD_SEC = 0;
         const dur = durationOverride !== null ? durationOverride : 1.87;
         const vol = this._getVolume();
+
+        if (this.useNativeAudio) {
+            const nativeVoices = notesArray.map((item) => {
+                const volMult = volumeMap[item.voiceIdx] ?? 1.0;
+                if (volMult <= 0) return null;
+                const freq = item.frequency || item.freq;
+                const midi = Math.round(69 + 12 * Math.log2(freq / 440));
+                const inst = this.channels[item.voiceIdx];
+                if (!inst) return null;
+                return this._nativeVoice(
+                    inst,
+                    midi,
+                    dur,
+                    vol * this._channelGain(item.voiceIdx) * volMult,
+                    0
+                );
+            });
+            await this._playNativeVoices(nativeVoices, 'playChordWithVolumes');
+
+            notesArray.forEach((item) => {
+                const volMult = volumeMap[item.voiceIdx] ?? 1.0;
+                if (volMult <= 0) return;
+                const freq = item.frequency || item.freq;
+                if (window.gui?.highlight) {
+                    window.gui.highlight(item.voiceIdx, freq, dur * 800, chordIdx);
+                }
+            });
+            return;
+        }
 
         if (this.useFallback) {
             this.fallbackCtx.resume();
