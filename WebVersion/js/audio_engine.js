@@ -762,6 +762,21 @@ class AudioEngine {
         if (Tone.context.state !== 'running') {
             await this._kickAudioSession(1200);   // play() fires synchronously, still in-gesture
             await this._freshContextAfterKick('unlock');
+
+            // Decide here, not after the preload. Tone samplers built on a
+            // wedged context can never make a sound, so loading all seven of
+            // them first only delays working audio by several seconds — long
+            // enough that a device already in the fallback still reported
+            // "engine=Tone, samples=0/7" while it was grinding through them.
+            // The element engine plays the mp3s directly and needs none of it.
+            if (Tone.context.state !== 'running') {
+                this._enableElementFallback('unlock: context never reached running');
+                if (this.useElementFallback) {
+                    this._startContextWatchdog();
+                    this._setLoading(false);
+                    return;
+                }
+            }
         } else {
             await this._raceTimeout(() => Tone.start(), 1500, 'Tone.start()');
             // Track the raw context so releaseSession/watchdog can reach it
@@ -816,17 +831,18 @@ class AudioEngine {
     // app sounds from one chord to the next.
     _enableElementFallback(why) {
         if (this.useElementFallback) return;
-        if (!this._elPool) {
-            // Never blessed inside a gesture, so element playback would be
-            // rejected too. Stay put and report the real problem.
-            this.logEvent('elementFallback: no unlocked pool — cannot switch (' + why + ')');
+        const usable = (this._elPool || []).filter(s => !s.dead).length;
+        if (!usable) {
+            // Nothing was blessed inside a gesture, so element playback would
+            // be rejected too. Stay put and report the real problem.
+            this.logEvent('elementFallback: no usable elements — cannot switch (' + why + ')');
             this.lastAudioError = 'context-suspended (iOS did not resume audio)';
             return;
         }
         this.useElementFallback = true;
         this.ready = true;
         this.lastAudioError = null;
-        this.logEvent('SWITCHING TO HTMLAudio playback — ' + why);
+        this.logEvent('SWITCHING TO HTMLAudio playback (' + usable + ' elements) — ' + why);
         const banner = document.getElementById('audio_trouble');
         if (banner) banner.remove();
     }
@@ -1106,7 +1122,7 @@ class AudioEngine {
     // src changes, so we bless a pool up front and then reuse it. This must
     // run synchronously inside the tap — hence it happens at the very start
     // of unlockAndLoad, before we know whether Web Audio will fail at all.
-    _unlockElementPool(size = 6) {
+    _unlockElementPool(size = 8) {
         if (this._elPool) return;
         this._elPool = [];
         this._elBlessed = 0;
@@ -1125,16 +1141,21 @@ class AudioEngine {
                 if (p && p.then) {
                     p.then(() => {
                         this._elBlessed++;
+                        slot.blessed = true;
                         el.pause();
                         try { el.currentTime = 0; } catch (e) {}
                     }).catch((err) => {
+                        // Not blessed by the gesture (or the source failed to
+                        // decode) — never hand this one out, it would be mute.
                         this._elRejected++;
+                        slot.dead = true;
                         if (this._elRejected === 1) {
                             this.logEvent('HTMLAudio pool: play() rejected — ' + (err && err.name ? err.name : err));
                         }
                     });
                 } else {
                     this._elBlessed++;
+                    slot.blessed = true;
                     el.pause();
                 }
                 this._elPool.push(slot);
@@ -1151,9 +1172,11 @@ class AudioEngine {
     _takeElement() {
         if (!this._elPool) return null;
         const now = Date.now();
-        let slot = this._elPool.find(s => !s.busy);
+        const usable = this._elPool.filter(s => !s.dead);
+        if (!usable.length) return null;
+        let slot = usable.find(s => !s.busy);
         // All busy: steal the one that has been sounding longest.
-        if (!slot) slot = this._elPool.reduce((a, b) => (a.until <= b.until ? a : b));
+        if (!slot) slot = usable.reduce((a, b) => (a.until <= b.until ? a : b));
         if (slot.busy) { try { slot.el.pause(); } catch (e) {} }
         slot.busy = true;
         slot.until = now;
