@@ -549,20 +549,29 @@ canvas {
 }
 
 /* ── Inline Feedback Controls (Thumb Zone) ──────────── */
+/* Hidden with visibility alone this kept its full height reserved in the
+   column at all times — 82px of the phone viewport, ~12%, held for something
+   on screen only just after an answer. Collapsing max-height/padding as well
+   gives the space back to the staff while keeping the fade. */
 .inline-feedback-controls {
     display: flex;
     flex-direction: column;
     align-items: stretch;
     gap: 6px;
-    padding: 4px 0;
+    padding: 0;
+    max-height: 0;
+    overflow: hidden;
     opacity: 0;
     visibility: hidden;
-    transition: opacity 250ms ease-in-out, visibility 250ms ease-in-out;
+    transition: opacity 250ms ease-in-out, visibility 250ms ease-in-out,
+                max-height 250ms ease-in-out, padding 250ms ease-in-out;
     flex-shrink: 0;
 }
 .inline-feedback-controls.visible {
     opacity: 1;
     visibility: visible;
+    max-height: 260px;
+    padding: 4px 0;
 }
 .inline-fb-row {
     display: flex;
@@ -905,8 +914,19 @@ canvas {
     /* Timbre row */
     .instruments-row { padding: 4px 8px; }
     .timbre-label    { font-size: 12px; margin-right: 4px; }
-    .timbre-presets  { gap: 4px; flex-wrap: wrap; justify-content: flex-start; }
-    .preset-btn      { flex: 1 1 auto; min-width: 0; }
+    /* Four presets wrapped to a second line once Chitarra was added. Keep
+       them on one line and let it scroll sideways instead, like the Solo row. */
+    .instruments-row { padding: 3px 8px; flex-wrap: nowrap; }
+    .timbre-presets  {
+        gap: 6px;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        justify-content: flex-start;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+    .timbre-presets::-webkit-scrollbar { display: none; }
+    .preset-btn      { flex: 0 0 auto; white-space: nowrap; font-size: 12px; padding: 5px 10px; }
     .preset-btn      { font-size: 12px; padding: 5px 8px; white-space: nowrap; }
 
     /* Play frame */
@@ -916,10 +936,13 @@ canvas {
     .combo-text     { font-size: clamp(11px, 3vw, 18px); max-width: 70px; }
 
     /* Legend */
-    .legend-frame { padding: 5px 8px; }
-    .interval-legend { gap: 8px; justify-content: center; align-items: center; font-size: 0; }
-    .legend-item  { font-size: 14px; gap: 5px; }
-    .legend-dot   { width: 11px; height: 11px; }
+    /* One line, not two: five static labels were costing 67px of a 664px
+       viewport. Tightened enough to fit across, kept legible. */
+    .legend-frame { padding: 2px 6px; }
+    .interval-legend { gap: 4px 7px; flex-wrap: nowrap; justify-content: space-between;
+                       align-items: center; font-size: 0; padding: 2px 0; }
+    .legend-item  { font-size: 11px; gap: 3px; white-space: nowrap; }
+    .legend-dot   { width: 8px; height: 8px; flex-shrink: 0; }
 
     /* Middle: stack vertically */
     .middle-frame { flex-direction: column; flex-wrap: nowrap; min-height: 0 !important; flex-grow: 1; display: flex; align-items: stretch; }
@@ -1056,6 +1079,10 @@ canvas {
     /* Reclaim feedback row gap and overlap answers */
     .inline-feedback-controls {
         position: absolute;
+        /* Out of flow here, so it reserves nothing anyway — undo the collapse
+           the portrait/base rule applies, or it would render zero-height. */
+        max-height: none;
+        overflow: visible;
         top: 0; right: 0; bottom: 0;
         width: 130px; /* match answers frame */
         z-index: 50;
@@ -1108,6 +1135,7 @@ canvas {
         padding-top: 16px;
         gap: 20px;
     }
+    .inline-feedback-controls.visible { max-height: 420px; }
     .inline-fb-btn {
         max-width: 280px;
         padding: 14px 20px;
