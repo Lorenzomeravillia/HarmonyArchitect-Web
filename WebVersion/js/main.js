@@ -430,7 +430,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     function getNotation() {
         const sel = document.getElementById('notation_menu');
         if (sel && sel.value) return sel.value;
-        return localStorage.getItem(NOTATION_KEY) || 'en';
+        // Italian by default: the app is used by Italian students, who read
+        // fixed-do names. Anyone who has picked a notation keeps their choice,
+        // since that is stored and wins over this fallback.
+        return localStorage.getItem(NOTATION_KEY) || 'it';
     }
 
     // "Bb" → "Sib", "Am" → "Lam". With expand, basic triads are spelled out
@@ -1057,7 +1060,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Restore the saved notation before the first paint, so the menus below
     // are populated in the language the user last chose.
     const notationMenu = document.getElementById('notation_menu');
-    if (notationMenu) notationMenu.value = localStorage.getItem(NOTATION_KEY) || 'en';
+    if (notationMenu) notationMenu.value = localStorage.getItem(NOTATION_KEY) || 'it';
 
     const themeMenu = document.getElementById('theme_menu');
     const savedTheme = localStorage.getItem(THEME_KEY) || 'night';
