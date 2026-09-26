@@ -125,7 +125,7 @@ class GUI {
 
         // ── Solo buttons ────────────────────────────────────────
         const solo_frame = document.getElementById("solo_buttons_frame");
-        const defaultLabels = ["Bass", "2nd", "3rd", "4th", "5th", "6th", "Top"];
+        const defaultLabels = ["Bass", "Voice", "Voice", "Voice", "Voice", "Voice", "Top"];  // relabelled by updateSoloButtons
         defaultLabels.forEach((s, i) => {
             let b = document.createElement("button");
             b.className = "btn solo-btn";
@@ -247,8 +247,8 @@ class GUI {
         // A single chord: name each voice by the chord tone it plays (Root,
         // b3, 5, b7…), coloured like its notehead and the legend. In a
         // progression a voice plays a different chord tone in every chord,
-        // so there it keeps its position name, bass up.
-        const ordinals = {0:'Bass', 1:'2nd', 2:'3rd', 3:'4th', 4:'5th', 5:'6th', 6:'Lead'};
+        // so there it is named by position, in the convention of the style.
+        const roles = this._voiceRoleNames(activeIndices);
         const single = window.currentVoicings && window.currentVoicings.length === 1
             ? window.currentVoicings[0] : null;
         const byVoice = {};
@@ -264,13 +264,39 @@ class GUI {
                     btn.textContent = n.degree !== 1 ? n.degreeLabel : (i === 0 ? 'Root' : 'Root ↑');
                     btn.style.boxShadow = 'inset 0 -3px 0 ' + n.color;
                 } else {
-                    btn.textContent = ordinals[i] || ('V' + i);
+                    btn.textContent = roles[i] || ('Voice ' + i);
                     btn.style.boxShadow = '';
                 }
             } else {
                 btn.style.display = 'none';
             }
         });
+    }
+
+    // Position names for the voices of a progression. Voices sit in fixed
+    // slots (0 = bass, 6 = top, inner voices from 3 up; see AI_MEMORY.md),
+    // so the slot number itself skips values and counts from the bottom.
+    // Names count the voices actually present from the top down instead,
+    // the way arrangers do (Drop 2 = the 2nd voice from the top):
+    //   Jazz       Lead · Voice 2 · Voice 3 · … · Bass
+    //   Classical  Soprano · Alto · Tenor · Bass (four-part writing)
+    //   others     Top · Voice 2 · … · Bass
+    _voiceRoleNames(activeIndices) {
+        let style = '';
+        try {
+            const sel = document.getElementById('style_menu');
+            style = (sel && sel.value) || localStorage.getItem('cv_prog_style') || '';
+        } catch (e) {}
+        const upper = [...activeIndices].filter(i => i !== 0).sort((a, b) => b - a);
+        const names = { 0: 'Bass' };
+        if (style === 'Classical' && upper.length === 3) {
+            ['Soprano', 'Alto', 'Tenor'].forEach((n, k) => { names[upper[k]] = n; });
+            return names;
+        }
+        upper.forEach((slot, k) => {
+            names[slot] = k === 0 ? (style === 'Jazz' ? 'Lead' : 'Top') : 'Voice ' + (k + 1);
+        });
+        return names;
     }
 
     resetSoloButtons() {
