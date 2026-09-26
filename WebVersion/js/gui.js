@@ -12,6 +12,11 @@ function getKeySignatureForContext(root, isMajor) {
 // stepMap: C=0,D=1,E=2,F=3,G=4,A=5,B=6; step = oct*7 + letterIdx
 // For treble (voiceIdx>0): Y = 175 - (step - 30) * 17
 // For bass   (voiceIdx=0): Y = 243 - (step - 26) * 17
+// Accidental columns inside a chord: width of one column, and how many staff
+// steps apart two accidentals must be to share one (a third or closer and
+// the glyphs touch, so they stagger leftwards).
+const ACC_COL_W = 15;
+const ACC_MIN_STEPS = 3;
 // Standard treble key-sig positions (step values):
 const TREBLE_SHARP_STEPS = {
     'F': 38,  // F5
@@ -420,19 +425,41 @@ class GUI {
         if (!chords || chords.length === 0) return;
 
         const w = 600;
-        const availW = w - noteStartX - 30;
-        let spacing = Math.min(availW / (chords.length + 1), 160);
+        const staffEnd = w - 30;
+        const availW = staffEnd - noteStartX;
+        // One chord per measure, as in any written chord progression. The
+        // barlines matter for reading the accidentals: an accidental holds
+        // until the next barline, so without them every ♮ after a chromatic
+        // chord looked like it cancelled the previous chord's note.
+        const measureW = availW / chords.length;
+
+        const layouts = chords.map(chordList => this._layoutChord(chordList, keySig));
+
+        // Barlines through the whole grand staff, then a final barline.
+        this.ctx.strokeStyle = th.line;
+        this.ctx.lineWidth = 1.5;
+        for (let i = 1; i < chords.length; i++) {
+            const bx = Math.round(noteStartX + measureW * i) + 0.5;
+            this.ctx.beginPath(); this.ctx.moveTo(bx, 59); this.ctx.lineTo(bx, 399); this.ctx.stroke();
+        }
+        this.ctx.lineWidth = 1.5;
+        this.ctx.beginPath(); this.ctx.moveTo(staffEnd - 7, 59); this.ctx.lineTo(staffEnd - 7, 399); this.ctx.stroke();
+        this.ctx.fillStyle = th.line;
+        this.ctx.fillRect(staffEnd - 4, 59, 4, 340);
 
         chords.forEach((chordList, i) => {
-            let xBase = chords.length === 1
-                ? noteStartX + availW / 2 - 20
-                : noteStartX + spacing * (i + 0.5);
+            const lay = layouts[i];
+            // Centre the chord's full width (accidentals + noteheads) in its
+            // measure; the last measure leaves room for the final barline.
+            const mStart = noteStartX + measureW * i;
+            const mWidth = measureW - (i === chords.length - 1 ? 8 : 0);
+            const xBase = mStart + (mWidth - (lay.left + lay.right)) / 2 + lay.left;
 
-            chordList.forEach((n) => {
+            chordList.forEach((n, k) => {
                 let j = n.voiceIdx;
-                let step = n.step;
-                let y = j === 0 ? (263 - (step - 26) * 17) : (195 - (step - 30) * 17);
-                let x = xBase;
+                let y = lay.y[k];
+                // Seconds can't share a column: the upper note moves right.
+                let x = xBase + (lay.shift[k] ? 21 : 0);
 
                 // Ledger lines
                 this.ctx.strokeStyle = th.ledger;
@@ -472,15 +499,59 @@ class GUI {
                 // Hitbox
                 window.noteHitboxes.push({ x: x+10, y, freq: n.frequency, voiceIdx: n.voiceIdx, chordIdx: i, color: n.color });
 
-                // Accidental — suppress if covered by key signature
-                const accSymbol = shouldShowAccidental(n.accidental, n.name ? n.name[0] : '', keySig);
+                // Accidental — suppress if covered by key signature. Always
+                // left of the chord (not of a shifted notehead), in the column
+                // _layoutChord assigned so close accidentals don't collide.
+                const accSymbol = lay.acc[k];
                 if (accSymbol) {
                     this.ctx.fillStyle = th.accidental;
                     this.ctx.font = "bold 22px Arial";
-                    this.ctx.fillText(accSymbol, x - 24, y + 8);
+                    this.ctx.fillText(accSymbol, xBase - 24 - lay.col[k] * ACC_COL_W, y + 8);
                 }
             });
         });
+    }
+
+    // Engraving layout for one chord, per staff (bass = voice 0, treble = the
+    // rest): which noteheads sit right of the column because they form a
+    // second with the note below, and which column each accidental takes.
+    // Returns per-note arrays plus the chord's extent left/right of xBase.
+    _layoutChord(chordList, keySig) {
+        const n = chordList.length;
+        const y = new Array(n), shift = new Array(n).fill(false);
+        const acc = new Array(n).fill(''), col = new Array(n).fill(0);
+        const staves = [[], []];
+        chordList.forEach((note, k) => {
+            const bass = note.voiceIdx === 0;
+            y[k] = bass ? (263 - (note.step - 26) * 17) : (195 - (note.step - 30) * 17);
+            acc[k] = shouldShowAccidental(note.accidental, note.name ? note.name[0] : '', keySig) || '';
+            staves[bass ? 0 : 1].push(k);
+        });
+        let maxCol = -1, anyShift = false;
+        staves.forEach(idxs => {
+            // Noteheads, bottom-up: a note a step (or unison) above an
+            // unshifted note goes to the right; a cluster alternates.
+            const up = idxs.slice().sort((a, b) => chordList[a].step - chordList[b].step);
+            for (let m = 1; m < up.length; m++) {
+                const d = chordList[up[m]].step - chordList[up[m - 1]].step;
+                if (d <= 1 && !shift[up[m - 1]]) { shift[up[m]] = true; anyShift = true; }
+            }
+            // Accidentals, top-down: each takes the nearest column with no
+            // accidental in it closer than ACC_MIN_STEPS.
+            const cols = [];
+            up.slice().reverse().filter(k => acc[k]).forEach(k => {
+                let c = 0;
+                while (cols[c] && cols[c].some(o => Math.abs(chordList[o].step - chordList[k].step) < ACC_MIN_STEPS)) c++;
+                (cols[c] = cols[c] || []).push(k);
+                col[k] = c;
+                maxCol = Math.max(maxCol, c);
+            });
+        });
+        return {
+            y, shift, acc, col,
+            left: maxCol < 0 ? 10 : 26 + maxCol * ACC_COL_W,
+            right: anyShift ? 45 : 24
+        };
     }
 
     setInsight(text) {

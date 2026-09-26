@@ -523,9 +523,15 @@ class MusicEngine {
                 step = noteObj.step;
             }
 
-            // --- GLOBAL DIATONIC OVERRIDE ---
-            // Forza l'ortografia ad allinearsi alla scala globale per evitare flip-flop (es. D# -> Eb in Do minore)
-            if (diatonicPCs && diatonicPCs[pc]) {
+            // --- KEY-CONTEXT SPELLING (unspelled notes only) ---
+            // A chord tone spelled from its own root and chord degree is already
+            // correct and must NOT be forced onto the key's scale. Doing that is
+            // what wrote F7 in E major as F-A-C-D# (the seventh of F is Eb; D#
+            // makes it an augmented sixth) and Dbm as Db-E-Ab (its third is Fb):
+            // chromatic chords are chromatic precisely because their tones are
+            // not in the scale. The key only decides spelling for notes that had
+            // no chord-table spelling to begin with.
+            if (diatonicPCs && diatonicPCs[pc] && !(spelledNotes && spelledNotes[idx])) {
                 let target = diatonicPCs[pc];
                 let expectedName = target.base + target.acc;
 

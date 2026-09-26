@@ -1130,31 +1130,47 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     // ── Chord transposer ────────────────────────────────────
-    function transposeChord(chordStr, targetRoot) {
+    // Old semitone-only transposition, kept solely as a fallback for the rare
+    // root that interval spelling would render as a double accidental.
+    function transposeChordBySemitones(chordStr, targetRoot) {
         const sharpRoots = ['G','D','A','E','B','F#','C#'];
         const chromaticSharp = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
         const chromaticFlat  = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
         const chromatic = sharpRoots.includes(targetRoot) ? chromaticSharp : chromaticFlat;
-
         const match = chordStr.match(/^([A-G][b#]?)(.*)/);
         if (!match) return chordStr;
-        const pcStr   = match[1];
-
-        // Find idxOrig in either reference array
-        let idxOrig = chromaticFlat.indexOf(pcStr);
-        if (idxOrig === -1) idxOrig = chromaticSharp.indexOf(pcStr);
-
+        let idxOrig = chromaticFlat.indexOf(match[1]);
+        if (idxOrig === -1) idxOrig = chromaticSharp.indexOf(match[1]);
         let targetIdx = chromaticFlat.indexOf(targetRoot);
         if (targetIdx === -1) targetIdx = chromaticSharp.indexOf(targetRoot);
+        return chromatic[(idxOrig + targetIdx + 12) % 12] + match[2];
+    }
 
-        const diff    = targetIdx - 0; // C is index 0
-        const newIdx  = (idxOrig + diff + 12) % 12;
-        let finalRoot = chromatic[newIdx];
-        let typeStr   = match[2];
-        if (window.musicEngine) {
-            finalRoot = window.musicEngine._normalizeRoot(finalRoot, typeStr);
+    // Templates are written in C (major) or C minor. Transpose each chord root
+    // by INTERVAL — same letter distance and same semitone distance from the
+    // tonic — so every root is spelled the way the key demands.
+    //
+    // The semitone-only version chose one sharp-or-flat alphabet from the
+    // tonic alone, so it wrote the VI of D minor as A# (it is Bb: D minor has
+    // a flat, even though D major has sharps) and the VI of Eb minor as B (it
+    // is Cb). Interval spelling cannot make that mistake: a minor sixth above
+    // any tonic lands on the letter a sixth above it, whatever the key.
+    const TPL_PC = { C:0, D:2, E:4, F:5, G:7, A:9, B:11 };
+    function transposeChord(chordStr, targetRoot) {
+        const match = chordStr.match(/^([A-G])([b#]?)(.*)$/);
+        const me = window.musicEngine;
+        if (!match || !me) return transposeChordBySemitones(chordStr, targetRoot);
+        const [, letter, acc, typeStr] = match;
+        const letterOffset = me.stepMap[letter];                       // letters above C
+        const semis = (TPL_PC[letter] + (acc === '#' ? 1 : acc === 'b' ? -1 : 0) + 12) % 12;
+        const root = me.spellNoteDiatonic(targetRoot, semis, letterOffset).name;
+        // Only reachable in keys no template is written for (e.g. V/iii in F#
+        // would be E#). A double accidental or E#/B#/Fb as a chord ROOT reads
+        // as an error to anyone, so use the plain enharmonic there instead.
+        if (/##|bb/.test(root) || ['E#', 'B#', 'Fb'].includes(root)) {
+            return transposeChordBySemitones(chordStr, targetRoot);
         }
-        return finalRoot + typeStr;
+        return me._normalizeRoot(root, typeStr) + typeStr;
     }
 
     // ── REVEAL button ───────────────────────────────────────
@@ -1381,6 +1397,14 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
             let item = targetItem || pool[Math.floor(Math.random() * pool.length)];
             let parts = item.split("|");
+            const isMinorProg = isMinorTemplate(item);
+            // Db, Gb and Ab minor are theoretical or near-theoretical keys (8,
+            // 9 and 7 flats): Db minor needs an Fb for its own third. Standard
+            // practice writes them as C#, F# and G# minor. Respell the tonic
+            // before anything is transposed, so the answer labels, the staff
+            // and the key signature all agree.
+            const MINOR_TONIC = { Db: 'C#', Gb: 'F#', Ab: 'G#' };
+            if (isMinorProg && MINOR_TONIC[currentRoot]) currentRoot = MINOR_TONIC[currentRoot];
             let name = parts[0] + "\n(" + parts.slice(1).map(c => transposeChord(c, currentRoot)).join(" - ") + ")";
             window.currentProgression = parts.slice(1).map(c => transposeChord(c, currentRoot));
             document.getElementById("combo_label")?.innerText;
@@ -1388,8 +1412,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             window._famCat = 'prog';
             window._famKey = parts[0];
 
-            // Determine key context for key signature rendering (Global Standard)
-            const isMinorProg = parts.slice(1).some(c => /^Cm([^a-zA-Z]|$)/.test(c));
+            // Key context for the key signature (isMinorProg computed above).
             window.currentKeyContext = { root: currentRoot, isMajor: !isMinorProg };
             window.gui.drawPitches([], window.currentKeyContext);
 
