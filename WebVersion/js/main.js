@@ -1514,7 +1514,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         currentSessionReplayCount++;
 
         // iOS: fire-and-forget resume dentro il trusted gesture window del PLAY button
-        if (window.Tone && Tone.context.state !== 'running') Tone.context.resume();
+        if (window.Tone && Tone.getContext().state !== 'running') Tone.getContext().resume();
         else if (window.audioEngine?.fallbackCtx?.state === 'suspended') window.audioEngine.fallbackCtx.resume();
         window.cancelActivePlaybacks();
         

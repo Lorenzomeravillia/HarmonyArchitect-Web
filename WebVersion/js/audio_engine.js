@@ -159,14 +159,14 @@ class AudioEngine {
     // longer than `ms` for it — iOS can leave these promises permanently
     // unsettled, and without a cap that hangs the entire unlock sequence with
     // no error to show. We don't care which one "wins"; the caller always
-    // re-checks Tone.context.state afterwards regardless of which path fired.
+    // re-checks Tone.getContext().state afterwards regardless of which path fired.
     _raceTimeout(promiseFactory, ms, label) {
         let settled = false;
         const guarded = (async () => {
             try {
                 await promiseFactory();
                 settled = true;
-                this.logEvent(label + ' resolved, state=' + (window.Tone ? Tone.context.state : 'n/a'));
+                this.logEvent(label + ' resolved, state=' + (window.Tone ? Tone.getContext().state : 'n/a'));
             } catch (e) {
                 settled = true;
                 this.logEvent(label + ' THREW: ' + e.message);
@@ -189,12 +189,12 @@ class AudioEngine {
     // just skip the note — real recovery (rebuild) is reserved for the
     // foreground-return and manual-retry paths only.
     async _ensureContextRunning(label) {
-        if (Tone.context.state === 'running') return true;
+        if (Tone.getContext().state === 'running') return true;
         // resume() throws on a closed context; only attempt it when suspended.
-        if (Tone.context.state !== 'closed') {
-            await this._raceTimeout(() => Tone.context.resume(), 400, label + ' resume()');
+        if (Tone.getContext().state !== 'closed') {
+            await this._raceTimeout(() => Tone.getContext().resume(), 400, label + ' resume()');
         }
-        return Tone.context.state === 'running';
+        return Tone.getContext().state === 'running';
     }
 
     // Samplers usable RIGHT NOW: buffers decoded AND built on the current
@@ -267,15 +267,22 @@ class AudioEngine {
             }
 
             if (!window.Tone) return;
-            this.logEvent('tryResume: state before resume=' + Tone.context.state);
-            // A closed context can never be resumed — resume() just throws
-            // 'Context is closed'. Skip straight to a rebuild.
-            if (Tone.context.state === 'closed') {
-                this.logEvent('tryResume: context closed — rebuilding');
-                await this._rebuildContext();
+            // The <audio> engine is sticky for the page session and has no
+            // context to bring back.
+            if (this.useElementFallback) return;
+            this.logEvent('tryResume: state before resume=' + Tone.getContext().state);
+            // A closed context can never be resumed, and a replacement made
+            // out here — no user gesture on a foreground return — is born
+            // suspended and stays that way on iOS: that was the "silent after
+            // switching apps" bug. Leave the swap to the next tap.
+            if (Tone.getContext().state === 'closed') {
+                this.logEvent('tryResume: context closed — will rebuild on next tap');
+                this.ready = false;
+                this.lastAudioError = 'waiting-for-tap (context closed while hidden)';
+                this._armGestureRecovery();
                 return;
             }
-            if (Tone.context.state !== 'running') {
+            if (Tone.getContext().state !== 'running') {
                 // We released the session on backgrounding (paused activator,
                 // suspended context) — re-acquire it before resuming, in the
                 // same order as the cold-start unlock: session first, then ctx.
@@ -284,18 +291,19 @@ class AudioEngine {
                     // No gesture available out here; the next user tap has one.
                     this._armGestureRecovery();
                 }
-                await this._raceTimeout(() => Tone.context.resume(), 1000, 'tryResume resume()');
+                await this._raceTimeout(() => Tone.getContext().resume(), 1000, 'tryResume resume()');
             }
             let waited = 0;
-            while (Tone.context.state !== 'running' && waited < 1000) {
+            while (Tone.getContext().state !== 'running' && waited < 1000) {
                 await new Promise(r => setTimeout(r, 100));
                 waited += 100;
             }
-            this.logEvent('tryResume: state after ' + waited + 'ms=' + Tone.context.state);
-            if (Tone.context.state !== 'running') {
-                this.logEvent('context stuck after resume attempt — rebuilding');
-                await this._rebuildContext();
-                if (Tone.context.state !== 'running') this._armGestureRecovery();
+            this.logEvent('tryResume: state after ' + waited + 'ms=' + Tone.getContext().state);
+            if (Tone.getContext().state !== 'running') {
+                this.logEvent('context stuck after resume attempt — will rebuild on next tap');
+                this.ready = false;
+                this.lastAudioError = 'waiting-for-tap (context suspended)';
+                this._armGestureRecovery();
             } else {
                 this.ready = this._usableSamplerCount() > 0;
             }
@@ -425,7 +433,7 @@ class AudioEngine {
             // start tap, so re-playing it here needs no new gesture.
             await this._kickAudioSession(800);
             await this._freshContextAfterKick('_rebuildContext');
-            this.logEvent('_rebuildContext: new context state=' + Tone.context.state);
+            this.logEvent('_rebuildContext: new context state=' + Tone.getContext().state);
 
             this.samplers = {};
             this.reverb = new Tone.Reverb({ decay: 1.8, preDelay: 0.01, wet: 0.2 });
@@ -445,10 +453,10 @@ class AudioEngine {
             // suspended (decodeAudioData doesn't require a running context),
             // so loadedCount alone is not proof that sound will actually play.
             const loadedCount = this._usableSamplerCount();
-            this.ready = loadedCount > 0 && Tone.context.state === 'running';
-            if (!this.ready) this.lastAudioError = Tone.context.state !== 'running' ? 'context-suspended (iOS did not resume audio)' : 'rebuild-failed';
-            this.logEvent('_rebuildContext: done, loadedCount=' + loadedCount + ', ctxState=' + Tone.context.state + ', ready=' + this.ready);
-            if (Tone.context.state !== 'running') {
+            this.ready = loadedCount > 0 && Tone.getContext().state === 'running';
+            if (!this.ready) this.lastAudioError = Tone.getContext().state !== 'running' ? 'context-suspended (iOS did not resume audio)' : 'rebuild-failed';
+            this.logEvent('_rebuildContext: done, loadedCount=' + loadedCount + ', ctxState=' + Tone.getContext().state + ', ready=' + this.ready);
+            if (Tone.getContext().state !== 'running') {
                 this._enableElementFallback('rebuild: context never reached running');
                 this._startContextWatchdog();
                 this._armGestureRecovery();
@@ -481,7 +489,7 @@ class AudioEngine {
             return { state: 'running', resume: async () => {}, currentTime: 0 };
         }
         if (this.useFallback && this.fallbackCtx) return this.fallbackCtx;
-        if (window.Tone) return Tone.context.rawContext;
+        if (window.Tone) return Tone.getContext().rawContext;
         
         return { state: 'suspended', resume: async () => {}, currentTime: 0 };
     }
@@ -579,31 +587,87 @@ class AudioEngine {
             // A real gesture: last chance to bless the <audio> pool if the
             // start tap never managed to.
             this._unlockElementPool();
-            // Synchronous inside the gesture — this play() is user-activated.
-            try {
-                const el = document.getElementById('ios_audio_activator');
-                if (el && el.paused) el.play().catch(() => {});
-            } catch (e) {}
-            (async () => {
-                if (!window.Tone || Tone.context.state === 'running') return;
-                await this._raceTimeout(() => Tone.context.resume(), 1000, 'gesture-recovery resume()');
-                let waited = 0;
-                while (Tone.context.state !== 'running' && waited < 1000) {
-                    await new Promise(r => setTimeout(r, 100));
-                    waited += 100;
-                }
-                if (Tone.context.state === 'running') {
-                    this.ready = this._usableSamplerCount() > 0;
-                    if (this.ready) this.lastAudioError = null;
-                    this.logEvent('gesture recovery: context running, ready=' + this.ready);
-                } else {
-                    this.logEvent('gesture recovery: still stuck — rebuilding');
-                    await this._rebuildContext();
-                }
-            })();
+            this._recoverContextInGesture('gesture-recovery');
         };
         document.addEventListener('touchend', handler, true);
         document.addEventListener('click', handler, true);
+    }
+
+    // Brings Web Audio back from inside a tap. Everything that needs the
+    // gesture — activator play(), resume(), creating the replacement context
+    // and resuming it — runs synchronously here, before the first await;
+    // only the confirmation is async. A replacement context gets a fresh
+    // reverb chain and an empty sampler cache: playback reloads samplers on
+    // demand (from the service-worker cache), so the tap that triggered this
+    // — typically PLAY, whose handler runs right after this capture-phase
+    // listener — already sounds once they are decoded.
+    _recoverContextInGesture(tag) {
+        if (!window.Tone || this.useFallback || this.useElementFallback) return;
+        try {
+            const el = document.getElementById('ios_audio_activator');
+            if (el && el.paused) el.play().catch(() => {});
+        } catch (e) {}
+        this._configureAudioSession();
+
+        const state = Tone.getContext().state;
+        if (state === 'running') { this.ready = true; this.lastAudioError = null; return; }
+        let ctx;
+        if (state === 'closed') {
+            try {
+                ctx = new (window.AudioContext || window.webkitAudioContext)();
+            } catch (e) {
+                this.logEvent(tag + ': creating context THREW — ' + e.message);
+                return;
+            }
+            try { ctx.resume().catch(() => {}); } catch (e) {}
+            this._unlockRitual(ctx, tag, true);
+            const t = tag + ' ctx';
+            ctx.onstatechange = () => this.logEvent(t + ' statechange → ' + ctx.state);
+            (this._createdCtxs = this._createdCtxs || []).push(ctx);
+            const abandoned = this._rawCtx;
+            Tone.setContext(ctx);
+            this._rawCtx = ctx;
+            if (abandoned && abandoned !== ctx && abandoned.state !== 'closed' && abandoned.close) {
+                abandoned.close().catch(() => {});
+            }
+            this._createdCtxs = this._createdCtxs.filter(c => c && c.state !== 'closed');
+            this._ctxGen = (this._ctxGen || 0) + 1;
+            this.samplers = {};
+            this.reverb = new Tone.Reverb({ decay: 1.8, preDelay: 0.01, wet: 0.2 });
+            const eq = new Tone.Filter(8000, "lowpass");
+            this.reverb.connect(eq);
+            eq.toDestination();
+            this.logEvent(tag + ': new context created in-gesture, state=' + ctx.state);
+        } else {
+            ctx = Tone.getContext().rawContext;
+            try { ctx.resume().catch(() => {}); } catch (e) {}
+            this._unlockRitual(ctx, tag, true);
+            this.logEvent(tag + ': resume() in-gesture from ' + state);
+        }
+
+        (async () => {
+            let waited = 0;
+            while (ctx.state !== 'running' && waited < 1500) {
+                await new Promise(r => setTimeout(r, 100));
+                waited += 100;
+            }
+            this.logEvent(tag + ': state after ' + waited + 'ms=' + ctx.state);
+            if (ctx.state === 'running') {
+                this.ready = true;
+                this.lastAudioError = null;
+                // Warm the current preset so later chords don't wait on it.
+                for (let i = 0; i < this.channels.length; i++) {
+                    await this.loadInstrument(this.channels[i]);
+                }
+            } else if (state !== 'closed') {
+                // A suspended context that won't come back even in a gesture:
+                // replace it on the next tap.
+                try { ctx.close().catch(() => {}); } catch (e) {}
+                this._armGestureRecovery();
+            } else {
+                this._armGestureRecovery();
+            }
+        })();
     }
 
     // Creates a fresh AudioContext (assumes the session was just kicked),
@@ -617,7 +681,7 @@ class AudioEngine {
         // 'closed'. Serializing makes the close below provably safe.
         if (this._ctxSwapping) {
             this.logEvent(label + ': context swap already in progress — skipping');
-            return Tone.context.state === 'running';
+            return Tone.getContext().state === 'running';
         }
         this._ctxSwapping = true;
         try {
@@ -702,7 +766,7 @@ class AudioEngine {
         const MAX_TICKS = 150;            // 5 minutes
         this._watchdogTimer = setInterval(() => {
             ticks++;
-            const ctx = this._rawCtx || (window.Tone ? Tone.context : null);
+            const ctx = this._rawCtx || (window.Tone ? Tone.getContext() : null);
             if (!ctx) return;
             if (ctx.state === 'running') {
                 clearInterval(this._watchdogTimer);
@@ -802,7 +866,7 @@ class AudioEngine {
             return;
         }
 
-        this.logEvent('unlockAndLoad: page-load context state=' + Tone.context.state);
+        this.logEvent('unlockAndLoad: page-load context state=' + Tone.getContext().state);
 
         // Bless the <audio> pool now, while we are still inside the tap. We
         // do not yet know whether Web Audio will come up, and by the time we
@@ -821,7 +885,7 @@ class AudioEngine {
         // So: start the activator inside the tap (media elements need the
         // gesture; the context does not), wait for it to actually play, and
         // only THEN mint the new AudioContext under the playback session.
-        if (Tone.context.state !== 'running') {
+        if (Tone.getContext().state !== 'running') {
             await this._kickAudioSession(1200);   // play() fires synchronously, still in-gesture
             await this._freshContextAfterKick('unlock');
 
@@ -831,7 +895,7 @@ class AudioEngine {
             // enough that a device already in the fallback still reported
             // "engine=Tone, samples=0/7" while it was grinding through them.
             // The element engine plays the mp3s directly and needs none of it.
-            if (Tone.context.state !== 'running') {
+            if (Tone.getContext().state !== 'running') {
                 this._enableElementFallback('unlock: context never reached running');
                 if (this.useElementFallback) {
                     this._startContextWatchdog();
@@ -843,7 +907,7 @@ class AudioEngine {
             await this._raceTimeout(() => Tone.start(), 1500, 'Tone.start()');
             // Track the raw context so releaseSession/watchdog can reach it
             // on this path too (on iOS it's set by _freshContextAfterKick).
-            try { this._rawCtx = Tone.context.rawContext || null; } catch (e) {}
+            try { this._rawCtx = Tone.getContext().rawContext || null; } catch (e) {}
         }
         // ─────────────────────────────────────────────────────────────────────
 
@@ -872,10 +936,10 @@ class AudioEngine {
         this._setLoading(false);
         const loadedCount = this._usableSamplerCount();
         this.logEvent('sample preload done, loadedCount=' + loadedCount + '/' + this.channels.length
-            + ', ctx=' + Tone.context.state);
-        if (loadedCount > 0 && Tone.context.state === 'running') {
+            + ', ctx=' + Tone.getContext().state);
+        if (loadedCount > 0 && Tone.getContext().state === 'running') {
             this.ready = true;
-        } else if (Tone.context.state !== 'running') {
+        } else if (Tone.getContext().state !== 'running') {
             // Web Audio is wedged. Rather than leave the app silent, switch to
             // the <audio> element path, which keeps working through this (the
             // silence activator plays in every log where the context is dead).
@@ -948,7 +1012,7 @@ class AudioEngine {
                 ? (this._nativeStatus?.engineRunning ? 'running' : 'stopped')
                 : this.useFallback
                     ? (this.fallbackCtx && this.fallbackCtx.state)
-                    : (window.Tone && Tone.context.state);
+                    : (window.Tone && Tone.getContext().state);
         } catch (e) {}
         // Count only samplers for the currently active channels (not every
         // instrument ever loaded across preset switches), so the number stays
@@ -1063,7 +1127,9 @@ class AudioEngine {
             // Only trust the cache if the sampler was built on the CURRENT
             // context. One from a previous generation still says loaded=true
             // but its nodes live on an abandoned context — silent forever.
-            if ((cached._cvGen || 0) === (this._ctxGen || 0)) return cached;
+            // Still decoding: share the in-flight load rather than hand back
+            // an unloaded sampler (its voice would be skipped as silent).
+            if ((cached._cvGen || 0) === (this._ctxGen || 0)) return cached._cvPending || cached;
             this.logEvent('loadInstrument(' + name + '): cached sampler is from stale context (gen '
                 + (cached._cvGen || 0) + ' ≠ ' + (this._ctxGen || 0) + ') — rebuilding');
             try { cached.dispose(); } catch (e) {}
@@ -1077,7 +1143,8 @@ class AudioEngine {
             : `https://nbrosowsky.github.io/tonejs-instruments/samples/${name}/`;
 
         this.logEvent('loadInstrument(' + name + '): requesting from ' + baseUrl);
-        return new Promise((resolve) => {
+        let pendingSampler = null;
+        const pending = new Promise((resolve) => {
             let settled = false;
             const timeoutId = setTimeout(() => {
                 if (settled) return;
@@ -1116,7 +1183,13 @@ class AudioEngine {
             // duplicate loads from concurrent callers.
             sampler._cvGen = this._ctxGen || 0;
             this.samplers[name] = sampler;
+            pendingSampler = sampler;
         });
+        if (pendingSampler) {
+            pendingSampler._cvPending = pending;
+            pending.then(() => { delete pendingSampler._cvPending; }, () => {});
+        }
+        return pending;
     }
 
     async applyPreset(name) {
@@ -1126,14 +1199,14 @@ class AudioEngine {
         if (this._nativeShell) return;
         if (this._unlocked) {
             // Guard: don't start loading if context is suspended — decodeAudioData would hang.
-            if (window.Tone && Tone.context.state !== 'running') {
-                await this._raceTimeout(() => Tone.context.resume(), 1500, 'applyPreset resume()');
+            if (window.Tone && Tone.getContext().state !== 'running') {
+                await this._raceTimeout(() => Tone.getContext().resume(), 1500, 'applyPreset resume()');
                 let waited = 0;
-                while (Tone.context.state !== 'running' && waited < 1000) {
+                while (Tone.getContext().state !== 'running' && waited < 1000) {
                     await new Promise(r => setTimeout(r, 50));
                     waited += 50;
                 }
-                if (Tone.context.state !== 'running') {
+                if (Tone.getContext().state !== 'running') {
                     console.warn('[AudioEngine] applyPreset: context suspended, skipping load');
                     return;
                 }
@@ -1469,7 +1542,7 @@ class AudioEngine {
         }
 
         // Tone.js Standard Execution
-        if (Tone.context.state !== 'running') {
+        if (Tone.getContext().state !== 'running') {
             const running = await this._ensureContextRunning('playMidi');
             if (!running) return;
         }
@@ -1557,12 +1630,12 @@ class AudioEngine {
             return;
         }
 
-        if (Tone.context.state !== 'running') await this._ensureContextRunning('playChord');
+        if (Tone.getContext().state !== 'running') await this._ensureContextRunning('playChord');
 
         const voices = await this._resolveVoices(notesArray, 'playChord');
         if (!voices) return;   // the user moved on while samplers were loading
 
-        const lead = Tone.context.state === 'running' ? 0.1 : 0.4;
+        const lead = Tone.getContext().state === 'running' ? 0.1 : 0.4;
         const startTime = Tone.now() + lead;
 
         voices.forEach((v, idx) => {
@@ -1687,13 +1760,13 @@ class AudioEngine {
             return;
         }
 
-        if (Tone.context.state !== 'running') await this._ensureContextRunning('playChordWithVolumes');
+        if (Tone.getContext().state !== 'running') await this._ensureContextRunning('playChordWithVolumes');
 
         const audible = notesArray.filter(item => (volumeMap[item.voiceIdx] ?? 1.0) > 0);
         const voices = await this._resolveVoices(audible, 'playChordWithVolumes');
         if (!voices) return;   // the user moved on while samplers were loading
 
-        const lead = Tone.context.state === 'running' ? 0.1 : 0.4;
+        const lead = Tone.getContext().state === 'running' ? 0.1 : 0.4;
         const startTime = Tone.now() + lead;
 
         voices.forEach((v, idx) => {
