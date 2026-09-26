@@ -659,13 +659,18 @@ class AudioEngine {
                 for (let i = 0; i < this.channels.length; i++) {
                     await this.loadInstrument(this.channels[i]);
                 }
-            } else if (state !== 'closed') {
-                // A suspended context that won't come back even in a gesture:
-                // replace it on the next tap.
-                try { ctx.close().catch(() => {}); } catch (e) {}
-                this._armGestureRecovery();
             } else {
-                this._armGestureRecovery();
+                // Not even a tap brought Web Audio back (seen on iOS after a
+                // couple of minutes in the background). A suspended context
+                // is closed so the next tap mints a fresh one; meanwhile the
+                // <audio> engine takes over so the app isn't silent, and the
+                // diagnostic banner shows what happened.
+                if (state !== 'closed') {
+                    try { ctx.close().catch(() => {}); } catch (e) {}
+                }
+                this._enableElementFallback(tag + ': context stayed ' + ctx.state + ' after in-gesture recovery');
+                if (!this.useElementFallback) this._armGestureRecovery();
+                window.dispatchEvent(new CustomEvent('cv-audio-trouble', { detail: this.getAudioStatus() }));
             }
         })();
     }

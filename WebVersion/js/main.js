@@ -166,7 +166,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         audioTroubleTimer = setInterval(() => {
             const eng = window.audioEngine;
             if (!eng || !document.getElementById('audio_trouble')) return;
-            if (eng.ready) { hideAudioTrouble(); return; }
+            const banner = document.getElementById('audio_trouble');
+            if (eng.ready && !banner.dataset.sticky) { hideAudioTrouble(); return; }
             const st = document.getElementById('audio_trouble_status');
             const lg = document.getElementById('audio_trouble_log');
             if (st) st.textContent = eng.getAudioStatus();
@@ -177,6 +178,16 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
         }, 2000);
     }
+
+    // The engine reports failures that happen later than the start tap
+    // (e.g. recovery after a long spell in the background).
+    // Kept on screen even if the <audio> fallback makes the app ready again:
+    // the log is what tells us why Web Audio didn't come back.
+    window.addEventListener('cv-audio-trouble', (e) => {
+        showAudioTrouble(e.detail || '');
+        const b = document.getElementById('audio_trouble');
+        if (b) b.dataset.sticky = '1';
+    });
 
     function showAudioTrouble(status) {
         let b = document.getElementById('audio_trouble');
