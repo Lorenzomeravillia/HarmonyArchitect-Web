@@ -244,12 +244,29 @@ class GUI {
                 chord.forEach(n => activeIndices.add(n.voiceIdx));
             });
         }
+        // A single chord: name each voice by the chord tone it plays (Root,
+        // b3, 5, b7…), coloured like its notehead and the legend. In a
+        // progression a voice plays a different chord tone in every chord,
+        // so there it keeps its position name, bass up.
         const ordinals = {0:'Bass', 1:'2nd', 2:'3rd', 3:'4th', 4:'5th', 5:'6th', 6:'Lead'};
-        
+        const single = window.currentVoicings && window.currentVoicings.length === 1
+            ? window.currentVoicings[0] : null;
+        const byVoice = {};
+        if (single) single.forEach(n => { byVoice[n.voiceIdx] = n; });
+
         buttons.forEach((btn, i) => {
             if (activeIndices.has(i)) {
                 btn.style.display = '';
-                btn.textContent = ordinals[i] || ('V' + i);
+                const n = byVoice[i];
+                if (n && n.degreeLabel) {
+                    // A doubled root above the bass gets an arrow so the
+                    // two Root buttons can be told apart.
+                    btn.textContent = n.degree !== 1 ? n.degreeLabel : (i === 0 ? 'Root' : 'Root ↑');
+                    btn.style.boxShadow = 'inset 0 -3px 0 ' + n.color;
+                } else {
+                    btn.textContent = ordinals[i] || ('V' + i);
+                    btn.style.boxShadow = '';
+                }
             } else {
                 btn.style.display = 'none';
             }

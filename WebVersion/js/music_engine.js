@@ -561,7 +561,14 @@ class MusicEngine {
             else if (degree === 7) color = "#E8873D";
             else color = "#D946A8"; // 9th, 11th, 13th — extensions
 
-            return { name, step, color, accidental: acc, frequency: freq, voiceIdx: voiceIndices[idx] };
+            // Chord-formula label (1, b3, 5, b7, #11, …): the degree, altered
+            // against its major/perfect size — what the Solo buttons show for
+            // a single chord.
+            const MAJOR_SIZE = { 1: 0, 3: 4, 5: 7, 7: 11, 9: 2, 11: 5, 13: 9 };
+            const d = ((ival - (MAJOR_SIZE[degree] ?? ival)) % 12 + 18) % 12 - 6;
+            const degreeLabel = (d < 0 ? 'b'.repeat(-d) : '#'.repeat(d)) + degree;
+
+            return { name, step, color, degree, degreeLabel, accidental: acc, frequency: freq, voiceIdx: voiceIndices[idx] };
         });
 
         return result;
