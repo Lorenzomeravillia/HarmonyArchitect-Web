@@ -1035,6 +1035,16 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (opts.some(o => o.v === prev)) sel.value = prev;
     }
 
+    // Mark an answer as right or wrong while KEEPING its chord names. Only
+    // the first line used to survive, so the moment you answered, the very
+    // chords you might want to pick up and play on your instrument vanished
+    // from the button — exactly when they matter most.
+    function markAnswer(text, mark) {
+        const lines = localizeAnswerText(text).split('\n');
+        lines[0] = mark + ' ' + lines[0];
+        return lines.join('\n');
+    }
+
     // Re-label answer buttons in place when notation changes, so switching
     // language mid-session doesn't throw away the current question.
     function relabelAnswers() {
@@ -1156,7 +1166,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 btn.dataset.answered = '1';
                 if (btn.dataset.answer === window.correctAnswerText) {
                     btn.classList.add('correct');
-                    btn.textContent = '✓ ' + localizeAnswerText(btn.dataset.answer).split('\n')[0];
+                    btn.textContent = markAnswer(btn.dataset.answer, '✓');
                 }
             });
         }
@@ -1231,16 +1241,16 @@ document.addEventListener("DOMContentLoaded", async () => {
                     sessionCorrect++;
                     streak++;
                     b.classList.add('correct');
-                    b.innerText = "✓ " + localizeAnswerText(o).split("\n")[0];
+                    b.innerText = markAnswer(o, '✓');
                     // combo_label removed from UI
                 } else {
                     streak = 0;
                     b.classList.add('wrong');
-                    b.innerText = "✗ " + localizeAnswerText(o).split("\n")[0];
+                    b.innerText = markAnswer(o, '✗');
                     answersFrame.querySelectorAll('.answer-btn').forEach(btn => {
                         if (btn.dataset.answer === window.correctAnswerText) {
                             btn.classList.add('correct');
-                            btn.innerText = "✓ " + localizeAnswerText(btn.dataset.answer).split("\n")[0];
+                            btn.innerText = markAnswer(btn.dataset.answer, '✓');
                         }
                     });
                 }
