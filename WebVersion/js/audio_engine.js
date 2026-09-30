@@ -96,6 +96,13 @@ class AudioEngine {
         // still ringing — boosted here so they don't disappear in the mix.
         this.instrumentBoost = { harp: 1.7, piano: 1.35, 'guitar-nylon': 1.4, 'bass-electric': 1.2 };
 
+        // Per-preset corrections on top of that, for balances that only go
+        // wrong in one instrument combination. Clear Mix: with four voices
+        // the clarinet (Voice 3) sits right under the saxophone (Voice 2),
+        // whose brighter, edgier tone masks it (reported on device, ~+2 dB).
+        this.presetBoost = { 'Clear Mix': { clarinet: 1.3 } };
+        this.currentPreset = 'Clear Mix';
+
         // Presets [Bass, V2, V3, V4, V5, V6, Top]
         this.PRESETS = {
             'Orchestra':    ["contrabass", "cello", "bassoon", "french-horn", "violin", "clarinet", "flute"],
@@ -213,7 +220,8 @@ class AudioEngine {
         const balance = this.voiceBalance[channelIdx] ?? 1.0;
         const inst = this.channels[channelIdx];
         const boost = this.instrumentBoost[inst] ?? 1.0;
-        return balance * boost;
+        const presetBoost = this.presetBoost[this.currentPreset]?.[inst] ?? 1.0;
+        return balance * boost * presetBoost;
     }
 
     // ── LIFECYCLE: keep audio alive across backgrounding ──────────────────
@@ -1200,6 +1208,7 @@ class AudioEngine {
     async applyPreset(name) {
         const progs = this.PRESETS[name];
         if (!progs) return;
+        this.currentPreset = name;
         progs.forEach((prog, i) => { this.channels[i] = prog; });
         if (this._nativeShell) return;
         if (this._unlocked) {
