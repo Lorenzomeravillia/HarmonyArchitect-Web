@@ -123,6 +123,16 @@ class GUI {
         // Hard-sync the internal engine matrix to match the UI visual default immediately.
         if (window.audioEngine) window.audioEngine.applyPreset(presetDefs[0].name);
 
+        // ── Mixer (Settings) ────────────────────────────────────
+        window.addEventListener('cv-channels-changed', () => this.renderMixer());
+        const reset = document.getElementById('mixer_reset');
+        if (reset) reset.onclick = () => {
+            if (!window.audioEngine) return;
+            window.audioEngine.resetUserMix();
+            this.renderMixer();
+        };
+        this.renderMixer();
+
         // ── Solo buttons ────────────────────────────────────────
         const solo_frame = document.getElementById("solo_buttons_frame");
         const defaultLabels = ["Bass", "Voice", "Voice", "Voice", "Voice", "Voice", "Top"];  // relabelled by updateSoloButtons
@@ -271,6 +281,7 @@ class GUI {
                 btn.style.display = 'none';
             }
         });
+        this.renderMixer(activeIndices);
     }
 
     // Position names for the voices of a progression. Voices sit in fixed
@@ -297,6 +308,57 @@ class GUI {
             names[slot] = k === 0 ? (style === 'Jazz' ? 'Lead' : 'Top') : 'Voice ' + (k + 1);
         });
         return names;
+    }
+
+    // One slider per voice for the current preset, top voice first, named
+    // like the Solo buttons in a progression plus the instrument. Called
+    // again when the voices in use or the instruments change. The gain is
+    // read at every note, so a change is heard on the next PLAY.
+    renderMixer(activeIndices) {
+        const box = document.getElementById('mixer_rows');
+        const eng = window.audioEngine;
+        if (!box || !eng) return;
+        if (activeIndices && activeIndices.size) this._mixerSlots = new Set(activeIndices);
+        const slots = [...(this._mixerSlots || new Set([0, 3, 4, 6]))].sort((a, b) => b - a);
+        const roles = this._voiceRoleNames(new Set(slots));
+        // Rebuilt only when something it shows changed: this runs on every
+        // new exercise, and must not yank a slider out from under a finger.
+        const key = [eng.currentPreset, slots.join(','), slots.map(i => eng.channels[i]).join(','),
+            slots.map(i => eng.getUserGain(i)).join(','), roles && Object.values(roles).join(',')].join('|');
+        if (key === this._mixerKey) return;
+        this._mixerKey = key;
+        const presetEl = document.getElementById('mixer_preset');
+        if (presetEl) presetEl.textContent = eng.currentPreset || '';
+        const pretty = (inst) => ({
+            'guitar-nylon': 'Nylon guitar', 'bass-electric': 'Electric bass', 'french-horn': 'French horn'
+        })[inst] || (inst ? inst.charAt(0).toUpperCase() + inst.slice(1) : '');
+
+        box.innerHTML = '';
+        slots.forEach(slot => {
+            const name = document.createElement('span');
+            name.className = 'mixer-name';
+            name.textContent = roles[slot] || ('Voice ' + slot);
+            const small = document.createElement('small');
+            small.textContent = ' · ' + pretty(eng.channels[slot]);
+            name.appendChild(small);
+
+            const slider = document.createElement('input');
+            slider.type = 'range';
+            slider.className = 'mixer-slider';
+            slider.min = '0'; slider.max = '200'; slider.step = '5';
+            slider.value = String(Math.round(eng.getUserGain(slot) * 100));
+            slider.setAttribute('aria-label', 'Volume ' + name.textContent);
+
+            const val = document.createElement('span');
+            val.className = 'mixer-val';
+            val.textContent = slider.value + '%';
+
+            slider.oninput = () => {
+                val.textContent = slider.value + '%';
+                eng.setUserGain(slot, parseInt(slider.value, 10) / 100);
+            };
+            box.append(name, slider, val);
+        });
     }
 
     resetSoloButtons() {

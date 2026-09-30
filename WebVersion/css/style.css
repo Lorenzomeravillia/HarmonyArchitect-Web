@@ -771,6 +771,18 @@ canvas {
 .settings-grid .label    { font-size: 13px; white-space: nowrap; }
 .settings-grid .dropdown { width: 100%; font-size: 13px; padding: 6px 8px; }
 
+/* ── Mixer (inside Settings) ───────────────────────────── */
+.mixer-frame { padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; }
+.mixer-head  { display: flex; align-items: center; gap: 8px; }
+.mixer-head .label { font-size: 13px; }
+.mixer-preset { flex: 1; font-size: 12px; color: var(--text-muted); }
+.mixer-reset  { font-size: 12px; padding: 4px 10px; }
+.mixer-rows   { display: grid; grid-template-columns: minmax(0, auto) 1fr 3.2em; gap: 6px 10px; align-items: center; }
+.mixer-name   { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mixer-name small { color: var(--text-muted); font-size: 11px; }
+.mixer-val    { font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; color: var(--text-muted); }
+.mixer-slider { width: 100%; min-width: 0; accent-color: var(--cyan); height: 28px; touch-action: pan-y; }
+
 /* Settings collapsible — closed by default on ALL viewports */
 .settings-collapsible {
     display: none;

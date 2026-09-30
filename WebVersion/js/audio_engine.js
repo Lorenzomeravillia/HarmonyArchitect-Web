@@ -1,3 +1,5 @@
+const USER_MIX_KEY = 'cv_user_mix';
+
 class AudioEngine {
     constructor() {
         this._unlocked  = false;
@@ -100,8 +102,14 @@ class AudioEngine {
         // wrong in one instrument combination. Clear Mix: with four voices
         // the clarinet (Voice 3) sits right under the saxophone (Voice 2),
         // whose brighter, edgier tone masks it (reported on device, ~+2 dB).
-        this.presetBoost = { 'Clear Mix': { clarinet: 1.3 } };
+        this.presetBoost = { 'Clear Mix': { clarinet: 1.6 } };
         this.currentPreset = 'Clear Mix';
+
+        // The user's own mixer (Settings → Mixer): a gain per voice slot,
+        // stored per preset because each preset puts different instruments
+        // in the slots. 1.0 = the built-in balance above.
+        this.userMix = {};
+        try { this.userMix = JSON.parse(localStorage.getItem(USER_MIX_KEY) || '{}') || {}; } catch (e) {}
 
         // Presets [Bass, V2, V3, V4, V5, V6, Top]
         this.PRESETS = {
@@ -221,7 +229,7 @@ class AudioEngine {
         const inst = this.channels[channelIdx];
         const boost = this.instrumentBoost[inst] ?? 1.0;
         const presetBoost = this.presetBoost[this.currentPreset]?.[inst] ?? 1.0;
-        return balance * boost * presetBoost;
+        return balance * boost * presetBoost * this.getUserGain(channelIdx);
     }
 
     // ── LIFECYCLE: keep audio alive across backgrounding ──────────────────
@@ -1205,11 +1213,32 @@ class AudioEngine {
         return pending;
     }
 
+    getUserGain(channelIdx) {
+        return this.userMix[this.currentPreset]?.[channelIdx] ?? 1.0;
+    }
+
+    setUserGain(channelIdx, gain) {
+        const mix = this.userMix[this.currentPreset] = this.userMix[this.currentPreset] || {};
+        if (Math.abs(gain - 1) < 0.001) delete mix[channelIdx];
+        else mix[channelIdx] = gain;
+        this._saveUserMix();
+    }
+
+    resetUserMix() {
+        delete this.userMix[this.currentPreset];
+        this._saveUserMix();
+    }
+
+    _saveUserMix() {
+        try { localStorage.setItem(USER_MIX_KEY, JSON.stringify(this.userMix)); } catch (e) {}
+    }
+
     async applyPreset(name) {
         const progs = this.PRESETS[name];
         if (!progs) return;
         this.currentPreset = name;
         progs.forEach((prog, i) => { this.channels[i] = prog; });
+        window.dispatchEvent(new CustomEvent('cv-channels-changed'));
         if (this._nativeShell) return;
         if (this._unlocked) {
             // Guard: don't start loading if context is suspended — decodeAudioData would hang.
@@ -1240,6 +1269,7 @@ class AudioEngine {
         const prog = this.instrumentPrograms[instrumentName];
         if (prog === undefined) return;
         this.channels[channelIdx] = prog;
+        window.dispatchEvent(new CustomEvent('cv-channels-changed'));
         if (this._unlocked && !this._nativeShell) this.loadInstrument(prog);
     }
 
