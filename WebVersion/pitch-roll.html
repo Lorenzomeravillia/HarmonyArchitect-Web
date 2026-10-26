@@ -25,6 +25,7 @@
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { height: 100%; margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.3 var(--sans); }
 body {
   display: flex;
@@ -104,12 +105,79 @@ button.toggle[aria-pressed="false"] { color: var(--muted); }
 #play { width: 56px; height: 56px; border-radius: 50%; background: var(--rec); }
 #play.running { background: var(--row-white); }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* Gioco */
+.hud-game { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--muted); margin-bottom: 4px; font-variant-numeric: tabular-nums; }
+.hud-game b { color: var(--note); font-weight: 700; }
+.hud.target .hud-note { color: var(--note); }
+.sheet {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  overflow-y: auto;
+  -webkit-user-select: text;
+  user-select: text;
+}
+.card {
+  width: 100%;
+  max-width: 400px;
+  background: var(--row-white);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 18px;
+  display: grid;
+  gap: 14px;
+}
+.card h2 { margin: 0; font-size: 20px; text-wrap: balance; }
+.card p { margin: 0; color: var(--muted); font-size: 14px; }
+.field { display: grid; gap: 6px; }
+.field > span { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+select {
+  width: 100%;
+  font: 16px var(--sans);
+  color: var(--fg);
+  background: var(--row-black);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px;
+}
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--row-black); border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 3px; }
+.seg button { width: auto; height: 38px; border-radius: 8px; font: 600 14px var(--sans); color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--row-white); color: var(--fg); }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.actions button { flex: 1 1 auto; width: auto; height: 48px; padding-inline: 16px; font: 600 16px var(--sans); background: var(--row-black); border: 1px solid var(--line); }
+.actions button.go { background: var(--note); border-color: var(--note); color: var(--bg); }
+.best { font-size: 13px; color: var(--muted); }
+.total { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.total strong { font-size: 40px; line-height: 1; color: var(--note); font-variant-numeric: tabular-nums; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.stats div { background: var(--row-black); border-radius: 10px; padding: 8px; }
+.stats b { display: block; font-size: 18px; font-variant-numeric: tabular-nums; }
+.stats span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.tbl { overflow-x: auto; max-height: 38vh; }
+.tbl table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.tbl th { text-align: left; font-weight: 600; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; padding: 4px 6px; position: sticky; top: 0; background: var(--row-white); }
+.tbl td { padding: 6px; border-top: 1px solid var(--line); white-space: nowrap; }
+.tbl td.miss { color: var(--muted); }
+.stars { color: var(--note); letter-spacing: 1px; }
+#copyOut { width: 100%; height: 110px; font: 12px ui-monospace, Menlo, monospace; background: var(--row-black); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; }
 </style>
 </head>
 <body>
 <div id="stage">
   <canvas id="roll"></canvas>
-  <div class="hud" aria-live="off">
+  <div class="hud" id="hud" aria-live="off">
+    <div class="hud-game" id="hudGame" hidden>
+      <span id="hudRound">Nota 1/10</span>
+      <span id="hudTime">0,0 s</span>
+      <span><b id="hudScore">0</b> punti</span>
+    </div>
     <div class="hud-top">
       <span class="hud-note" id="hudNote">–</span>
       <span class="hud-cents" id="hudCents">canta una nota</span>
@@ -121,6 +189,79 @@ button.toggle[aria-pressed="false"] { color: var(--muted); }
     <strong>Tocca il pulsante rosso per iniziare</strong>
     Tocca un tasto a sinistra per sentire la nota. Trascina in su o in giù per spostarti, pizzica per ingrandire.
   </div>
+
+  <div class="sheet" id="setup" hidden>
+    <div class="card">
+      <h2>Prendi la nota</h2>
+      <p>Ascolta la nota, poi cantala e tienila ferma per un secondo. Più in fretta la agganci e più sei preciso, più punti fai.</p>
+      <div class="field">
+        <span>Estensione</span>
+        <div class="pair">
+          <select id="lowNote" aria-label="Nota più bassa"></select>
+          <select id="highNote" aria-label="Nota più alta"></select>
+        </div>
+      </div>
+      <div class="field">
+        <span>Precisione richiesta</span>
+        <div class="seg" id="tolSeg">
+          <button data-v="30">±30 cents</button>
+          <button data-v="20">±20 cents</button>
+          <button data-v="10">±10 cents</button>
+        </div>
+      </div>
+      <div class="field">
+        <span>Note per partita</span>
+        <div class="seg" id="countSeg">
+          <button data-v="5">5</button>
+          <button data-v="10">10</button>
+          <button data-v="20">20</button>
+        </div>
+      </div>
+      <div class="field">
+        <span>Note da cantare</span>
+        <div class="seg" id="scaleSeg">
+          <button data-v="all">Tutte</button>
+          <button data-v="nat">Solo naturali</button>
+        </div>
+      </div>
+      <div class="field">
+        <span>Nota di riferimento</span>
+        <div class="seg" id="refSeg">
+          <button data-v="on">La sento prima</button>
+          <button data-v="off">A memoria</button>
+        </div>
+      </div>
+      <div class="best" id="bestLine"></div>
+      <div class="actions">
+        <button id="setupCancel">Annulla</button>
+        <button class="go" id="setupGo">Inizia</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sheet" id="results" hidden>
+    <div class="card">
+      <h2 id="resTitle">Partita finita</h2>
+      <div class="total"><strong id="resTotal">0</strong><span id="resMax"></span></div>
+      <div class="stats">
+        <div><b id="resHit">0/0</b><span>Prese</span></div>
+        <div><b id="resLock">–</b><span>Aggancio medio</span></div>
+        <div><b id="resCents">–</b><span>Scarto medio</span></div>
+      </div>
+      <div class="tbl">
+        <table>
+          <thead><tr><th>Nota</th><th>Aggancio</th><th>Scarto</th><th>Punti</th></tr></thead>
+          <tbody id="resRows"></tbody>
+        </table>
+      </div>
+      <textarea id="copyOut" hidden readonly></textarea>
+      <div class="actions">
+        <button id="resCopy">Copia risultati</button>
+        <button id="resClose">Chiudi</button>
+        <button class="go" id="resAgain">Rigioca</button>
+      </div>
+    </div>
+  </div>
 </div>
 <nav>
   <button id="clear" aria-label="Cancella la traccia">
@@ -131,9 +272,14 @@ button.toggle[aria-pressed="false"] { color: var(--muted); }
       <svg viewBox="0 0 24 24" id="playIcon"><circle cx="12" cy="12" r="0"/></svg>
     </button>
   </div>
-  <button id="follow" class="toggle" aria-pressed="true" aria-label="Segui la voce">
-    <svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm9 3h-2.07A7 7 0 0 0 13 5.07V3h-2v2.07A7 7 0 0 0 5.07 11H3v2h2.07A7 7 0 0 0 11 18.93V21h2v-2.07A7 7 0 0 0 18.93 13H21zm-9 6a5 5 0 1 1 0-10 5 5 0 0 1 0 10z"/></svg>
-  </button>
+  <div class="mid">
+    <button id="follow" class="toggle" aria-pressed="true" aria-label="Segui la voce">
+      <svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm9 3h-2.07A7 7 0 0 0 13 5.07V3h-2v2.07A7 7 0 0 0 5.07 11H3v2h2.07A7 7 0 0 0 11 18.93V21h2v-2.07A7 7 0 0 0 18.93 13H21zm-9 6a5 5 0 1 1 0-10 5 5 0 0 1 0 10z"/></svg>
+    </button>
+    <button id="game" class="toggle" aria-pressed="false" aria-label="Gioco: prendi la nota">
+      <svg viewBox="0 0 24 24"><path d="M18 3H6v2H2v3a4 4 0 0 0 4 4h.3A6 6 0 0 0 11 15.9V19H7v2h10v-2h-4v-3.1a6 6 0 0 0 4.7-3.9h.3a4 4 0 0 0 4-4V3h-4zM4 8V7h2v3a2 2 0 0 1-2-2zm16 0a2 2 0 0 1-2 2V7h2z"/></svg>
+    </button>
+  </div>
 </nav>
 
 <script>
@@ -229,6 +375,7 @@ button.toggle[aria-pressed="false"] { color: var(--muted); }
     g.clip();
     const xOf = (t) => playX - (clock - t) * PPS;
     const tMin = clock - (playX - KEYW) / PPS - 0.5;
+    drawTargets(xOf, tMin, playX);
     g.fillStyle = C.note;
     for (const b of blocks) {
       if (b.t1 < tMin) continue;
@@ -251,6 +398,7 @@ button.toggle[aria-pressed="false"] { color: var(--muted); }
       prevT = s.t;
     }
     g.stroke();
+    drawPopups(playX);
     g.restore();
 
     // linea di lettura
@@ -309,7 +457,7 @@ button.toggle[aria-pressed="false"] { color: var(--muted); }
     started = true;
   }
 
-  function playNote(n) {
+  function playNote(n, dur = 0.7) {
     try {
       ensureCtx();
       if (ctx.state !== 'running') ctx.resume();
@@ -319,10 +467,10 @@ button.toggle[aria-pressed="false"] { color: var(--muted); }
       o.frequency.value = 440 * Math.pow(2, (n - 69) / 12);
       v.gain.setValueAtTime(0, t);
       v.gain.linearRampToValueAtTime(0.35, t + 0.02);
-      v.gain.setTargetAtTime(0, t + 0.7, 0.12);
+      v.gain.setTargetAtTime(0, t + dur, 0.12);
       o.connect(v).connect(ctx.destination);
       o.start(t);
-      o.stop(t + 1.4);
+      o.stop(t + dur + 0.7);
     } catch (e) {}
     flash = { n, until: performance.now() + 900 };
   }
@@ -368,6 +516,7 @@ button.toggle[aria-pressed="false"] { color: var(--muted); }
 
   // ---- Indicatore ----
   function hud(m) {
+    if (game) { gameHud(m); return; }
     if (Number.isNaN(m)) {
       $('hudNote').textContent = '–';
       $('hudCents').textContent = listening ? 'in ascolto' : 'in pausa';
@@ -388,15 +537,19 @@ button.toggle[aria-pressed="false"] { color: var(--muted); }
     lastFrame = now;
     if (listening && analyser) {
       clock += dt;
-      const m = readPitch();
+      let m = readPitch();
+      if (now < muteUntil) m = NaN; // non disegnare la nota di riferimento ripresa dal microfono
       addSample(clock, m);
+      gameStep(m);
       hud(m);
       trim();
-      if (follow && now > manualUntil && !Number.isNaN(m)) {
+      // In gioco, senza voce, il rullo si porta sulla nota bersaglio.
+      const focus = Number.isNaN(m) && game && game.phase !== 'done' ? game.targets[game.i] : m;
+      if (follow && now > manualUntil && !Number.isNaN(focus)) {
         const rows = H / rowH, margin = Math.min(4, rows / 4);
         let target = viewTop;
-        if (m > viewTop - margin) target = m + margin;
-        else if (m < viewTop - rows + margin) target = m - margin + rows;
+        if (focus > viewTop - margin) target = focus + margin;
+        else if (focus < viewTop - rows + margin) target = focus - margin + rows;
         viewTop += (target - viewTop) * 0.12;
         clampView();
       }
@@ -437,7 +590,7 @@ button.toggle[aria-pressed="false"] { color: var(--muted); }
     showOverlay(null);
     setListening(true);
   });
-  $('clear').addEventListener('click', () => { samples = []; blocks = []; clock = 0; });
+  $('clear').addEventListener('click', () => { samples = []; blocks = []; });
   $('follow').addEventListener('click', () => {
     follow = !follow;
     $('follow').setAttribute('aria-pressed', String(follow));
@@ -446,6 +599,317 @@ button.toggle[aria-pressed="false"] { color: var(--muted); }
 
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden && ctx && ctx.state !== 'running') ctx.resume().catch(() => {});
+  });
+
+  // ---- Gioco: prendi la nota ----
+  // Per ogni nota: (eventuale) nota di riferimento, poi il cronometro parte.
+  // La nota è presa quando la voce resta entro la tolleranza per HOLD secondi;
+  // il tempo di aggancio è l'istante in cui è iniziata quella tenuta.
+  const HOLD = 1.0;          // secondi di tenuta richiesti
+  const TIMEOUT = 8;         // secondi prima di passare alla nota successiva
+  const GRACE = 0.12;        // brevi uscite o buchi di rilevamento tollerati durante la tenuta
+  const REF_DUR = 1.0;       // durata della nota di riferimento
+  const SETTINGS_KEY = 'pitchroll.game.v1';
+  const BEST_KEY = 'pitchroll.best.v1';
+  let game = null;
+  let muteUntil = 0;
+  let popups = [];
+
+  const settings = Object.assign(
+    { low: 45, high: 62, tol: 20, count: 10, scale: 'all', ref: 'on' },
+    (() => { try { return JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {}; } catch (e) { return {}; } })()
+  );
+  function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) {} }
+  function bestKey() { return `${settings.tol}|${settings.count}`; }
+  function readBest() { try { return JSON.parse(localStorage.getItem(BEST_KEY)) || {}; } catch (e) { return {}; } }
+
+  // Punteggio di una nota presa: velocità fino a 100, precisione fino a 50.
+  function scoreNote(lock, meanCents) {
+    const speed = Math.round(Math.max(10, Math.min(100, 100 - (lock - 0.5) * 15)));
+    const prec = Math.round(Math.max(0, 50 * (1 - meanCents / settings.tol)));
+    return { speed, prec, total: speed + prec };
+  }
+  const starsOf = (pts) => (pts >= 120 ? 3 : pts >= 80 ? 2 : pts > 0 ? 1 : 0);
+  const fmtS = (s) => s.toFixed(1).replace('.', ',') + ' s';
+
+  function pickTargets() {
+    const pool = [];
+    for (let n = settings.low; n <= settings.high; n++) {
+      if (settings.scale === 'nat' && BLACK[n % 12]) continue;
+      pool.push(n);
+    }
+    const out = [];
+    for (let i = 0; i < settings.count; i++) {
+      const prev = out[i - 1];
+      const choices = pool.filter((n) => n !== prev && (prev == null || Math.abs(n - prev) <= 12));
+      const list = choices.length ? choices : pool;
+      out.push(list[Math.floor(Math.random() * list.length)]);
+    }
+    return out;
+  }
+
+  function startGame() {
+    game = { targets: pickTargets(), i: -1, phase: 'ref', results: [], segs: [], score: 0 };
+    $('hudGame').hidden = false;
+    $('hud').classList.add('target');
+    $('game').setAttribute('aria-pressed', 'true');
+    manualUntil = 0;
+    nextNote();
+  }
+  function stopGame() {
+    game = null;
+    muteUntil = 0;
+    $('hudGame').hidden = true;
+    $('hud').classList.remove('target');
+    $('game').setAttribute('aria-pressed', 'false');
+    hud(NaN);
+  }
+  function nextNote() {
+    game.i++;
+    if (game.i >= game.targets.length) { endGame(); return; }
+    const n = game.targets[game.i];
+    game.phase = 'ref';
+    game.holdStart = null;
+    game.holdCents = [];
+    game.lastIn = -1;
+    game.segs.push({ n, t0: clock, t1: clock, state: 'live' });
+    if (settings.ref === 'on') {
+      playNote(n, REF_DUR);
+      muteUntil = performance.now() + (REF_DUR + 0.35) * 1000;
+      game.phaseEnd = clock + REF_DUR + 0.35;
+    } else {
+      flash = { n, until: performance.now() + 700 };
+      game.phaseEnd = clock + 0.6;
+    }
+  }
+  function finishNote(ok) {
+    const seg = game.segs[game.segs.length - 1];
+    seg.t1 = clock;
+    seg.state = ok ? 'ok' : 'miss';
+    const n = game.targets[game.i];
+    let r;
+    if (ok) {
+      const lock = game.holdStart - game.t0;
+      const mean = game.holdCents.reduce((a, b) => a + b, 0) / game.holdCents.length;
+      const s = scoreNote(lock, mean);
+      r = { n, ok, lock, mean, ...s };
+      game.score += s.total;
+      popups.push({ text: '+' + s.total, n, t: performance.now(), good: true });
+    } else {
+      r = { n, ok, lock: NaN, mean: NaN, speed: 0, prec: 0, total: 0 };
+      popups.push({ text: 'Mancata', n, t: performance.now(), good: false });
+    }
+    game.results.push(r);
+    game.phase = 'result';
+    game.phaseEnd = clock + 0.9;
+  }
+
+  function gameStep(m) {
+    if (!game || game.phase === 'done') return;
+    const n = game.targets[game.i];
+    const seg = game.segs[game.segs.length - 1];
+    if (game.phase === 'ref') {
+      if (clock >= game.phaseEnd) { game.phase = 'go'; game.t0 = clock; seg.go = clock; }
+      seg.t1 = clock;
+      return;
+    }
+    if (game.phase === 'result') {
+      if (clock >= game.phaseEnd) nextNote();
+      return;
+    }
+    seg.t1 = clock;
+    const c = Number.isNaN(m) ? NaN : (m - n) * 100;
+    if (!Number.isNaN(c) && Math.abs(c) <= settings.tol) {
+      if (game.holdStart == null) { game.holdStart = clock; game.holdCents = []; }
+      game.holdCents.push(Math.abs(c));
+      game.lastIn = clock;
+      if (clock - game.holdStart >= HOLD) { finishNote(true); return; }
+    } else if (game.holdStart != null && clock - game.lastIn > GRACE) {
+      game.holdStart = null;
+    }
+    if (clock - game.t0 > TIMEOUT && game.holdStart == null) finishNote(false);
+  }
+
+  function gameHud(m) {
+    const n = game.targets[Math.min(game.i, game.targets.length - 1)];
+    $('hudRound').textContent = `Nota ${Math.min(game.i + 1, game.targets.length)}/${game.targets.length}`;
+    $('hudScore').textContent = game.score;
+    $('hudTime').textContent = game.phase === 'go' ? fmtS(clock - game.t0) : game.phase === 'ref' ? 'ascolta…' : '';
+    $('hudNote').textContent = noteName(n);
+    if (game.phase === 'ref') {
+      $('hudCents').textContent = settings.ref === 'on' ? 'ascolta' : 'preparati';
+      $('marker').className = 'marker';
+      return;
+    }
+    if (Number.isNaN(m)) {
+      $('hudCents').textContent = 'canta ' + noteName(n);
+      $('marker').className = 'marker';
+      return;
+    }
+    const c = (m - n) * 100;
+    if (Math.abs(c) > 50) {
+      const st = Math.round(Math.abs(c) / 100);
+      $('hudCents').textContent = (c < 0 ? '↑ sali ' : '↓ scendi ') + (st <= 1 ? '1 semitono' : st + ' semitoni');
+    } else {
+      $('hudCents').textContent = (c >= 0 ? '+' : '−') + Math.abs(c).toFixed(0) + ' cents';
+    }
+    $('marker').style.left = (50 + Math.max(-50, Math.min(50, c))) + '%';
+    $('marker').className = 'marker ' + (Math.abs(c) <= settings.tol ? 'in' : 'out');
+  }
+
+  function drawTargets(xOf, tMin, playX) {
+    if (!game) return;
+    for (const s of game.segs) {
+      if (s.t1 < tMin && s.state !== 'live') continue;
+      const y = yOf(s.n + 0.5);
+      const x0 = xOf(s.t0);
+      const live = s.state === 'live';
+      const x1 = live ? W : xOf(s.t1);
+      g.fillStyle = s.state === 'miss' ? 'rgba(139,151,164,.16)' : 'rgba(76,195,127,.16)';
+      if (live) g.fillStyle = 'rgba(224,133,12,.14)';
+      g.fillRect(x0, y, x1 - x0, rowH);
+      g.strokeStyle = s.state === 'miss' ? C.muted : s.state === 'ok' ? '#4cc37f' : C.note;
+      g.lineWidth = 2;
+      g.setLineDash(live && game.phase === 'ref' ? [6, 5] : []);
+      g.strokeRect(x0 + 1, y + 1, x1 - x0 - 2, rowH - 2);
+      g.setLineDash([]);
+      // Barra di tenuta: si riempie mentre resti sulla nota.
+      if (live && game.phase === 'go' && game.holdStart != null) {
+        const p = Math.min(1, (clock - game.holdStart) / HOLD);
+        g.fillStyle = '#4cc37f';
+        g.fillRect(playX + 6, y + rowH - 5, (W - playX - 12) * p, 3);
+      }
+    }
+  }
+
+  function drawPopups(playX) {
+    const now = performance.now();
+    popups = popups.filter((p) => now - p.t < 1100);
+    g.font = '700 20px ' + css.getPropertyValue('--sans');
+    g.textAlign = 'center';
+    g.textBaseline = 'bottom';
+    for (const p of popups) {
+      const k = (now - p.t) / 1100;
+      g.globalAlpha = 1 - k * k;
+      g.fillStyle = p.good ? '#4cc37f' : C.muted;
+      g.fillText(p.text, Math.min(W - 40, playX + 30), yOf(p.n + 0.5) - 4 - k * 30);
+    }
+    g.globalAlpha = 1;
+  }
+
+  function endGame() {
+    game.phase = 'done';
+    const rs = game.results;
+    const hits = rs.filter((r) => r.ok);
+    const avg = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+    const best = readBest();
+    const key = bestKey();
+    const prevBest = best[key] || 0;
+    if (game.score > prevBest) { best[key] = game.score; try { localStorage.setItem(BEST_KEY, JSON.stringify(best)); } catch (e) {} }
+    $('resTitle').textContent = game.score > prevBest && prevBest > 0 ? 'Nuovo record!' : 'Partita finita';
+    $('resTotal').textContent = game.score;
+    $('resMax').textContent = `su ${rs.length * 150} · record ${Math.max(prevBest, game.score)}`;
+    $('resHit').textContent = `${hits.length}/${rs.length}`;
+    $('resLock').textContent = hits.length ? fmtS(avg(hits.map((r) => r.lock))) : '–';
+    $('resCents').textContent = hits.length ? avg(hits.map((r) => r.mean)).toFixed(0) + ' c' : '–';
+    $('resRows').innerHTML = rs.map((r) => r.ok
+      ? `<tr><td>${noteName(r.n)}</td><td>${fmtS(r.lock)}</td><td>${r.mean.toFixed(0)} c</td><td>${r.total} <span class="stars">${'★'.repeat(starsOf(r.total))}</span></td></tr>`
+      : `<tr><td>${noteName(r.n)}</td><td class="miss" colspan="2">non presa</td><td class="miss">0</td></tr>`).join('');
+    $('copyOut').hidden = true;
+    $('results').hidden = false;
+  }
+
+  function resultsText() {
+    const rs = game ? game.results : [];
+    const tolName = `±${settings.tol} cents`;
+    return [
+      `Prendi la nota – ${new Date().toLocaleString('it-IT')}`,
+      `Estensione ${noteName(settings.low)}–${noteName(settings.high)}, precisione ${tolName}, riferimento ${settings.ref === 'on' ? 'sì' : 'no'}`,
+      `Punti ${game ? game.score : 0} su ${rs.length * 150}`,
+      '',
+      ...rs.map((r, i) => `${String(i + 1).padStart(2)}. ${noteName(r.n).padEnd(5)} ${r.ok ? `aggancio ${fmtS(r.lock)}, scarto ${r.mean.toFixed(0)} c, ${r.total} punti` : 'non presa'}`),
+    ].join('\n');
+  }
+
+  // Pannello impostazioni
+  function fillSelects() {
+    const opts = [];
+    for (let n = MIN_MIDI; n <= MAX_MIDI; n++) opts.push(`<option value="${n}">${noteName(n)}</option>`);
+    $('lowNote').innerHTML = opts.join('');
+    $('highNote').innerHTML = opts.join('');
+    $('lowNote').value = settings.low;
+    $('highNote').value = settings.high;
+  }
+  function bindSeg(id, key, num) {
+    const el = $(id);
+    const sync = () => el.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(String(settings[key]) === b.dataset.v)));
+    el.addEventListener('click', (e) => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      settings[key] = num ? +b.dataset.v : b.dataset.v;
+      sync();
+      showBest();
+    });
+    sync();
+  }
+  function showBest() {
+    const b = readBest()[bestKey()];
+    $('bestLine').textContent = b ? `Record con queste impostazioni: ${b} punti` : '';
+  }
+  fillSelects();
+  bindSeg('tolSeg', 'tol', true);
+  bindSeg('countSeg', 'count', true);
+  bindSeg('scaleSeg', 'scale', false);
+  bindSeg('refSeg', 'ref', false);
+  showBest();
+
+  async function ensureListening() {
+    if (!started) await startMic();
+    else if (ctx.state !== 'running') { try { await ctx.resume(); } catch (e) {} }
+    showOverlay(null);
+    setListening(true);
+  }
+
+  $('game').addEventListener('click', () => {
+    if (game) { stopGame(); return; }
+    $('setup').hidden = false;
+  });
+  $('setupCancel').addEventListener('click', () => { $('setup').hidden = true; });
+  $('setupGo').addEventListener('click', async () => {
+    let lo = +$('lowNote').value, hi = +$('highNote').value;
+    if (lo > hi) [lo, hi] = [hi, lo];
+    if (hi - lo < 2) hi = Math.min(MAX_MIDI, lo + 2);
+    settings.low = lo; settings.high = hi;
+    saveSettings();
+    $('setup').hidden = true;
+    try { await ensureListening(); }
+    catch (e) {
+      showOverlay('Microfono non disponibile', e.name === 'NotAllowedError'
+        ? 'Consenti il microfono nelle impostazioni del sito e riprova.' : `${e.name}: ${e.message}`);
+      return;
+    }
+    startGame();
+  });
+  $('resAgain').addEventListener('click', async () => {
+    $('results').hidden = true;
+    stopGame();
+    try { await ensureListening(); } catch (e) { return; }
+    startGame();
+  });
+  $('resClose').addEventListener('click', () => { $('results').hidden = true; stopGame(); });
+  $('resCopy').addEventListener('click', async () => {
+    const text = resultsText();
+    try {
+      await navigator.clipboard.writeText(text);
+      $('resCopy').textContent = 'Copiati';
+      setTimeout(() => ($('resCopy').textContent = 'Copia risultati'), 2000);
+    } catch (e) {
+      const ta = $('copyOut');
+      ta.hidden = false;
+      ta.value = text;
+      ta.focus();
+      ta.select();
+    }
   });
 
   // ---- Gesti: trascina, pizzica, tocca un tasto ----
