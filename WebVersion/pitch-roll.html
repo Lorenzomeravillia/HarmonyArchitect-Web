@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#1c2126">
+<title>Rullo intonazione</title>
+<style>
+/* Schermo unico: rullo di pianoforte a tutta altezza, indicatore dei cents sovrapposto in alto, comandi in basso. */
+:root {
+  --bg: #1c2126;
+  --row-white: #2b3137;
+  --row-black: #22272c;
+  --line: #3a4148;
+  --key: #c4cbd7;
+  --key-fg: #1c2126;
+  --fg: #e8edf2;
+  --muted: #8b97a4;
+  --note: #e0850c;
+  --trace: #ffffff;
+  --ok: #4cc37f;
+  --warn: #e7a542;
+  --rec: #d83b3b;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.3 var(--sans); }
+body {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  padding-top: env(safe-area-inset-top, 0px);
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+#stage { position: relative; flex: 1; min-height: 0; touch-action: none; }
+canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+.hud {
+  position: absolute;
+  top: 10px;
+  left: calc(56px + 12px);
+  right: 12px;
+  max-width: 340px;
+  margin-inline: auto;
+  background: color-mix(in srgb, var(--bg) 90%, transparent);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px 12px 10px;
+  pointer-events: none;
+}
+.hud-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.hud-note { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; min-width: 4ch; }
+.hud-cents { font-size: 15px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.bar { position: relative; height: 8px; margin-top: 8px; border-radius: 4px; background: var(--row-black); }
+.bar::before { content: ""; position: absolute; left: 40%; width: 20%; top: 0; bottom: 0; border-radius: 4px; background: color-mix(in srgb, var(--ok) 25%, transparent); }
+.bar::after { content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--muted); }
+.marker { position: absolute; top: -4px; width: 6px; height: 16px; margin-left: -3px; left: 50%; border-radius: 3px; background: var(--muted); opacity: 0; transition: left .06s linear; }
+.marker.in { background: var(--ok); opacity: 1; }
+.marker.out { background: var(--warn); opacity: 1; }
+.scale { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
+
+.overlay {
+  position: absolute;
+  left: 56px; right: 0; top: 50%;
+  transform: translateY(-50%);
+  text-align: center;
+  padding-inline: 24px;
+  color: var(--muted);
+  pointer-events: none;
+  text-wrap: balance;
+}
+.overlay strong { display: block; color: var(--fg); font-size: 17px; margin-bottom: 4px; }
+
+nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-block: 10px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-bottom: max(10px, env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--line);
+  background: var(--bg);
+}
+nav .mid { display: flex; align-items: center; gap: 20px; }
+button {
+  appearance: none;
+  border: 0;
+  background: none;
+  color: var(--fg);
+  width: 48px; height: 48px;
+  border-radius: 12px;
+  display: grid; place-items: center;
+  cursor: pointer;
+}
+button svg { width: 28px; height: 28px; fill: currentColor; }
+button:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
+button.toggle[aria-pressed="false"] { color: var(--muted); }
+#play { width: 56px; height: 56px; border-radius: 50%; background: var(--rec); }
+#play.running { background: var(--row-white); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="roll"></canvas>
+  <div class="hud" aria-live="off">
+    <div class="hud-top">
+      <span class="hud-note" id="hudNote">–</span>
+      <span class="hud-cents" id="hudCents">canta una nota</span>
+    </div>
+    <div class="bar"><div class="marker" id="marker"></div></div>
+    <div class="scale"><span>−50 cents</span><span>+50 cents</span></div>
+  </div>
+  <div class="overlay" id="overlay">
+    <strong>Tocca il pulsante rosso per iniziare</strong>
+    Tocca un tasto a sinistra per sentire la nota. Trascina in su o in giù per spostarti, pizzica per ingrandire.
+  </div>
+</div>
+<nav>
+  <button id="clear" aria-label="Cancella la traccia">
+    <svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM19 5v14L9.5 12z"/></svg>
+  </button>
+  <div class="mid">
+    <button id="play" aria-label="Avvia ascolto">
+      <svg viewBox="0 0 24 24" id="playIcon"><circle cx="12" cy="12" r="0"/></svg>
+    </button>
+  </div>
+  <button id="follow" class="toggle" aria-pressed="true" aria-label="Segui la voce">
+    <svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm9 3h-2.07A7 7 0 0 0 13 5.07V3h-2v2.07A7 7 0 0 0 5.07 11H3v2h2.07A7 7 0 0 0 11 18.93V21h2v-2.07A7 7 0 0 0 18.93 13H21zm-9 6a5 5 0 1 1 0-10 5 5 0 0 1 0 10z"/></svg>
+  </button>
+</nav>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const css = getComputedStyle(document.documentElement);
+  const C = Object.fromEntries(['bg', 'row-white', 'row-black', 'line', 'key', 'key-fg', 'muted', 'note', 'trace']
+    .map((k) => [k, css.getPropertyValue('--' + k).trim()]));
+
+  const IT = ['Do', 'Do♯', 'Re', 'Re♯', 'Mi', 'Fa', 'Fa♯', 'Sol', 'Sol♯', 'La', 'La♯', 'Si'];
+  const BLACK = [false, true, false, true, false, false, true, false, true, false, true, false];
+  const noteName = (n) => IT[((n % 12) + 12) % 12] + (Math.floor(n / 12) - 1);
+
+  // ---- Vista ----
+  const KEYW = 56;          // larghezza della colonna dei tasti
+  const PPS = 90;           // pixel per secondo di scorrimento
+  const MIN_MIDI = 36, MAX_MIDI = 84; // Do2 – Do6
+  let rowH = 26;
+  let viewTop = 0;          // midi (decimale) al bordo superiore
+  let W = 0, H = 0, dpr = 1;
+  const canvas = $('roll');
+  const g = canvas.getContext('2d');
+
+  function resize() {
+    const r = canvas.getBoundingClientRect();
+    dpr = window.devicePixelRatio || 1;
+    W = r.width; H = r.height;
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    if (!viewTop) viewTop = 55 + H / rowH / 2; // centrato su Sol3
+    clampView();
+  }
+  function clampView() {
+    const rows = H / rowH;
+    viewTop = Math.min(MAX_MIDI + 0.5, Math.max(MIN_MIDI - 0.5 + rows, viewTop));
+  }
+  new ResizeObserver(resize).observe(canvas);
+
+  // ---- Dati ----
+  let clock = 0;            // secondi, avanza solo durante l'ascolto
+  let samples = [];         // {t, m} m = midi decimale o NaN
+  let blocks = [];          // {n, t0, t1, open}
+  let lastVoiced = NaN;
+  let flash = null;         // {n, until}
+
+  function addSample(t, m) {
+    const prev = samples[samples.length - 1];
+    samples.push({ t, m });
+    const last = blocks[blocks.length - 1];
+    if (Number.isNaN(m)) { if (last) last.open = false; return; }
+    lastVoiced = m;
+    // Isteresi: il blocco cambia nota solo oltre 65 cents, così non sfarfalla a metà tra due note.
+    if (last && last.open && Math.abs(m - last.n) < 0.65) { last.t1 = t; return; }
+    if (last) last.open = false;
+    const t0 = prev && !Number.isNaN(prev.m) ? prev.t : t - 1 / 60;
+    blocks.push({ n: Math.round(m), t0, t1: t, open: true });
+  }
+  function trim() {
+    const keep = clock - 120;
+    if (samples.length && samples[0].t < keep) samples = samples.filter((s) => s.t >= keep);
+    if (blocks.length && blocks[0].t1 < keep) blocks = blocks.filter((b) => b.t1 >= keep);
+  }
+
+  // ---- Disegno ----
+  const yOf = (m) => (viewTop - m) * rowH;
+  function draw() {
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.fillStyle = C.bg;
+    g.fillRect(0, 0, W, H);
+    const playX = KEYW + (W - KEYW) * 0.82;
+    const lo = Math.floor(viewTop - H / rowH) - 1, hi = Math.ceil(viewTop) + 1;
+
+    // righe
+    for (let n = lo; n <= hi; n++) {
+      const y = yOf(n + 0.5);
+      const black = BLACK[((n % 12) + 12) % 12];
+      g.fillStyle = black ? C['row-black'] : C['row-white'];
+      g.fillRect(KEYW, y, W - KEYW, rowH);
+      if (!black && !BLACK[(((n + 1) % 12) + 12) % 12]) { // Mi/Fa e Si/Do: due tasti bianchi vicini
+        g.fillStyle = C.line;
+        g.fillRect(KEYW, Math.round(y), W - KEYW, 1);
+      }
+      if (flash && flash.n === n && performance.now() < flash.until) {
+        g.fillStyle = 'rgba(224,133,12,.18)';
+        g.fillRect(KEYW, y, W - KEYW, rowH);
+      }
+    }
+
+    // blocchi e traccia, solo nell'area del rullo
+    g.save();
+    g.beginPath();
+    g.rect(KEYW, 0, W - KEYW, H);
+    g.clip();
+    const xOf = (t) => playX - (clock - t) * PPS;
+    const tMin = clock - (playX - KEYW) / PPS - 0.5;
+    g.fillStyle = C.note;
+    for (const b of blocks) {
+      if (b.t1 < tMin) continue;
+      const x0 = xOf(b.t0), x1 = Math.max(xOf(b.t1), x0 + 2);
+      g.fillRect(x0, yOf(b.n + 0.5) + 1, x1 - x0, rowH - 2);
+    }
+    g.strokeStyle = C.trace;
+    g.lineWidth = 2;
+    g.lineJoin = 'round';
+    g.beginPath();
+    let pen = false, prevT = -1;
+    for (const s of samples) {
+      if (s.t < tMin) continue;
+      if (Number.isNaN(s.m) || s.t - prevT > 0.12) pen = false;
+      if (!Number.isNaN(s.m)) {
+        const x = xOf(s.t), y = yOf(s.m);
+        if (pen) g.lineTo(x, y); else g.moveTo(x, y);
+        pen = true;
+      }
+      prevT = s.t;
+    }
+    g.stroke();
+    g.restore();
+
+    // linea di lettura
+    g.fillStyle = C.key;
+    g.fillRect(Math.round(playX), 0, 2, H);
+
+    // tasti
+    g.fillStyle = C.bg;
+    g.fillRect(0, 0, KEYW, H);
+    g.font = '600 14px ' + css.getPropertyValue('--sans');
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    for (let n = lo; n <= hi; n++) {
+      if (BLACK[((n % 12) + 12) % 12]) continue;
+      const y = yOf(n + 0.5);
+      g.fillStyle = flash && flash.n === n && performance.now() < flash.until ? C.note : C.key;
+      g.fillRect(1, y + 1, KEYW - 2, rowH - 2);
+      if (rowH >= 16) {
+        g.fillStyle = C['key-fg'];
+        g.fillText(noteName(n), KEYW / 2, y + rowH / 2 + 1);
+      }
+    }
+  }
+
+  // ---- Audio ----
+  let ctx = null, stream = null, track = null, analyser = null, buf = null;
+  let listening = false, started = false;
+
+  function ensureCtx() {
+    if (ctx && ctx.state !== 'closed') return ctx;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    ctx = new AC({ latencyHint: 'interactive' });
+    return ctx;
+  }
+
+  async function startMic() {
+    if ('audioSession' in navigator) { try { navigator.audioSession.type = 'play-and-record'; } catch (e) {} }
+    ensureCtx();
+    if (ctx.state !== 'running') await ctx.resume();
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 },
+    });
+    track = stream.getAudioTracks()[0];
+    track.onended = () => { started = false; setListening(false); showOverlay('Il microfono si è interrotto', 'Tocca il pulsante rosso per riprenderlo.'); };
+    if (ctx.state !== 'running') await ctx.resume();
+    const src = ctx.createMediaStreamSource(stream);
+    analyser = ctx.createAnalyser();
+    analyser.fftSize = 2048;
+    analyser.smoothingTimeConstant = 0;
+    const sink = ctx.createGain();
+    sink.gain.value = 0; // Safari elabora solo i nodi collegati all'uscita
+    src.connect(analyser);
+    analyser.connect(sink);
+    sink.connect(ctx.destination);
+    buf = new Float32Array(analyser.fftSize);
+    started = true;
+  }
+
+  function playNote(n) {
+    try {
+      ensureCtx();
+      if (ctx.state !== 'running') ctx.resume();
+      const t = ctx.currentTime;
+      const o = ctx.createOscillator(), v = ctx.createGain();
+      o.type = 'triangle';
+      o.frequency.value = 440 * Math.pow(2, (n - 69) / 12);
+      v.gain.setValueAtTime(0, t);
+      v.gain.linearRampToValueAtTime(0.35, t + 0.02);
+      v.gain.setTargetAtTime(0, t + 0.7, 0.12);
+      o.connect(v).connect(ctx.destination);
+      o.start(t);
+      o.stop(t + 1.4);
+    } catch (e) {}
+    flash = { n, until: performance.now() + 900 };
+  }
+
+  // ---- Rilevamento nota (YIN) ----
+  let yinD = null;
+  function yin(x, sr) {
+    const tauMin = Math.floor(sr / 1200);
+    const tauMax = Math.min(Math.floor(sr / 60), (x.length >> 1) - 1);
+    const N = x.length - tauMax;
+    if (!yinD || yinD.length < tauMax + 2) yinD = new Float32Array(tauMax + 2);
+    const d = yinD;
+    d[0] = 1;
+    let run = 0;
+    for (let tau = 1; tau <= tauMax; tau++) {
+      let s = 0;
+      for (let i = 0; i < N; i++) { const v = x[i] - x[i + tau]; s += v * v; }
+      run += s;
+      d[tau] = run ? (s * tau) / run : 1;
+    }
+    let tau = -1;
+    for (let t = tauMin; t < tauMax; t++) {
+      if (d[t] < 0.15) { while (t + 1 < tauMax && d[t + 1] < d[t]) t++; tau = t; break; }
+    }
+    if (tau < 1) return null;
+    const a = d[tau - 1], b = d[tau], c = d[tau + 1];
+    const den = a + c - 2 * b;
+    return { f: sr / (tau + (den ? (a - c) / (2 * den) : 0)), clarity: 1 - b };
+  }
+
+  const recent = [];
+  function readPitch() {
+    analyser.getFloatTimeDomainData(buf);
+    let sum = 0;
+    for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+    const db = 10 * Math.log10(sum / buf.length + 1e-12);
+    const r = db > -55 ? yin(buf, ctx.sampleRate) : null;
+    recent.push(r && r.clarity > 0.8 ? 69 + 12 * Math.log2(r.f / 440) : NaN);
+    if (recent.length > 3) recent.shift();
+    const v = recent.filter((x) => !Number.isNaN(x)).sort((a, b) => a - b);
+    return v.length >= 2 ? v[v.length >> 1] : NaN; // mediana breve contro i salti isolati
+  }
+
+  // ---- Indicatore ----
+  function hud(m) {
+    if (Number.isNaN(m)) {
+      $('hudNote').textContent = '–';
+      $('hudCents').textContent = listening ? 'in ascolto' : 'in pausa';
+      $('marker').className = 'marker';
+      return;
+    }
+    const n = Math.round(m), c = (m - n) * 100;
+    $('hudNote').textContent = noteName(n);
+    $('hudCents').textContent = (c >= 0 ? '+' : '−') + Math.abs(c).toFixed(0) + ' cents';
+    $('marker').style.left = (50 + Math.max(-50, Math.min(50, c))) + '%';
+    $('marker').className = 'marker ' + (Math.abs(c) <= 10 ? 'in' : 'out');
+  }
+
+  // ---- Ciclo ----
+  let follow = true, manualUntil = 0, lastFrame = performance.now();
+  function frame(now) {
+    const dt = Math.min(0.1, (now - lastFrame) / 1000);
+    lastFrame = now;
+    if (listening && analyser) {
+      clock += dt;
+      const m = readPitch();
+      addSample(clock, m);
+      hud(m);
+      trim();
+      if (follow && now > manualUntil && !Number.isNaN(m)) {
+        const rows = H / rowH, margin = Math.min(4, rows / 4);
+        let target = viewTop;
+        if (m > viewTop - margin) target = m + margin;
+        else if (m < viewTop - rows + margin) target = m - margin + rows;
+        viewTop += (target - viewTop) * 0.12;
+        clampView();
+      }
+    }
+    draw();
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  // ---- Comandi ----
+  const ICON_REC = '<circle cx="12" cy="12" r="0"/>';
+  const ICON_PAUSE = '<path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/>';
+  function setListening(on) {
+    listening = on;
+    $('play').classList.toggle('running', on);
+    $('play').setAttribute('aria-label', on ? 'Metti in pausa' : 'Avvia ascolto');
+    $('playIcon').innerHTML = on ? ICON_PAUSE : ICON_REC;
+    if (!on) hud(NaN);
+  }
+  function showOverlay(title, text) {
+    const o = $('overlay');
+    o.hidden = !title;
+    if (title) o.innerHTML = `<strong>${title}</strong>${text}`;
+  }
+
+  $('play').addEventListener('click', async () => {
+    if (listening) { setListening(false); return; }
+    if (!started) {
+      try { await startMic(); }
+      catch (e) {
+        const msg = e.name === 'NotAllowedError'
+          ? 'Consenti il microfono nelle impostazioni del sito e riprova.'
+          : `${e.name}: ${e.message}`;
+        showOverlay('Microfono non disponibile', msg);
+        return;
+      }
+    } else if (ctx.state !== 'running') { try { await ctx.resume(); } catch (e) {} }
+    showOverlay(null);
+    setListening(true);
+  });
+  $('clear').addEventListener('click', () => { samples = []; blocks = []; clock = 0; });
+  $('follow').addEventListener('click', () => {
+    follow = !follow;
+    $('follow').setAttribute('aria-pressed', String(follow));
+    manualUntil = 0;
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && ctx && ctx.state !== 'running') ctx.resume().catch(() => {});
+  });
+
+  // ---- Gesti: trascina, pizzica, tocca un tasto ----
+  const pts = new Map();
+  let drag = null, pinch = null;
+  canvas.addEventListener('pointerdown', (e) => {
+    canvas.setPointerCapture(e.pointerId);
+    pts.set(e.pointerId, { x: e.offsetX, y: e.offsetY });
+    if (pts.size === 1) drag = { y: e.offsetY, x0: e.offsetX, y0: e.offsetY, moved: false };
+    if (pts.size === 2) {
+      const [a, b] = [...pts.values()];
+      pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), rowH, mid: (a.y + b.y) / 2 };
+      drag = null;
+    }
+  });
+  canvas.addEventListener('pointermove', (e) => {
+    if (!pts.has(e.pointerId)) return;
+    pts.set(e.pointerId, { x: e.offsetX, y: e.offsetY });
+    if (pinch && pts.size === 2) {
+      const [a, b] = [...pts.values()];
+      const anchor = viewTop - pinch.mid / rowH;
+      rowH = Math.max(14, Math.min(56, pinch.rowH * Math.hypot(a.x - b.x, a.y - b.y) / pinch.d));
+      viewTop = anchor + pinch.mid / rowH;
+      clampView();
+      manualUntil = performance.now() + 4000;
+    } else if (drag) {
+      const dy = e.offsetY - drag.y;
+      drag.y = e.offsetY;
+      if (Math.abs(e.offsetY - drag.y0) > 6 || Math.abs(e.offsetX - drag.x0) > 6) drag.moved = true;
+      if (drag.moved) {
+        viewTop += dy / rowH;
+        clampView();
+        manualUntil = performance.now() + 4000;
+      }
+    }
+  });
+  function end(e) {
+    if (drag && !drag.moved && pts.size === 1 && e.type === 'pointerup' && e.offsetX < KEYW) {
+      const n = Math.round(viewTop - e.offsetY / rowH);
+      playNote(n);
+    }
+    pts.delete(e.pointerId);
+    if (pts.size < 2) pinch = null;
+    if (pts.size === 0) drag = null;
+  }
+  canvas.addEventListener('pointerup', end);
+  canvas.addEventListener('pointercancel', end);
+})();
+</script>
+</body>
+</html>
