@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f1519">
+<title>Test microfono</title>
+<style>
+/* Una colonna: accordatore in alto, poi controlli, checklist, dati tecnici e log. */
+:root {
+  --bg: #eef2f4;
+  --surface: #ffffff;
+  --fg: #142029;
+  --muted: #5a6975;
+  --line: #d6dee4;
+  --accent: #0d7686;
+  --ok: #1d8549;
+  --warn: #a8701a;
+  --bad: #bf3a2c;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1519; --surface: #172128; --fg: #e4ecf1; --muted: #92a2af;
+    --line: #27343e; --accent: #3bbccc; --ok: #4cc37f; --warn: #e2a648; --bad: #ef6b5c;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 15px/1.45 var(--sans);
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: max(24px, env(safe-area-inset-bottom, 0px));
+}
+main {
+  max-width: 560px;
+  margin: 0 auto;
+  padding-block: 16px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid;
+  gap: 16px;
+}
+h1 { font-size: 20px; margin: 0; text-wrap: balance; }
+h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 8px; }
+.sub { color: var(--muted); margin: 2px 0 0; font-size: 14px; }
+section { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; min-width: 0; }
+
+/* Accordatore */
+.tuner { display: grid; gap: 12px; text-align: center; }
+.note { font-size: 64px; font-weight: 700; line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.note small { font-size: 18px; font-weight: 500; color: var(--muted); margin-left: 6px; letter-spacing: 0; }
+.readout { font-family: var(--mono); color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+.cents { position: relative; height: 34px; border-radius: 8px; background: var(--bg); border: 1px solid var(--line); overflow: hidden; }
+.cents::before { content: ""; position: absolute; left: 40%; width: 20%; top: 0; bottom: 0; background: color-mix(in srgb, var(--ok) 18%, transparent); }
+.cents::after { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: var(--muted); }
+.needle { position: absolute; top: 4px; bottom: 4px; width: 4px; margin-left: -2px; left: 50%; border-radius: 2px; background: var(--muted); transition: left .08s linear; }
+.needle.in { background: var(--ok); }
+.needle.out { background: var(--warn); }
+.scale { display: flex; justify-content: space-between; font: 11px var(--mono); color: var(--muted); }
+.meter { height: 8px; border-radius: 4px; background: var(--bg); border: 1px solid var(--line); overflow: hidden; }
+.meter > div { height: 100%; width: 0; background: var(--accent); }
+.flow { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; font-size: 13px; }
+.pill { border-radius: 999px; padding: 2px 10px; border: 1px solid var(--line); color: var(--muted); }
+.pill.ok { color: var(--ok); border-color: currentColor; }
+.pill.bad { color: var(--bad); border-color: currentColor; }
+
+/* Pulsanti */
+.row { display: flex; gap: 8px; flex-wrap: wrap; }
+button {
+  font: 600 15px var(--sans);
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--fg);
+  padding: 12px 14px;
+  min-height: 44px;
+  cursor: pointer;
+  flex: 1 1 auto;
+}
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+button.on { border-color: var(--accent); color: var(--accent); }
+button:disabled { opacity: .5; cursor: default; }
+button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* Checklist */
+ol.tests { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+ol.tests li { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+ol.tests li:last-child { border-bottom: 0; padding-bottom: 0; }
+.t-title { font-weight: 600; }
+.t-hint, .t-detail { grid-column: 1 / -1; font-size: 13px; color: var(--muted); }
+.t-detail { color: var(--fg); font-family: var(--mono); font-size: 12px; word-break: break-word; }
+.badge { font-size: 12px; font-weight: 600; border-radius: 6px; padding: 2px 8px; align-self: start; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.badge.ok { color: var(--ok); border-color: currentColor; }
+.badge.warn { color: var(--warn); border-color: currentColor; }
+.badge.ko { color: var(--bad); border-color: currentColor; }
+.badge.run { color: var(--accent); border-color: currentColor; }
+.ask { grid-column: 1 / -1; margin-top: 6px; }
+.ask button { font-size: 13px; padding: 8px 10px; min-height: 38px; }
+
+dl.tech { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; font-size: 13px; }
+dl.tech dt { color: var(--muted); }
+dl.tech dd { margin: 0; font-family: var(--mono); font-size: 12px; word-break: break-word; }
+pre.log { margin: 0; max-height: 240px; overflow: auto; font: 11px/1.5 var(--mono); white-space: pre-wrap; word-break: break-word; color: var(--muted); }
+.banner { border-color: var(--bad); color: var(--bad); }
+@media (prefers-reduced-motion: reduce) { .needle { transition: none; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Test microfono</h1>
+    <p class="sub">Prova di accettazione audio per il gioco di intonazione: microfono, nota rilevata, riproduzione insieme al microfono e ritorno dal background.</p>
+  </header>
+
+  <section id="fatal" class="banner" hidden></section>
+
+  <section class="tuner" aria-live="polite">
+    <div class="note" id="note">–<small id="noteEn"></small></div>
+    <div class="readout" id="readout">Tocca “Avvia ascolto” e canta una nota</div>
+    <div>
+      <div class="cents"><div class="needle" id="needle"></div></div>
+      <div class="scale"><span>−50</span><span>cents</span><span>+50</span></div>
+    </div>
+    <div class="meter" aria-label="Livello del microfono"><div id="meter"></div></div>
+    <div class="flow">
+      <span class="pill" id="pillClock">orologio audio: –</span>
+      <span class="pill" id="pillMic">campioni microfono: –</span>
+    </div>
+    <div class="row">
+      <button class="primary" id="start">Avvia ascolto</button>
+      <button id="recover" hidden>Ripristina audio</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>Nota di riferimento</h2>
+    <div class="row">
+      <button id="tone220" data-f="220" data-n="La3">Suona La3</button>
+      <button id="tone440" data-f="440" data-n="La4">Suona La4</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>Checklist</h2>
+    <ol class="tests" id="tests"></ol>
+  </section>
+
+  <section>
+    <h2>Dati tecnici</h2>
+    <dl class="tech" id="tech"></dl>
+  </section>
+
+  <section>
+    <h2>Registro</h2>
+    <pre class="log" id="log"></pre>
+    <div class="row" style="margin-top:12px">
+      <button id="copy">Copia rapporto</button>
+    </div>
+    <textarea id="copyFallback" hidden readonly style="width:100%;height:120px;margin-top:8px;font:11px var(--mono)"></textarea>
+  </section>
+</main>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const T0 = performance.now();
+  const logLines = [];
+  function log(msg) {
+    const s = ((performance.now() - T0) / 1000).toFixed(2).padStart(7);
+    logLines.push(`[${s}s] ${msg}`);
+    $('log').textContent = logLines.slice(-300).join('\n');
+    $('log').scrollTop = $('log').scrollHeight;
+  }
+
+  // ---- Checklist ----
+  const TESTS = [
+    ['perm', 'Permesso microfono', 'Tocca “Avvia ascolto” e consenti l’accesso.'],
+    ['dsp', 'Elaborazione vocale spenta', 'Cancellazione eco, riduzione rumore e volume automatico devono risultare spenti.'],
+    ['signal', 'Segnale in ingresso', 'Canta o parla: la barra del livello deve muoversi.'],
+    ['pitch', 'Rilevamento nota', 'Tieni una nota ferma per 1 secondo.'],
+    ['tone', 'Nota di riferimento a microfono aperto', 'Suona La4 con l’ascolto attivo e giudica volume e altoparlante.'],
+    ['resume', 'Ritorno dal background', 'Con l’ascolto attivo, passa a un’altra app per 5 secondi e torna qui.'],
+  ];
+  const LABELS = { wait: 'Da fare', run: 'In corso', ok: 'OK', warn: 'Attenzione', ko: 'Non riuscito' };
+  const status = {};
+  $('tests').innerHTML = TESTS.map(([id, title, hint]) => `
+    <li id="t-${id}">
+      <span class="t-title">${title}</span>
+      <span class="badge" id="b-${id}">${LABELS.wait}</span>
+      <span class="t-hint">${hint}</span>
+      <span class="t-detail" id="d-${id}" hidden></span>
+      ${id === 'tone' ? `<div class="ask row" id="toneAsk" hidden>
+        <button data-v="ok">Forte dall’altoparlante</button>
+        <button data-v="warn">Debole o dalla capsula</button>
+        <button data-v="ko">Non si sente</button></div>` : ''}
+    </li>`).join('');
+  function setStatus(id, state, detail) {
+    status[id] = { state, detail: detail || '' };
+    const b = $('b-' + id);
+    b.className = 'badge ' + state;
+    b.textContent = LABELS[state];
+    const d = $('d-' + id);
+    d.hidden = !detail;
+    d.textContent = detail || '';
+    log(`TEST ${id}: ${LABELS[state]}${detail ? ' – ' + detail : ''}`);
+  }
+  TESTS.forEach(([id]) => (status[id] = { state: 'wait', detail: '' }));
+
+  // ---- Dati tecnici ----
+  const tech = {};
+  function setTech(k, v) {
+    tech[k] = v;
+    $('tech').innerHTML = Object.entries(tech)
+      .map(([a, b]) => `<dt>${a}</dt><dd>${String(b).replace(/</g, '&lt;')}</dd>`).join('');
+  }
+  setTech('Browser', navigator.userAgent);
+  setTech('Pagina sicura (HTTPS)', window.isSecureContext ? 'sì' : 'no');
+  setTech('Standalone (PWA)', (matchMedia('(display-mode: standalone)').matches || navigator.standalone) ? 'sì' : 'no');
+
+  if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+    $('fatal').hidden = false;
+    $('fatal').textContent = 'Il browser non permette l’accesso al microfono da questa pagina. Aprila da un indirizzo https://.';
+    $('start').disabled = true;
+    setStatus('perm', 'ko', 'getUserMedia non disponibile (serve HTTPS)');
+  }
+
+  // ---- Audio ----
+  let ctx = null, stream = null, track = null, src = null, analyser = null, sink = null, buf = null;
+  let osc = null, oscGain = null, toneFreq = 0;
+  let raf = 0, lastHash = NaN, lastSampleChange = 0, lastClock = -1, lastClockChange = 0;
+  let stallLogged = false, signalOk = false, lastAllOk = 0;
+  let history = [], heldMidi = null, heldSince = 0, heldCents = [];
+  let hiddenAt = 0, wakeLock = null;
+
+  function withTimeout(p, ms, what) {
+    return Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(what + ' bloccato oltre ' + ms + ' ms')), ms))]);
+  }
+
+  function teardown() {
+    cancelAnimationFrame(raf);
+    stopTone(true);
+    try { stream?.getTracks().forEach((t) => t.stop()); } catch (e) {}
+    try { ctx?.close(); } catch (e) {}
+    ctx = stream = track = src = analyser = sink = null;
+  }
+
+  async function buildGraph() {
+    teardown();
+    const AC = window.AudioContext || window.webkitAudioContext;
+    ctx = new AC({ latencyHint: 'interactive' });
+    const myCtx = ctx;
+    log(`AudioContext creato: stato=${ctx.state}, sampleRate=${ctx.sampleRate}`);
+    ctx.onstatechange = () => log('AudioContext stato → ' + myCtx.state);
+    if (ctx.state !== 'running') await withTimeout(ctx.resume(), 3000, 'resume()');
+
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 },
+    });
+    track = stream.getAudioTracks()[0];
+    log('Microfono: ' + (track.label || '(senza nome)'));
+    track.onended = () => log('Traccia microfono TERMINATA');
+    track.onmute = () => log('Traccia microfono in muto (dal sistema)');
+    track.onunmute = () => log('Traccia microfono di nuovo attiva');
+    checkDsp(track);
+
+    if (ctx.state !== 'running') await withTimeout(ctx.resume(), 3000, 'resume() dopo microfono');
+    src = ctx.createMediaStreamSource(stream);
+    analyser = ctx.createAnalyser();
+    analyser.fftSize = 2048;
+    analyser.smoothingTimeConstant = 0;
+    // Safari elabora in modo affidabile solo i nodi collegati all'uscita: colleghiamo a volume zero.
+    sink = ctx.createGain();
+    sink.gain.value = 0;
+    src.connect(analyser);
+    analyser.connect(sink);
+    sink.connect(ctx.destination);
+    buf = new Float32Array(analyser.fftSize);
+
+    setTech('Sample rate', ctx.sampleRate + ' Hz');
+    setTech('Latenza base', ctx.baseLatency != null ? (ctx.baseLatency * 1000).toFixed(1) + ' ms' : 'n/d');
+    setTech('Latenza uscita', ctx.outputLatency != null ? (ctx.outputLatency * 1000).toFixed(1) + ' ms' : 'n/d');
+    const s = track.getSettings ? track.getSettings() : {};
+    setTech('Latenza microfono', s.latency != null ? (s.latency * 1000).toFixed(1) + ' ms' : 'n/d');
+    setTech('Stato contesto', ctx.state);
+
+    const now = performance.now();
+    lastSampleChange = lastClockChange = lastAllOk = now;
+    lastClock = -1;
+    stallLogged = false;
+    loop();
+  }
+
+  function checkDsp(t) {
+    const s = t.getSettings ? t.getSettings() : {};
+    log('Impostazioni traccia: ' + JSON.stringify(s));
+    const keys = [['echoCancellation', 'eco'], ['noiseSuppression', 'rumore'], ['autoGainControl', 'volume auto']];
+    const parts = keys.map(([k, n]) => `${n}: ${k in s ? (s[k] ? 'ATTIVO' : 'spento') : 'n/d'}`);
+    const on = keys.filter(([k]) => s[k] === true).length;
+    const unknown = keys.filter(([k]) => !(k in s)).length;
+    setStatus('dsp', on ? 'ko' : unknown ? 'warn' : 'ok', parts.join(' · '));
+  }
+
+  async function start() {
+    $('start').disabled = true;
+    try {
+      if ('audioSession' in navigator) {
+        try { navigator.audioSession.type = 'play-and-record'; log('navigator.audioSession.type = play-and-record'); }
+        catch (e) { log('audioSession non impostabile: ' + e.message); }
+      } else log('navigator.audioSession non disponibile');
+      setStatus('perm', 'run');
+      await buildGraph();
+      setStatus('perm', 'ok', 'Accesso concesso');
+      $('start').textContent = 'In ascolto';
+      requestWakeLock();
+      if (!signalOk) setStatus('signal', 'run');
+      if (status.pitch.state === 'wait') setStatus('pitch', 'run');
+    } catch (e) {
+      const why = e.name === 'NotAllowedError' ? 'Accesso negato: riattivalo nelle impostazioni del sito.' : '';
+      setStatus('perm', 'ko', `${e.name}: ${e.message} ${why}`.trim());
+      $('start').disabled = false;
+    }
+  }
+
+  async function requestWakeLock() {
+    try { wakeLock = await navigator.wakeLock?.request('screen'); if (wakeLock) log('Schermo tenuto acceso'); }
+    catch (e) { log('Wake lock non disponibile: ' + e.message); }
+  }
+
+  // ---- Rilevamento nota (YIN) ----
+  let yinD = null;
+  function yin(x, sr) {
+    const tauMin = Math.floor(sr / 1200);
+    const tauMax = Math.min(Math.floor(sr / 65), (x.length >> 1) - 1);
+    const W = x.length - tauMax;
+    if (!yinD || yinD.length < tauMax + 2) yinD = new Float32Array(tauMax + 2);
+    const d = yinD;
+    d[0] = 1;
+    let run = 0;
+    for (let tau = 1; tau <= tauMax; tau++) {
+      let s = 0;
+      for (let i = 0; i < W; i++) { const v = x[i] - x[i + tau]; s += v * v; }
+      run += s;
+      d[tau] = run ? (s * tau) / run : 1;
+    }
+    let tau = -1;
+    for (let t = tauMin; t < tauMax; t++) {
+      if (d[t] < 0.15) { while (t + 1 < tauMax && d[t + 1] < d[t]) t++; tau = t; break; }
+    }
+    if (tau < 1) return null;
+    const a = d[tau - 1], b = d[tau], c = d[tau + 1];
+    const den = a + c - 2 * b;
+    const shift = den ? (a - c) / (2 * den) : 0;
+    return { f: sr / (tau + shift), clarity: 1 - b };
+  }
+
+  const IT = ['Do', 'Do♯', 'Re', 'Re♯', 'Mi', 'Fa', 'Fa♯', 'Sol', 'Sol♯', 'La', 'La♯', 'Si'];
+  const EN = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+  const median = (a) => { const s = [...a].sort((x, y) => x - y); return s[s.length >> 1]; };
+
+  function showPitch(f) {
+    if (!f) {
+      $('note').firstChild.nodeValue = '–';
+      $('noteEn').textContent = '';
+      $('needle').style.left = '50%';
+      $('needle').className = 'needle';
+      return null;
+    }
+    const m = 69 + 12 * Math.log2(f / 440);
+    const midi = Math.round(m);
+    const cents = (m - midi) * 100;
+    const oct = Math.floor(midi / 12) - 1;
+    $('note').firstChild.nodeValue = IT[midi % 12] + oct;
+    $('noteEn').textContent = EN[midi % 12] + oct;
+    $('readout').textContent = `${f.toFixed(1)} Hz · ${cents >= 0 ? '+' : ''}${cents.toFixed(0)} cents`;
+    $('needle').style.left = (50 + Math.max(-50, Math.min(50, cents))) + '%';
+    $('needle').className = 'needle ' + (Math.abs(cents) <= 10 ? 'in' : 'out');
+    return { midi, cents, name: IT[midi % 12] + oct };
+  }
+
+  let lastToneLog = 0;
+  function loop() {
+    raf = requestAnimationFrame(loop);
+    if (!analyser || !ctx) return;
+    const now = performance.now();
+
+    // Orologio del contesto
+    if (ctx.currentTime !== lastClock) { lastClock = ctx.currentTime; lastClockChange = now; }
+    const clockOk = now - lastClockChange < 500;
+
+    analyser.getFloatTimeDomainData(buf);
+    let sum = 0;
+    for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+    const h = buf[0] + buf[333] * 3 + buf[1024] * 7 + buf[2047] * 11 + sum;
+    if (h !== lastHash) { lastHash = h; lastSampleChange = now; }
+    const micOk = now - lastSampleChange < 500 && sum > 0;
+    if (clockOk && micOk) lastAllOk = now;
+
+    $('pillClock').textContent = 'orologio audio: ' + (clockOk ? 'avanza' : 'FERMO');
+    $('pillClock').className = 'pill ' + (clockOk ? 'ok' : 'bad');
+    $('pillMic').textContent = 'campioni microfono: ' + (micOk ? 'arrivano' : sum === 0 ? 'solo zeri' : 'FERMI');
+    $('pillMic').className = 'pill ' + (micOk ? 'ok' : 'bad');
+    // Segnala solo blocchi che durano più di un secondo, non brevi pause.
+    if (now - lastAllOk > 1000 && !stallLogged) {
+      stallLogged = true;
+      log(`Flusso fermo da oltre 1 s: orologio ${clockOk ? 'ok' : 'fermo'}, microfono ${micOk ? 'ok' : 'fermo'}, contesto=${ctx.state}, traccia=${track?.readyState}${track?.muted ? ' (muted)' : ''}`);
+    } else if (clockOk && micOk && stallLogged) { stallLogged = false; log('Flusso audio ripreso'); }
+
+    const rms = Math.sqrt(sum / buf.length);
+    const db = 20 * Math.log10(rms + 1e-9);
+    $('meter').style.width = Math.max(0, Math.min(100, ((db + 70) / 70) * 100)) + '%';
+    if (!signalOk && db > -45) { signalOk = true; setStatus('signal', 'ok', `Livello ${db.toFixed(0)} dBFS`); }
+
+    const r = db > -55 ? yin(buf, ctx.sampleRate) : null;
+    if (r && r.clarity > 0.8) history.push(r.f); else history.push(0);
+    if (history.length > 5) history.shift();
+    const voiced = history.filter((v) => v > 0);
+    const f = voiced.length >= 3 ? median(voiced) : null;
+    const p = showPitch(f);
+    if (!f && !toneFreq) $('readout').textContent = ctx.state === 'running' ? 'In ascolto…' : 'Contesto: ' + ctx.state;
+
+    // Nota tenuta per 1 s
+    if (p) {
+      if (p.midi !== heldMidi) { heldMidi = p.midi; heldSince = now; heldCents = []; }
+      heldCents.push(p.cents);
+      if (status.pitch.state !== 'ok' && now - heldSince > 1000) {
+        const spread = Math.max(...heldCents) - Math.min(...heldCents);
+        setStatus('pitch', 'ok', `${p.name} tenuta 1 s, oscillazione ${spread.toFixed(0)} cents`);
+      }
+    } else heldMidi = null;
+
+    // Il microfono capta la nota di riferimento?
+    if (toneFreq && f && now - lastToneLog > 1500) {
+      const diff = 1200 * Math.log2(f / toneFreq);
+      if (Math.abs(diff) < 40) { lastToneLog = now; log(`Il microfono capta la nota di riferimento (${f.toFixed(1)} Hz)`); }
+    }
+  }
+
+  // ---- Nota di riferimento ----
+  function stopTone(silent) {
+    if (osc) {
+      try { oscGain.gain.setTargetAtTime(0, ctx.currentTime, 0.03); osc.stop(ctx.currentTime + 0.2); } catch (e) {}
+      osc = oscGain = null;
+      if (!silent) log('Nota di riferimento fermata');
+    }
+    toneFreq = 0;
+    document.querySelectorAll('[data-f]').forEach((b) => { b.classList.remove('on'); b.textContent = 'Suona ' + b.dataset.n; });
+  }
+  async function toggleTone(btn) {
+    const f = +btn.dataset.f;
+    if (toneFreq === f) { stopTone(); return; }
+    if (!ctx) {
+      $('readout').textContent = 'Prima tocca “Avvia ascolto”: la prova va fatta col microfono aperto.';
+      return;
+    }
+    stopTone(true);
+    try { if (ctx.state !== 'running') await withTimeout(ctx.resume(), 3000, 'resume()'); } catch (e) { log(e.message); }
+    osc = ctx.createOscillator();
+    oscGain = ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.value = f;
+    oscGain.gain.value = 0;
+    oscGain.gain.setTargetAtTime(0.35, ctx.currentTime, 0.02);
+    osc.connect(oscGain).connect(ctx.destination);
+    osc.start();
+    toneFreq = f;
+    btn.classList.add('on');
+    btn.textContent = 'Ferma ' + btn.dataset.n;
+    log(`Nota di riferimento ${btn.dataset.n} (${f} Hz) avviata, contesto=${ctx.state}`);
+    $('toneAsk').hidden = false;
+    if (status.tone.state === 'wait') setStatus('tone', 'run', 'Rispondi qui sotto: come si sente?');
+  }
+  document.querySelectorAll('[data-f]').forEach((b) => b.addEventListener('click', () => toggleTone(b)));
+  $('toneAsk').addEventListener('click', (e) => {
+    const v = e.target.closest('button')?.dataset.v;
+    if (!v) return;
+    setStatus('tone', v, e.target.textContent);
+  });
+
+  // ---- Background e ripristino ----
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      hiddenAt = performance.now();
+      log(`Pagina nascosta (contesto=${ctx?.state ?? '–'}, traccia=${track?.readyState ?? '–'})`);
+      return;
+    }
+    const away = hiddenAt ? ((performance.now() - hiddenAt) / 1000).toFixed(1) : '?';
+    log(`Pagina di nuovo visibile dopo ${away} s (contesto=${ctx?.state ?? '–'}, traccia=${track?.readyState ?? '–'}${track?.muted ? ', muted' : ''})`);
+    if (!ctx) return;
+    if (wakeLock?.released !== false) requestWakeLock();
+    setStatus('resume', 'run', `Fuori per ${away} s, controllo…`);
+    const clockAtReturn = ctx.currentTime;
+    setTimeout(() => {
+      const clockMoved = ctx && ctx.currentTime > clockAtReturn + 0.5;
+      const micMoving = performance.now() - lastSampleChange < 500;
+      const live = track?.readyState === 'live' && !track?.muted;
+      const detail = `fuori ${away} s · contesto ${ctx?.state} · orologio ${clockMoved ? 'ok' : 'fermo'} · microfono ${micMoving ? 'ok' : 'fermo'} · traccia ${track?.readyState}${track?.muted ? ' muted' : ''}`;
+      if (clockMoved && micMoving && live) setStatus('resume', 'ok', 'Ripreso da solo · ' + detail);
+      else { setStatus('resume', 'ko', detail); $('recover').hidden = false; }
+    }, 1500);
+  });
+
+  $('recover').addEventListener('click', async () => {
+    $('recover').disabled = true;
+    log('Ripristino: provo resume()');
+    try {
+      await withTimeout(ctx.resume(), 2000, 'resume()');
+      await new Promise((r) => setTimeout(r, 600));
+      const ok = performance.now() - lastSampleChange < 500 && track?.readyState === 'live';
+      if (ok) { setStatus('resume', 'warn', 'Ripreso solo dopo un tocco (resume)'); $('recover').hidden = true; return; }
+      log('resume() non basta: ricreo contesto e microfono');
+      await buildGraph();
+      await new Promise((r) => setTimeout(r, 600));
+      const ok2 = performance.now() - lastSampleChange < 500;
+      setStatus('resume', ok2 ? 'warn' : 'ko', ok2 ? 'Ripreso solo ricreando contesto e microfono' : 'Non ripreso nemmeno ricreando tutto');
+      if (ok2) $('recover').hidden = true;
+    } catch (e) {
+      setStatus('resume', 'ko', 'Ripristino fallito: ' + e.message);
+    } finally { $('recover').disabled = false; }
+  });
+
+  $('start').addEventListener('click', start);
+
+  // ---- Rapporto ----
+  $('copy').addEventListener('click', async () => {
+    const lines = [
+      'TEST MICROFONO – ' + new Date().toLocaleString('it-IT'),
+      '',
+      ...TESTS.map(([id, title]) => `${LABELS[status[id].state].padEnd(12)} ${title}${status[id].detail ? ' – ' + status[id].detail : ''}`),
+      '',
+      ...Object.entries(tech).map(([k, v]) => `${k}: ${v}`),
+      '',
+      ...logLines,
+    ];
+    const text = lines.join('\n');
+    try {
+      await navigator.clipboard.writeText(text);
+      $('copy').textContent = 'Rapporto copiato';
+      setTimeout(() => ($('copy').textContent = 'Copia rapporto'), 2000);
+    } catch (e) {
+      const ta = $('copyFallback');
+      ta.hidden = false;
+      ta.value = text;
+      ta.focus();
+      ta.select();
+      $('copy').textContent = 'Seleziona e copia il testo qui sotto';
+    }
+  });
+
+  log('Pagina caricata');
+})();
+</script>
+</body>
+</html>
