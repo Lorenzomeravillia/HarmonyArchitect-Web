@@ -1,0 +1,16 @@
+{
+  "name": "Canta con Lu",
+  "short_name": "Canta con Lu",
+  "description": "Gioco per imparare a intonare le note cantando, per bambini.",
+  "lang": "it",
+  "start_url": "/bimbi",
+  "scope": "/bimbi",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#e4f5ff",
+  "theme_color": "#7ccaf5",
+  "icons": [
+    { "src": "/assets/icons/lu-icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/assets/icons/lu-icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
