@@ -432,6 +432,7 @@ a.navlink:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
   }
 
   // ---- Audio ----
+  let out = null;
   let ctx = null, stream = null, track = null, analyser = null, buf = null;
   let listening = false, started = false;
 
@@ -439,7 +440,35 @@ a.navlink:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
     if (ctx && ctx.state !== 'closed') return ctx;
     const AC = window.AudioContext || window.webkitAudioContext;
     ctx = new AC({ latencyHint: 'interactive' });
+    // Spinta forte seguita da un limitatore: le note di riferimento escono molto più alte senza distorcere.
+    out = ctx.createGain();
+    out.gain.value = 2.4;
+    const lim = ctx.createDynamicsCompressor();
+    lim.threshold.value = -7;
+    lim.knee.value = 3;
+    lim.ratio.value = 20;
+    lim.attack.value = 0.002;
+    lim.release.value = 0.12;
+    out.connect(lim).connect(ctx.destination);
     return ctx;
+  }
+
+  // Timbro delle note di riferimento: morbido, ma con armonici decrescenti che cadono dove
+  // l'altoparlante del telefono suona bene (sopra i 300 Hz circa). Più la nota è grave, più
+  // armonici: l'orecchio ricostruisce la nota anche se il telefono non ne riproduce la fondamentale.
+  const HARMONICS = {
+    low: [0, 1, 0.85, 0.65, 0.5, 0.36, 0.26, 0.18, 0.12, 0.08],
+    mid: [0, 1, 0.6, 0.38, 0.24, 0.15, 0.09],
+    high: [0, 1, 0.38, 0.18, 0.08],
+  };
+  const waves = {};
+  function waveFor(f) {
+    const key = f < 180 ? 'low' : f < 350 ? 'mid' : 'high';
+    if (!waves[key]) {
+      const amps = HARMONICS[key];
+      waves[key] = ctx.createPeriodicWave(new Float32Array(amps.length), Float32Array.from(amps));
+    }
+    return waves[key];
   }
 
   async function startMic() {
@@ -470,13 +499,17 @@ a.navlink:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
       ensureCtx();
       if (ctx.state !== 'running') ctx.resume();
       const t = ctx.currentTime;
-      const o = ctx.createOscillator(), v = ctx.createGain();
-      o.type = 'triangle';
-      o.frequency.value = 440 * Math.pow(2, (n - 69) / 12);
+      const f = 440 * Math.pow(2, (n - 69) / 12);
+      const o = ctx.createOscillator(), v = ctx.createGain(), lp = ctx.createBiquadFilter();
+      o.setPeriodicWave(waveFor(f));
+      o.frequency.value = f;
+      lp.type = 'lowpass'; // toglie solo l'asprezza in alto
+      lp.frequency.value = Math.min(4500, Math.max(1800, f * 9));
+      lp.Q.value = 0.5;
       v.gain.setValueAtTime(0, t);
-      v.gain.linearRampToValueAtTime(0.35, t + 0.02);
+      v.gain.linearRampToValueAtTime(0.95, t + 0.025);
       v.gain.setTargetAtTime(0, t + dur, 0.12);
-      o.connect(v).connect(ctx.destination);
+      o.connect(lp).connect(v).connect(out);
       o.start(t);
       o.stop(t + dur + 0.7);
     } catch (e) {}
