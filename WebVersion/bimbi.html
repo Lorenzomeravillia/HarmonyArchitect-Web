@@ -235,6 +235,19 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 .actions button.primary { background: var(--accent); color: var(--card); }
 .actions button.danger { color: #b2402f; }
 #copyOut { width: 100%; height: 120px; font: 12px ui-monospace, Menlo, monospace; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); }
+.play-big {
+  border: 0; border-radius: 28px;
+  background: var(--star); box-shadow: 0 6px 0 var(--star-edge);
+  min-height: 78px; padding: 10px 18px;
+  display: flex; align-items: center; gap: 14px; text-align: left;
+}
+.play-big:active { transform: translateY(4px); box-shadow: 0 2px 0 var(--star-edge); }
+.play-big .pb-ico { font-size: 44px; line-height: 1; }
+.play-big b { display: block; font-size: 28px; font-weight: 700; line-height: 1.05; }
+.play-big small { font-size: 14px; font-weight: 600; color: #6b5200; }
+.play-big svg { width: 34px; height: 34px; fill: var(--ink); margin-left: auto; flex: none; }
+.range-box { background: #eef6fc; border-radius: 12px; padding: 10px 12px; display: grid; gap: 8px; }
+.range-box p { margin: 0; color: var(--ink); }
 @media (prefers-reduced-motion: reduce) {
   .cue.sing, .sticker-big, .node.next .bubble, .node.shake { animation: none; }
 }
@@ -250,6 +263,11 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
       <svg viewBox="0 0 24 24"><path d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.6 7.6 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.6 7.6 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.6 7.6 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.6 7.6 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg>
     </button>
   </header>
+  <button class="play-big" id="playNext" aria-label="Gioca alla prossima tappa">
+    <span class="pb-ico" id="playNextIcon" aria-hidden="true"></span>
+    <span><b>Gioca</b><small id="playNextTitle"></small></span>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+  </button>
   <div class="path" id="path"></div>
   <section class="album">
     <h2>Il tuo album <span id="albumCount"></span></h2>
@@ -290,6 +308,21 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   </div>
 </div>
 
+<div id="pauseOv" class="overlay" hidden>
+  <div class="reward-card">
+    <h2>In pausa</h2>
+    <div class="sticker-big" aria-hidden="true">😴</div>
+    <div class="row">
+      <button class="big" id="pauseHome" aria-label="Torna a casa">
+        <svg viewBox="0 0 24 24"><path d="M12 3 2 11.5h3V21h5.5v-6h3v6H19v-9.5h3z"/></svg>Casa
+      </button>
+      <button class="big go" id="pauseGo" aria-label="Continua a cantare">
+        <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>Continua
+      </button>
+    </div>
+  </div>
+</div>
+
 <div id="msg" class="overlay" hidden>
   <div class="panel">
     <h2>Serve il microfono</h2>
@@ -310,6 +343,18 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
         <button id="shiftUp" aria-label="Più acuta">+</button>
       </div>
       <small id="rangeOut"></small>
+      <div class="range-box" id="rangeBox" hidden>
+        <p id="rangeText"></p>
+        <div class="actions"><button id="rangeApply" class="primary">Applica la tonalità consigliata</button></div>
+      </div>
+    </div>
+    <div class="field">
+      <span>Sulle stelle</span>
+      <div class="seg" id="syllSeg">
+        <button data-v="0">Solo colori</button>
+        <button data-v="1">Colori e do re mi</button>
+      </div>
+      <small>Ogni nota ha sempre lo stesso colore: do rosso, re arancio, mi giallo, fa verde, sol azzurro, la blu, si viola.</small>
     </div>
     <div class="field">
       <span>Precisione richiesta</span>
@@ -351,6 +396,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
         </table>
       </div>
       <small id="hardNotes"></small>
+      <small id="dirStats"></small>
+      <small id="hardIntervals"></small>
     </div>
     <textarea id="copyOut" hidden readonly></textarea>
     <div class="actions">
@@ -371,10 +418,19 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   const noteName = (n) => IT[((n % 12) + 12) % 12] + (Math.floor(n / 12) - 1);
   const avg = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN);
   const fmtS = (s) => s.toFixed(1).replace('.', ',') + ' s';
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const median = (a) => { const s = [...a].sort((x, y) => x - y); return s[s.length >> 1]; };
+
+  // Un colore per grado della scala, uguale in ogni tappa: do rosso, re arancio, mi giallo,
+  // fa verde, sol azzurro, la blu, si viola (come le campanelle colorate delle scuole).
+  const MAJOR = [0, 2, 4, 5, 7, 9, 11];
+  const SYL = ['do', 're', 'mi', 'fa', 'sol', 'la', 'si'];
+  const DEG_COLORS = ['#ff5a5f', '#ff9f1c', '#f2c200', '#34b764', '#12aac8', '#4f6bff', '#b25cf0'];
+  const RAINBOW = ['#ff6b6b', '#ffa94d', '#ffe066', '#69db7c', '#4dabf7', '#9775fa'];
 
   // ---- Percorso ----
   // Tre modi di giocare, dal più guidato al più impegnativo:
-  //   'free'   Lu vola: nessuna nota da imitare, basta portare la voce in alto o in basso;
+  //   'rainbow' l'arcobaleno: nessuna nota da imitare, si segue con la voce una scia che sale e scende;
   //   'note'   eco nota per nota: ogni stella canta la sua nota subito prima del turno;
   //   'phrase' eco di frase: si ascolta la frase intera e poi la si canta stella per stella.
   // L'ordine delle note segue il metodo Kodály: sol-mi, poi il la, poi mi-re-do,
@@ -396,8 +452,10 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   ];
   const PHASES = ['Scopri la voce', 'Una nota', 'Sol e mi', 'Arriva il la', 'Mi, re, do', 'Cinque note', 'Canzoni'];
   const LEVELS = [
-    { id: 'vola', phase: 0, title: 'Lu vola', icon: '🎈', mode: 'free', tonic: 60, bpm: 100, tol: 150, hold: 0.3,
-      phrases: [[[12, 1], [2, 1], [9, 1]], [[0, 1], [11, 1], [4, 1]]] },
+    // L'arcobaleno: una scia larga da seguire con la voce. Avanza solo mentre canta, e le stelle sono
+    // sulle cime e nelle valli, così il gioco misura anche dove la sua voce arriva comoda.
+    { id: 'vola', phase: 0, title: 'L\u2019arcobaleno di Lu', icon: '🌈', mode: 'rainbow', tonic: 60, tol: 150,
+      points: [4, 4, 7, 2, 9, 0, 11, 4, 12, -1, 7, 4], spacing: 3, phrases: [] },
     { id: 'eco', phase: 1, title: 'Eco', icon: '🐣', mode: 'note', tonic: 67, bpm: 90,
       phrases: [[[0, 1], [0, 1], [0, 1]], [[0, 1], [0, 1], [0, 1]]] },
     { id: 'eco-su-giu', phase: 1, title: 'Eco su e giù', icon: '🐥', mode: 'note', tonic: 67, bpm: 90,
@@ -451,7 +509,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   const KEYS = { settings: 'lu.settings.v1', album: 'lu.album.v1', best: 'lu.best.v1', sessions: 'lu.sessions.v1' };
   function load(k, fallback) { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? fallback; } catch (e) { return fallback; } }
   function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
-  const settings = Object.assign({ shift: 0, tol: 50, hold: 0.5, octave: true, unlockAll: false }, load(KEYS.settings, {}));
+  const settings = Object.assign({ shift: 0, tol: 50, hold: 0.5, octave: true, unlockAll: false, syll: false, range: null }, load(KEYS.settings, {}));
   let album = load(KEYS.album, []);
   let best = load(KEYS.best, {});
   let sessions = load(KEYS.sessions, []);
@@ -464,8 +522,16 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     if (ctx && ctx.state !== 'closed') return ctx;
     const AC = window.AudioContext || window.webkitAudioContext;
     ctx = new AC({ latencyHint: 'interactive' });
-    bus = ctx.createDynamicsCompressor();
-    bus.connect(ctx.destination);
+    // Spinta forte seguita da un limitatore: la voce di Lu esce molto più alta senza distorcere.
+    bus = ctx.createGain();
+    bus.gain.value = 2.2;
+    const lim = ctx.createDynamicsCompressor();
+    lim.threshold.value = -7;
+    lim.knee.value = 3;
+    lim.ratio.value = 20;
+    lim.attack.value = 0.002;
+    lim.release.value = 0.12;
+    bus.connect(lim).connect(ctx.destination);
     newMaster();
     return ctx;
   }
@@ -564,7 +630,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     for (const o of [saw, sine, vib]) { o.start(t); o.stop(rel + 0.4); }
   }
 
-  function chime(midi, t, vol = 0.22) {
+  function chime(midi, t, vol = 0.12) {
     for (const [iv, a] of [[24, vol], [31, vol * 0.35]]) {
       const o = ctx.createOscillator();
       o.frequency.value = mtof(midi + iv);
@@ -585,11 +651,30 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     o.frequency.exponentialRampToValueAtTime(980, t + 0.12);
     const g = ctx.createGain();
     g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(0.18, t + 0.02);
+    g.gain.linearRampToValueAtTime(0.1, t + 0.02);
     g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
     o.connect(g).connect(master);
     o.start(t);
     o.stop(t + 0.2);
+  }
+
+  // Carillon di inizio tappa: do-mi-sol-do nella tonalità della tappa, per sentire la "casa".
+  function musicBox(tonic, t) {
+    [0, 4, 7, 12].forEach((iv, j) => {
+      const s = t + j * 0.22;
+      for (const [mul, a] of [[1, 0.16], [3, 0.03], [4.2, 0.012]]) {
+        const o = ctx.createOscillator();
+        o.frequency.value = mtof(tonic + 12 + iv) * mul;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0, s);
+        g.gain.linearRampToValueAtTime(a, s + 0.004);
+        g.gain.exponentialRampToValueAtTime(0.0001, s + 0.9);
+        o.connect(g).connect(master);
+        o.start(s);
+        o.stop(s + 0.95);
+      }
+    });
+    return 3 * 0.22 + 0.9;
   }
 
   // ---- Rilevamento nota (YIN) ----
@@ -643,11 +728,21 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     return [Math.min(...all), Math.max(...all)];
   }
 
+  function rbFn(song, s) { // arcobaleno: secondi di scorrimento → semitoni rispetto alla tonica
+    const P = song.points, sp = song.spacing;
+    const i = clamp(Math.floor(s / sp), 0, P.length - 2);
+    const x = clamp((s - i * sp) / sp, 0, 1);
+    return P[i] + (P[i + 1] - P[i]) * (0.5 - 0.5 * Math.cos(Math.PI * x));
+  }
+
   function startSong(song) {
     const phrases = songPhrases(song);
-    const [lo, hi] = songRange(song);
+    const tonic = song.tonic + settings.shift;
+    const [lo, hi] = song.mode === 'rainbow'
+      ? [tonic + Math.min(...song.points), tonic + Math.max(...song.points)]
+      : songRange(song);
     run = {
-      song, phrases, lo, hi,
+      song, phrases, lo, hi, paused: 0,
       mode: song.mode || 'phrase',
       tol: song.tol ?? settings.tol,
       hold: song.hold ?? settings.hold,
@@ -655,9 +750,20 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
       phase: 'intro', until: now() + 0.9,
       state: phrases.map((ph) => ph.map(() => 'todo')),
       sing: [], notes: [], active: null,
-      total: phrases.reduce((a, ph) => a + ph.length, 0),
+      total: song.mode === 'rainbow' ? song.points.length - 1 : phrases.reduce((a, ph) => a + ph.length, 0),
     };
+    if (song.mode === 'rainbow') {
+      run.rb = {
+        s: 0, end: (song.points.length - 1) * song.spacing + 1.5, lastIn: -9, inside: false,
+        stars: song.points.slice(1).map((v, k) => ({ s: (k + 1) * song.spacing, v, state: 'todo' })),
+        samplesIn: [], samplesAll: [],
+      };
+    }
     newMaster();
+    // carillon di inizio tappa, poi si comincia
+    const boxDur = musicBox(tonic, ctx.currentTime + 0.35);
+    run.until = now() + 0.35 + boxDur + 0.2;
+    muteUntil = Math.max(muteUntil, run.until);
     lu.x = W * 0.5;
     lu.y = H + 40;
     $('starCount').textContent = '0';
@@ -678,7 +784,6 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     const ph = run.phrases[run.p];
     run.k = 0;
     run.sing = [];
-    if (run.mode === 'free') { activate(); return; }
     if (run.mode === 'note' && ph.length < 3) { beginStarListen(); return; }
     run.phase = 'listen';
     setCue('listen');
@@ -722,7 +827,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     // il tempo parte quando il microfono torna ad ascoltare, non durante la nota di riferimento
     const t = Math.max(now(), muteUntil);
     run.state[run.p][run.k] = 'active';
-    run.active = { start: t, holdStart: null, lastIn: -1, cents: [], helps: 0, nextHelp: t + HELP_EVERY, c: NaN };
+    run.active = { start: t, holdStart: null, lastIn: -1, cents: [], helps: 0, nextHelp: t + HELP_EVERY, c: NaN, first: [] };
     run.phase = 'turn';
     setCue('sing');
   }
@@ -740,6 +845,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     const target = run.phrases[run.p][run.k].midi;
     const c = Number.isNaN(voice.shown) ? NaN : (voice.shown - target) * 100;
     a.c = c;
+    if (!Number.isNaN(voice.shown) && a.first.length < 6) a.first.push(voice.shown);
     if (!Number.isNaN(c) && Math.abs(c) <= run.tol) {
       if (a.holdStart == null) { a.holdStart = t; a.cents = []; }
       a.cents.push(Math.abs(c));
@@ -750,7 +856,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     }
     if (a.holdStart == null) {
       if (t - a.start >= GIVE_UP) { collect(true); return; }
-      if (t >= a.nextHelp && a.helps < MAX_HELPS && run.mode !== 'free') {
+      if (t >= a.nextHelp && a.helps < MAX_HELPS) {
         a.helps++;
         a.nextHelp = t + HELP_EVERY;
         starSings(run.k);
@@ -762,14 +868,26 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     const a = run.active;
     const n = run.phrases[run.p][run.k];
     const t = now();
+    // Per l'insegnante: l'intervallo dalla nota precedente e se il primo tentativo va nella direzione giusta.
+    const prevNote = run.k > 0 ? run.phrases[run.p][run.k - 1] : run.p > 0 ? run.phrases[run.p - 1].at(-1) : null;
+    const prev = prevNote ? prevNote.midi : null;
+    const firstPitch = a.first.length >= 3 ? median(a.first) : NaN;
+    let dir = null;
+    if (prev != null && !Number.isNaN(firstPitch)) {
+      const iv = n.midi - prev, mv = firstPitch - prev;
+      dir = iv === 0 ? Math.abs(mv) < 0.5 : Math.sign(mv) === Math.sign(iv) && Math.abs(mv) >= 0.3;
+    }
     run.notes.push({
       midi: n.midi, helped, helps: a.helps,
       lock: helped ? null : a.holdStart - a.start,
       cents: helped ? null : avg(a.cents),
+      iv: prev == null ? null : n.midi - prev,
+      dir,
+      first: Number.isNaN(firstPitch) ? null : Math.round((firstPitch - n.midi) * 100),
     });
     run.state[run.p][run.k] = helped ? 'helped' : 'gold';
     const pos = starPos(run.p, run.k);
-    burst(pos.x, pos.y, helped ? 8 : 16, helped);
+    burst(pos.x, pos.y, helped ? 8 : 18, helped, noteColor(n.midi));
     if (!helped) {
       chime(n.midi, ctx.currentTime + 0.01);
       muteUntil = Math.max(muteUntil, t + 0.4);
@@ -788,14 +906,14 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     run.phase = 'phraseDone';
     run.until = now() + 0.9;
     setCue(null);
-    run.phrases[run.p].forEach((n, i) => { const s = starPos(run.p, i); burst(s.x, s.y, 4, false); });
+    run.phrases[run.p].forEach((n, i) => { const s = starPos(run.p, i); burst(s.x, s.y, 4, false, noteColor(n.midi)); });
   }
 
   // Alla fine la voce canta tutta la canzone e Lu vola di stella in stella.
   function beginFinale() {
     run.phase = 'finale';
     setCue('party');
-    if (run.mode === 'free') { // niente melodia da ricantare: solo la fanfara
+    if (run.mode === 'rainbow') { // niente melodia da ricantare: solo la fanfara
       const tonic = run.song.tonic + settings.shift;
       const at = ctx.currentTime + 0.1;
       [0, 4, 7, 12].forEach((iv, j) => chime(tonic + iv - 12, at + j * 0.12, 0.25));
@@ -856,6 +974,64 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     for (let i = 0; i < 40; i++) confetti();
   }
 
+  // Estensione comoda misurata giocando all'arcobaleno: dove la voce restava dentro la scia.
+  function saveRange() {
+    const rb = run.rb;
+    const src = rb.samplesIn.length >= 60 ? rb.samplesIn : rb.samplesAll;
+    if (src.length < 60) return;
+    const sorted = [...src].sort((x, y) => x - y);
+    const q = (p) => sorted[Math.floor(p * (sorted.length - 1))];
+    settings.range = { lo: Math.round(q(0.1)), hi: Math.round(q(0.9)), at: Date.now() };
+    save(KEYS.settings, settings);
+  }
+
+  function stepRainbow(t, dt) {
+    const rb = run.rb, tonic = run.song.tonic + settings.shift;
+    const voiced = !Number.isNaN(voice.m);
+    if (voiced) rb.s += dt; // l'arcobaleno avanza solo mentre canta: le stelle aspettano lei
+    const target = tonic + rbFn(run.song, rb.s);
+    rb.inside = voiced && Math.abs(voice.m - target) * 100 <= run.tol;
+    if (rb.inside) rb.lastIn = rb.s;
+    if (voiced) { rb.samplesAll.push(voice.m); if (rb.inside) rb.samplesIn.push(voice.m); }
+    for (const st of rb.stars) {
+      if (st.state !== 'todo' || rb.s < st.s) continue;
+      const ok = rb.s - rb.lastIn < 0.3;
+      st.state = ok ? 'gold' : 'helped';
+      const midi = Math.round(tonic + st.v);
+      run.notes.push({ midi, helped: !ok, helps: 0, lock: null, cents: null, iv: null, dir: null, first: null });
+      const y = yOf(tonic + st.v);
+      burst(W * 0.28, y, ok ? 18 : 8, !ok, '#ffd23f');
+      if (ok) { chime(midi, ctx.currentTime + 0.01); muteUntil = Math.max(muteUntil, t + 0.3); }
+      $('starCount').textContent = run.notes.filter((n) => !n.helped).length;
+    }
+    if (rb.s >= rb.end) { saveRange(); beginFinale(); }
+  }
+
+  // Pausa automatica quando si esce dall'app; al ritorno si riprende senza perdere niente.
+  function pauseRun() {
+    if (!run || run.paused || run.phase === 'done') return;
+    run.paused = now();
+    if (ctx) newMaster();
+    $('pauseOv').hidden = false;
+  }
+  function resumeRun() {
+    if (!run || !run.paused) return;
+    const d = now() - run.paused;
+    run.paused = 0;
+    $('pauseOv').hidden = true;
+    if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {});
+    muteUntil = 0;
+    if (run.phase === 'turn') {
+      const a = run.active;
+      a.start += d; a.nextHelp += d; a.holdStart = null;
+    } else if (run.phase === 'listen') beginPhrase();
+    else if (run.phase === 'cue') beginCue();
+    else if (run.phase === 'starListen') beginStarListen();
+    else if (run.phase === 'finale') beginFinale();
+    else run.until += d;
+    requestWakeLock();
+  }
+
   function saveSession(complete) {
     if (!run || !run.notes.length) return;
     sessions.unshift({
@@ -867,6 +1043,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
         midi: n.midi, helped: n.helped, helps: n.helps,
         lock: n.lock == null ? null : +n.lock.toFixed(2),
         cents: n.cents == null ? null : Math.round(n.cents),
+        iv: n.iv, dir: n.dir, first: n.first,
       })),
     });
     sessions = sessions.slice(0, 40);
@@ -879,11 +1056,12 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     run = null;
     muteUntil = 0;
     $('reward').hidden = true;
+    $('pauseOv').hidden = true;
     showScreen('home');
   }
 
   // ---- Aggiornamento a ogni fotogramma ----
-  function update(t) {
+  function update(t, dt) {
     voice.m = NaN;
     if (micReady && analyser) {
       const r = readVoice();
@@ -900,14 +1078,19 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     }
     // Un'ottava sopra o sotto viene "piegata" sulla nota bersaglio, se l'adulto lo permette.
     voice.shown = voice.m;
-    if (run && !Number.isNaN(voice.m)) {
+    if (run && run.mode !== 'rainbow' && !Number.isNaN(voice.m)) {
       const ph = run.phrases[Math.min(run.p, run.phrases.length - 1)];
       const target = ph[Math.min(run.k, ph.length - 1)].midi;
-      if (settings.octave && run.mode !== 'free') voice.shown = voice.m + 12 * Math.round((target - voice.m) / 12);
+      if (settings.octave) voice.shown = voice.m + 12 * Math.round((target - voice.m) / 12);
     }
-    if (!run) return;
+    if (!run || run.paused) return;
     switch (run.phase) {
-      case 'intro': if (t >= run.until) beginPhrase(); break;
+      case 'intro':
+        if (t >= run.until) {
+          if (run.mode === 'rainbow') { run.phase = 'rainbow'; setCue('sing'); } else beginPhrase();
+        }
+        break;
+      case 'rainbow': stepRainbow(t, dt); break;
       case 'listen': if (t >= run.until) { if (run.mode === 'note') beginStarListen(); else beginCue(); } break;
       case 'starListen': if (t >= run.until) activate(); break;
       case 'cue': if (t >= run.until) activate(); break;
@@ -929,6 +1112,47 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   let W = 0, H = 0, dpr = 1;
   const lu = { x: 0, y: 0, r: 22 };
   let particles = [];
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // colore della nota: per grado della scala rispetto alla tonica della tappa (do mobile)
+  function degreeOf(midi) {
+    const rel = ((Math.round(midi - (run.song.tonic + settings.shift)) % 12) + 12) % 12;
+    return MAJOR.indexOf(rel);
+  }
+  function noteColor(midi) { const d = degreeOf(midi); return d < 0 ? '#ffffff' : DEG_COLORS[d]; }
+
+  // Gli "sprite" di luce: piccole immagini sfumate, disegnate una volta per colore e poi riusate.
+  const glows = {};
+  function glow(color) {
+    if (glows[color]) return glows[color];
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const x = c.getContext('2d');
+    const gr = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gr.addColorStop(0, color);
+    gr.addColorStop(0.35, color + '99');
+    gr.addColorStop(1, color + '00');
+    x.fillStyle = gr;
+    x.fillRect(0, 0, 64, 64);
+    return (glows[color] = c);
+  }
+  function strokePts(pts, width, style) {
+    g.lineWidth = width;
+    g.strokeStyle = style;
+    g.beginPath();
+    pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
+    g.stroke();
+  }
+  // scia leggera dietro Lu mentre canta, del colore della nota che sta cantando
+  function trail(dt) {
+    if (Number.isNaN(voice.shown) || !run || run.paused) return;
+    const n = Math.round(dt * 60 * (reducedMotion ? 1 : 2));
+    const color = noteColor(Math.round(voice.shown));
+    for (let i = 0; i < n; i++) {
+      particles.push({ x: lu.x - lu.r * 0.8, y: lu.y + (Math.random() - 0.5) * lu.r, vx: -70 - Math.random() * 40, vy: -10 + Math.random() * 20,
+        life: 0.7, age: 0, size: 10 + Math.random() * 10, color, kind: 'glow', grav: 0 });
+    }
+  }
   const clouds = [0.15, 0.55, 0.85].map((x, i) => ({ x, y: 0.2 + i * 0.22, s: 0.7 + i * 0.25, v: 0.006 + i * 0.003 }));
 
   function resize() {
@@ -1042,17 +1266,80 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     }
   }
 
-  function burst(x, y, n, soft) {
+  function burst(x, y, n, soft, color = '#ffd23f') {
     for (let i = 0; i < n; i++) {
-      const a = Math.random() * Math.PI * 2, v = 60 + Math.random() * 140;
-      particles.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 40, life: 0.9, age: 0, size: 4 + Math.random() * 5,
-        color: soft ? '#ffffff' : Math.random() < 0.5 ? '#ffd23f' : '#ffeaa0', star: true });
+      const a = Math.random() * Math.PI * 2, v = 60 + Math.random() * 150;
+      const star = i % 2 === 0;
+      particles.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 40, life: 0.9, age: 0,
+        size: star ? 4 + Math.random() * 5 : 14 + Math.random() * 14,
+        color: soft ? '#ffffff' : star ? (Math.random() < 0.5 ? '#ffd23f' : '#fff3b0') : color,
+        kind: star ? 'star' : 'glow', grav: star ? 220 : 40 });
     }
   }
   function confetti() {
     const colors = ['#ff8fa8', '#ffd23f', '#7ccaf5', '#93d47e', '#c9a7ff'];
     particles.push({ x: Math.random() * W, y: -10, vx: (Math.random() - 0.5) * 60, vy: 80 + Math.random() * 120,
-      life: 3, age: 0, size: 5 + Math.random() * 5, color: colors[Math.floor(Math.random() * colors.length)], star: false });
+      life: 3, age: 0, size: 5 + Math.random() * 5, color: colors[Math.floor(Math.random() * colors.length)], kind: 'confetti', grav: 30 });
+  }
+  function drawParticles(dt) {
+    particles = particles.filter((p) => (p.age += dt) < p.life);
+    for (const p of particles) {
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vy += p.grav * dt;
+      const k = 1 - p.age / p.life;
+      g.globalAlpha = Math.max(0, k);
+      if (p.kind === 'glow') { const s = p.size * (0.5 + 0.5 * k); g.drawImage(glow(p.color), p.x - s / 2, p.y - s / 2, s, s); }
+      else if (p.kind === 'star') { g.fillStyle = p.color; starPath(p.x, p.y, p.size); g.fill(); }
+      else { g.fillStyle = p.color; g.fillRect(p.x, p.y, p.size, p.size * 0.6); }
+    }
+    g.globalAlpha = 1;
+  }
+
+  // L'arcobaleno: la scia scorre da destra, Lu resta a sinistra e segue la voce.
+  function drawRainbow(t, dt) {
+    const rb = run.rb, tonic = run.song.tonic + settings.shift;
+    const luX = W * 0.28, PPS = W * 0.13;
+    const f = field(), [lo, hi] = span();
+    const pxSemi = (f.bottom - f.top) / (hi - lo);
+    const band = Math.max(30, (run.tol / 100) * pxSemi * 2);
+    const pts = [];
+    for (let x = -10; x <= W + 10; x += 6) {
+      const s = rb.s + (x - luX) / PPS;
+      if (s > rb.end + 2) break;
+      pts.push([x, yOf(tonic + rbFn(run.song, clamp(s, 0, rb.end)))]);
+    }
+    g.lineCap = 'round';
+    g.lineJoin = 'round';
+    g.globalAlpha = 0.6;
+    const w = band / RAINBOW.length;
+    RAINBOW.forEach((c, i) => {
+      const off = (i - (RAINBOW.length - 1) / 2) * w;
+      strokePts(pts.map(([x, y]) => [x, y + off]), w + 0.6, c);
+    });
+    g.globalAlpha = 1;
+    for (const st of rb.stars) {
+      const x = luX + (st.s - rb.s) * PPS;
+      if (x < -30 || x > W + 30) continue;
+      const y = yOf(tonic + st.v);
+      if (st.state === 'todo') {
+        g.drawImage(glow('#fff3b0'), x - 30, y - 30, 60, 60);
+        starPath(x, y, 16);
+        g.fillStyle = '#ffd23f'; g.fill();
+        g.strokeStyle = '#f0a500'; g.lineWidth = 2; g.stroke();
+      } else {
+        starPath(x, y, st.state === 'gold' ? 14 : 10);
+        g.fillStyle = st.state === 'gold' ? '#ffd23f' : '#ffffff'; g.fill();
+      }
+    }
+    // Lu
+    let ty = restY(), flying = false;
+    if (!Number.isNaN(voice.m)) { ty = clamp(yOf(voice.m), f.top - 30, restY()); flying = true; }
+    lu.x += (luX - lu.x) * (1 - Math.exp(-dt / 0.18));
+    lu.y += (ty - lu.y) * (1 - Math.exp(-dt / (flying ? 0.08 : 0.35)));
+    trail(dt);
+    drawParticles(dt);
+    drawLu(g, lu.x, lu.y + (flying ? 0 : Math.sin(t * 2) * 2), lu.r, { time: t, flying, singing: flying, ears: voice.loud });
   }
 
   // L'ultima nota iniziata: fra una nota e l'altra resta valida, così la schermata non salta.
@@ -1084,20 +1371,23 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     g.fillStyle = '#93d47e';
     g.beginPath(); g.ellipse(W * 0.85, H + 40, W * 0.65, 120, 0, Math.PI, 0); g.fill();
     if (!run) return;
+    if (run.mode === 'rainbow') { drawRainbow(t, dt); return; }
 
     const sing = singingNow(t);
     const cur = run.phase === 'finale' ? lastSung(t) : null;
     const dp = run.phase === 'finale' ? (cur ? cur.p : 0) : Math.min(run.p, run.phrases.length - 1);
     const ph = run.phrases[dp];
 
-    // gradini: una riga leggera per ogni nota della canzone
-    g.strokeStyle = 'rgba(255,255,255,.45)';
+    // gradini: una riga leggera per ogni nota della tappa, del colore della nota
     g.lineWidth = 2;
     g.setLineDash([2, 8]);
     for (const m of new Set(run.phrases.flat().map((n) => n.midi))) {
       const y = yOf(m);
+      g.globalAlpha = 0.5;
+      g.strokeStyle = noteColor(m);
       g.beginPath(); g.moveTo(16, y); g.lineTo(W - 16, y); g.stroke();
     }
+    g.globalAlpha = 1;
     g.setLineDash([]);
 
     // stelle
@@ -1111,14 +1401,13 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
       let r = base;
       if (isSinging) r = base * (1.35 + 0.08 * Math.sin(t * 20));
       if (st === 'helped') r = base * 0.8;
-      if (isSinging) {
-        g.fillStyle = 'rgba(255,230,120,.45)';
-        g.beginPath(); g.arc(x, y, r * 1.9, 0, Math.PI * 2); g.fill();
-      }
+      const col = noteColor(n.midi);
+      if (isSinging) { const gs = r * 4; g.drawImage(glow(col), x - gs / 2, y - gs / 2, gs, gs); }
       starPath(x, y, r);
-      if (st === 'gold' || isSinging) { g.fillStyle = '#ffd23f'; g.fill(); g.strokeStyle = '#f0a500'; g.lineWidth = 2; g.stroke(); }
-      else if (st === 'helped') { g.fillStyle = '#ffffff'; g.fill(); g.strokeStyle = '#ffe58a'; g.lineWidth = 2; g.stroke(); }
-      else { g.fillStyle = 'rgba(255,255,255,.35)'; g.fill(); g.strokeStyle = 'rgba(255,255,255,.9)'; g.lineWidth = 2; g.stroke(); }
+      if (st === 'gold' || isSinging) { g.fillStyle = col; g.fill(); g.strokeStyle = 'rgba(255,255,255,.95)'; g.lineWidth = 2; g.stroke(); }
+      else if (st === 'helped') { g.fillStyle = '#ffffff'; g.fill(); g.strokeStyle = col; g.lineWidth = 2; g.stroke(); }
+      else { g.fillStyle = 'rgba(255,255,255,.55)'; g.fill(); g.strokeStyle = col; g.lineWidth = 2.5; g.stroke(); }
+      if (settings.syll) drawSyl(n.midi, x, y + r + 14);
     });
 
     // Lu
@@ -1141,6 +1430,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     lu.x += (tx - lu.x) * kx;
     lu.y += (ty - lu.y) * ky;
     if (!flying && Math.abs(lu.y - restY()) < 2) { /* seduta sulla collina */ }
+    if (flying && singing && run.phase !== 'finale') trail(dt);
     drawLu(g, lu.x, lu.y + (flying ? 0 : Math.sin(t * 2) * 2), lu.r, { time: t, flying, singing, ears: voice.loud });
 
     // stella attiva: grande contorno in cui Lu deve entrare, con l'anello di tenuta
@@ -1148,13 +1438,16 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
       const a = run.phase === 'turn' ? run.active : null;
       const R = Math.max(lu.r * 1.55, 30);
       const isSinging = sing && sing.i === activeK;
-      const glow = isSinging ? 0.6 : 0.25 + 0.15 * Math.sin(t * 4);
-      g.fillStyle = `rgba(255,230,120,${glow})`;
-      g.beginPath(); g.arc(active.x, active.y, R * 1.25, 0, Math.PI * 2); g.fill();
+      const col = noteColor(ph[activeK].midi);
+      g.globalAlpha = isSinging ? 0.9 : 0.45 + 0.2 * Math.sin(t * 4);
+      const gs = R * 3.2;
+      g.drawImage(glow(col), active.x - gs / 2, active.y - gs / 2, gs, gs);
+      g.globalAlpha = 1;
       starPath(active.x, active.y, R);
-      g.strokeStyle = '#f0a500';
+      g.strokeStyle = col;
       g.lineWidth = 4;
       g.stroke();
+      if (settings.syll) drawSyl(ph[activeK].midi, active.x, active.y + R + 16);
       if (a && a.holdStart != null) {
         const p = Math.min(1, (t - a.holdStart) / run.hold);
         g.strokeStyle = '#ffd23f';
@@ -1182,18 +1475,21 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
       }
     }
 
-    // scintille
-    particles = particles.filter((p) => (p.age += dt) < p.life);
-    for (const p of particles) {
-      p.x += p.vx * dt;
-      p.y += p.vy * dt;
-      p.vy += (p.star ? 220 : 30) * dt;
-      g.globalAlpha = Math.max(0, 1 - p.age / p.life);
-      g.fillStyle = p.color;
-      if (p.star) { starPath(p.x, p.y, p.size); g.fill(); }
-      else g.fillRect(p.x, p.y, p.size, p.size * 0.6);
-    }
-    g.globalAlpha = 1;
+    drawParticles(dt);
+  }
+
+  // sillaba sotto la stella (se l'adulto la vuole), con un bordo chiaro per leggerla sul cielo
+  function drawSyl(midi, x, y) {
+    const d = degreeOf(midi);
+    if (d < 0) return;
+    g.font = '700 14px ' + getComputedStyle(document.body).fontFamily;
+    g.textAlign = 'center';
+    g.lineWidth = 4;
+    g.strokeStyle = 'rgba(255,255,255,.9)';
+    g.strokeText(SYL[d], x, y);
+    g.fillStyle = '#22405a';
+    g.fillText(SYL[d], x, y);
+    g.textAlign = 'start';
   }
 
   // Lu in casa
@@ -1214,8 +1510,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     const t = now();
     const dt = Math.min(0.1, t - last);
     last = t;
-    update(t);
-    if (!$('play').hidden) draw(t, dt);
+    update(t, dt);
+    if (!$('play').hidden) draw(t, run && run.paused ? 0 : dt);
     else if (!$('home').hidden) drawHome(t);
     requestAnimationFrame(loop);
   }
@@ -1249,6 +1545,12 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
       </button>`;
     });
     $('path').innerHTML = html;
+    // il grande "Gioca" apre la tappa da fare adesso (o l'ultima aperta, se sono tutte fatte)
+    const lastOpen = LEVELS.reduce((a, l, i) => (unlocked(i) ? i : a), 0);
+    const target = LEVELS[next >= 0 ? next : lastOpen];
+    $('playNext').dataset.i = LEVELS.indexOf(target);
+    $('playNextIcon').textContent = target.icon;
+    $('playNextTitle').textContent = target.title;
     $('albumCount').textContent = `${album.length} su ${STICKERS.length}`;
     $('stickers').innerHTML = STICKERS.map((_, i) => album[i] ? `<div>${album[i]}</div>` : '<div class="empty"></div>').join('');
     const n = $('path').querySelector('.next');
@@ -1260,7 +1562,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     $('msg').hidden = false;
   }
 
-  $('path').addEventListener('click', async (e) => {
+  $('playNext').addEventListener('click', () => openLevel(+$('playNext').dataset.i));
+  $('path').addEventListener('click', (e) => {
     const btn = e.target.closest('.node');
     if (!btn) return;
     const i = +btn.dataset.i;
@@ -1270,6 +1573,9 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
       btn.classList.add('shake');
       return;
     }
+    openLevel(i);
+  });
+  async function openLevel(i) {
     const song = LEVELS[i];
     try {
       await startMic();
@@ -1280,7 +1586,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
       return;
     }
     startSong(song);
-  });
+  }
   $('msgOk').addEventListener('click', () => { $('msg').hidden = true; });
   $('homeBtn').addEventListener('click', leaveSong);
   $('toHome').addEventListener('click', leaveSong);
@@ -1300,10 +1606,11 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     try { if (!wakeLock || wakeLock.released) wakeLock = await navigator.wakeLock?.request('screen'); } catch (e) {}
   }
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) return;
+    if (document.hidden) { pauseRun(); return; }
     if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {});
-    if (run) requestWakeLock();
   });
+  $('pauseGo').addEventListener('click', resumeRun);
+  $('pauseHome').addEventListener('click', leaveSong);
 
   // ---- Area adulti: tieni premuto l'ingranaggio ----
   let pressTimer = null;
@@ -1337,14 +1644,35 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     bindSeg('holdSeg', 'hold', Number),
     bindSeg('octSeg', 'octave', (v) => v === '1'),
     bindSeg('unlockSeg', 'unlockAll', (v) => v === '1'),
+    bindSeg('syllSeg', 'syll', (v) => v === '1'),
   ];
   function syncShift() {
     const s = settings.shift;
     $('shiftOut').textContent = s === 0 ? 'Normale' : (s > 0 ? '+' : '−') + Math.abs(s) + (Math.abs(s) === 1 ? ' semitono' : ' semitoni');
-    const songs = LEVELS.filter((x) => x.mode !== 'free');
+    const songs = LEVELS.filter((x) => x.mode !== 'rainbow');
     const lows = songs.map((x) => songRange(x)[0]), highs = songs.map((x) => songRange(x)[1]);
     $('rangeOut').textContent = `Gli esercizi vanno da ${noteName(Math.min(...lows))} a ${noteName(Math.max(...highs))}.`;
+    // tonalità consigliata dall'estensione misurata con l'arcobaleno
+    const r = settings.range;
+    $('rangeBox').hidden = !r;
+    if (r) {
+      const sug = suggestedShift(r);
+      const when = new Date(r.at).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
+      const shiftTxt = (v) => (v === 0 ? 'normale' : `${v > 0 ? '+' : '−'}${Math.abs(v)} ${Math.abs(v) === 1 ? 'semitono' : 'semitoni'}`);
+      $('rangeText').textContent = `Estensione comoda misurata con l'arcobaleno (${when}): ${noteName(r.lo)} – ${noteName(r.hi)}. `
+        + (sug === settings.shift ? 'La tonalità attuale va già bene.' : `Tonalità consigliata: ${shiftTxt(sug)}.`);
+      $('rangeApply').hidden = sug === settings.shift;
+      $('rangeApply').dataset.v = sug;
+    }
   }
+  // La maggior parte degli esercizi, con tonalità normale, sta fra Re4 e Si4: centriamo quella zona
+  // sul centro dell'estensione misurata.
+  function suggestedShift(r) { return clamp(Math.round((r.lo + r.hi) / 2 - 66.5), -7, 7); }
+  $('rangeApply').addEventListener('click', () => {
+    settings.shift = +$('rangeApply').dataset.v;
+    save(KEYS.settings, settings);
+    syncShift();
+  });
   $('shiftDown').addEventListener('click', () => { settings.shift = Math.max(-7, settings.shift - 1); save(KEYS.settings, settings); syncShift(); });
   $('shiftUp').addEventListener('click', () => { settings.shift = Math.min(7, settings.shift + 1); save(KEYS.settings, settings); syncShift(); });
 
@@ -1354,8 +1682,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
       when: new Date(s.at).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
       title: (LEVELS.find((x) => x.id === s.song) || { title: s.song }).title + (s.complete ? '' : ' (interrotta)'),
       solo: `${gold.length}/${s.notes.length}`,
-      lock: gold.length ? fmtS(avg(gold.map((n) => n.lock))) : '–',
-      cents: gold.length ? Math.round(avg(gold.map((n) => n.cents))) + ' c' : '–',
+      lock: gold.some((n) => n.lock != null) ? fmtS(avg(gold.filter((n) => n.lock != null).map((n) => n.lock))) : '–',
+      cents: gold.some((n) => n.cents != null) ? Math.round(avg(gold.filter((n) => n.cents != null).map((n) => n.cents))) + ' c' : '–',
     };
   }
   function hardNotes() {
@@ -1363,7 +1691,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     for (const s of sessions) for (const n of s.notes) {
       const b = (by[n.midi] ??= { midi: n.midi, count: 0, helped: 0, locks: [] });
       b.count++;
-      if (n.helped) b.helped++; else b.locks.push(n.lock);
+      if (n.helped) b.helped++; else if (n.lock != null) b.locks.push(n.lock);
     }
     return Object.values(by)
       .filter((b) => b.count >= 3 && (b.helped > 0 || avg(b.locks) > 2))
@@ -1371,6 +1699,27 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
       .sort((a, b) => b.score - a.score)
       .slice(0, 3);
   }
+  const IV_NAMES = ['stessa nota', 'semitono', 'seconda', 'terza minore', 'terza maggiore', 'quarta', 'tritono',
+    'quinta', 'sesta minore', 'sesta maggiore', 'settima minore', 'settima maggiore', 'ottava'];
+  const ivName = (iv) => (iv === 0 ? 'stessa nota' : `${IV_NAMES[Math.min(12, Math.abs(iv))]} ${iv > 0 ? 'su' : 'giù'}`);
+  function intervalStats() {
+    const by = {};
+    let dirN = 0, dirOk = 0;
+    for (const s of sessions) for (const n of s.notes) {
+      if (n.dir != null) { dirN++; if (n.dir) dirOk++; }
+      if (n.iv == null) continue;
+      const b = (by[n.iv] ??= { iv: n.iv, count: 0, helped: 0, locks: [] });
+      b.count++;
+      if (n.helped) b.helped++; else if (n.lock != null) b.locks.push(n.lock);
+    }
+    const hard = Object.values(by)
+      .filter((b) => b.count >= 3 && (b.helped > 0 || avg(b.locks) > 2))
+      .map((b) => ({ ...b, score: b.helped / b.count + (avg(b.locks) || 0) / 10 }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3);
+    return { dirN, dirOk, hard };
+  }
+
   function openAdult() {
     syncs.forEach((f) => f());
     syncShift();
@@ -1384,6 +1733,12 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     $('hardNotes').textContent = hard.length
       ? 'Note più difficili: ' + hard.map((b) => `${noteName(b.midi)} (aiutata ${b.helped} volte su ${b.count})`).join(', ') + '.'
       : '';
+    const st = intervalStats();
+    $('dirStats').textContent = st.dirN >= 5
+      ? `Primo tentativo nella direzione giusta: ${Math.round((st.dirOk / st.dirN) * 100)}% (su ${st.dirN} note).` : '';
+    $('hardIntervals').textContent = st.hard.length
+      ? 'Intervalli più difficili: ' + st.hard.map((b) => `${ivName(b.iv)} (aiutata ${b.helped} su ${b.count}${b.locks.length ? `, arrivo medio ${fmtS(avg(b.locks))}` : ''})`).join('; ') + '.'
+      : '';
     $('copyOut').hidden = true;
     $('resetAll').textContent = 'Azzera tutto';
     $('adult').hidden = false;
@@ -1396,8 +1751,12 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     for (const s of sessions.slice(0, 20)) {
       const r = sessionSummary(s);
       lines.push(`${r.when} · ${r.title} · senza aiuto ${r.solo} · aggancio medio ${r.lock} · scarto medio ${r.cents}`);
-      lines.push('   ' + s.notes.map((n) => `${noteName(n.midi)} ${n.helped ? 'aiutata' : `${String(n.lock).replace('.', ',')}s/${n.cents}c`}`).join(' · '));
+      lines.push('   ' + s.notes.map((n) => `${noteName(n.midi)} ${n.helped ? 'aiutata'
+        : n.lock == null ? 'presa' : `${String(n.lock).replace('.', ',')}s/${n.cents}c`}${n.dir === false ? ' (direzione sbagliata)' : ''}`).join(' · '));
     }
+    if (settings.range) lines.splice(1, 0, `Estensione comoda misurata: ${noteName(settings.range.lo)} – ${noteName(settings.range.hi)}`);
+    const st = intervalStats();
+    if (st.dirN) lines.splice(2, 0, `Primo tentativo nella direzione giusta: ${Math.round((st.dirOk / st.dirN) * 100)}% su ${st.dirN} note`);
     return lines.join('\n');
   }
   $('copyRes').addEventListener('click', async () => {
