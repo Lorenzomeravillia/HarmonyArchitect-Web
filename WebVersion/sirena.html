@@ -348,8 +348,16 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     if (ctx && ctx.state !== 'closed') return;
     const AC = window.AudioContext || window.webkitAudioContext;
     ctx = new AC({ latencyHint: 'interactive' });
-    out = ctx.createDynamicsCompressor();
-    out.connect(ctx.destination);
+    // Spinta forte seguita da un limitatore: le note delle pause escono molto più alte senza distorcere.
+    out = ctx.createGain();
+    out.gain.value = 2.4;
+    const lim = ctx.createDynamicsCompressor();
+    lim.threshold.value = -7;
+    lim.knee.value = 3;
+    lim.ratio.value = 20;
+    lim.attack.value = 0.002;
+    lim.release.value = 0.12;
+    out.connect(lim).connect(ctx.destination);
   }
   async function startMic() {
     if ('audioSession' in navigator) { try { navigator.audioSession.type = 'play-and-record'; } catch (e) {} }
@@ -375,46 +383,60 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     micReady = true;
   }
 
-  // Suono morbido, quasi di vetro, per le note delle pause.
-  function tone(midi, t, dur, vol) {
-    const f = mtof(midi);
-    for (const [mul, a, type] of [[1, vol, 'sine'], [2, vol * 0.2, 'sine'], [1, vol * 0.25, 'triangle']]) {
-      const o = ctx.createOscillator();
-      o.type = type;
-      o.frequency.value = f * mul;
-      const g = ctx.createGain();
-      const rel = Math.max(t + 0.06, t + dur - 0.06);
-      g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(a, t + 0.03);
-      g.gain.setValueAtTime(a, rel);
-      g.gain.setTargetAtTime(0, rel, 0.06);
-      o.connect(g).connect(out);
-      o.start(t);
-      o.stop(rel + 0.5);
+  // Timbro delle note delle pause: morbido, ma con armonici decrescenti che cadono dove
+  // l'altoparlante del telefono suona bene (sopra i 300 Hz circa). Più la nota è grave, più
+  // armonici: l'orecchio ricostruisce la nota anche se il telefono non ne riproduce la fondamentale.
+  const HARMONICS = {
+    low: [0, 1, 0.85, 0.65, 0.5, 0.36, 0.26, 0.18, 0.12, 0.08],
+    mid: [0, 1, 0.6, 0.38, 0.24, 0.15, 0.09],
+    high: [0, 1, 0.38, 0.18, 0.08],
+  };
+  const waves = {};
+  function waveFor(f) {
+    const key = f < 180 ? 'low' : f < 350 ? 'mid' : 'high';
+    if (!waves[key]) {
+      const amps = HARMONICS[key];
+      waves[key] = ctx.createPeriodicWave(new Float32Array(amps.length), Float32Array.from(amps));
     }
+    return waves[key];
+  }
+  function voiceOsc(f) {
+    const o = ctx.createOscillator();
+    o.setPeriodicWave(waveFor(f));
+    o.frequency.value = f;
+    const lp = ctx.createBiquadFilter(); // toglie solo l'asprezza in alto
+    lp.type = 'lowpass';
+    lp.frequency.value = clamp(f * 9, 1800, 4500);
+    lp.Q.value = 0.5;
+    o.connect(lp);
+    return { o, node: lp };
+  }
+  function tone(midi, t, dur, vol) {
+    const { o, node } = voiceOsc(mtof(midi));
+    const g = ctx.createGain();
+    const rel = Math.max(t + 0.06, t + dur - 0.06);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.025);
+    g.gain.setValueAtTime(vol, rel);
+    g.gain.setTargetAtTime(0, rel, 0.06);
+    node.connect(g).connect(out);
+    o.start(t);
+    o.stop(rel + 0.5);
   }
   // Anteprima di un'onda continua: lo stesso disegno, cantato più in fretta.
-  function glide(seg, t, dur, vol = 0.5) {
+  function glide(seg, t, dur, vol = 0.8) {
+    const N = Math.ceil(dur / 0.04);
+    const freqs = Array.from({ length: N + 1 }, (_, i) => mtof(center + seg.fn((i / N) * seg.dur)));
+    const { o, node } = voiceOsc(freqs.reduce((a, b) => a + b, 0) / freqs.length);
+    freqs.forEach((f, i) => (i ? o.frequency.linearRampToValueAtTime(f, t + (i / N) * dur) : o.frequency.setValueAtTime(f, t)));
     const g = ctx.createGain();
     g.gain.setValueAtTime(0, t);
     g.gain.linearRampToValueAtTime(vol, t + 0.05);
     g.gain.setValueAtTime(vol, t + dur - 0.08);
     g.gain.setTargetAtTime(0, t + dur - 0.08, 0.05);
-    g.connect(out);
-    for (const [type, a] of [['sine', 1], ['triangle', 0.25]]) {
-      const o = ctx.createOscillator();
-      o.type = type;
-      const N = Math.ceil(dur / 0.04);
-      for (let i = 0; i <= N; i++) {
-        const f = mtof(center + seg.fn((i / N) * seg.dur));
-        if (i) o.frequency.linearRampToValueAtTime(f, t + (i / N) * dur); else o.frequency.setValueAtTime(f, t);
-      }
-      const og = ctx.createGain();
-      og.gain.value = a;
-      o.connect(og).connect(g);
-      o.start(t);
-      o.stop(t + dur + 0.3);
-    }
+    node.connect(g).connect(out);
+    o.start(t);
+    o.stop(t + dur + 0.3);
   }
   function endChime(midi) {
     if (!ctx) return;
@@ -553,17 +575,17 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     let t = 0;
     if (seg.steps && !lv.atonal) {
       if (lv.ctx === 'arpeggio') {
-        for (const iv of [0, 4, 7, 12]) { ev.push({ type: 'tone', midi: center + iv, at: t, dur: 0.32, vol: 0.4 }); t += 0.28; }
+        for (const iv of [0, 4, 7, 12]) { ev.push({ type: 'tone', midi: center + iv, at: t, dur: 0.34, vol: 0.75 }); t += 0.3; }
         t += 0.45;
       } else if (lv.ctx === 'tonica') {
-        ev.push({ type: 'tone', midi: center, at: t, dur: 0.9, vol: 0.45 });
+        ev.push({ type: 'tone', midi: center, at: t, dur: 1.0, vol: 0.8 });
         t += 1.2;
       }
     }
     if (allena) {
       if (seg.steps) {
         const per = lv.id === 'base' ? 0.55 : 0.45;
-        seg.steps.forEach((s, i) => { ev.push({ type: 'tone', midi: center + s.v, at: t, dur: per * 0.9, vol: 0.5, mark: i }); t += per; });
+        seg.steps.forEach((s, i) => { ev.push({ type: 'tone', midi: center + s.v, at: t, dur: per * 0.9, vol: 0.8, mark: i }); t += per; });
       } else {
         const d = clamp(seg.dur / 3, 2.2, 3.4);
         ev.push({ type: 'glide', at: t, dur: d });
@@ -571,8 +593,8 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
       }
       t += 0.45;
     }
-    ev.push({ type: 'tone', midi: center + seg.fn(0), at: t, dur: 1.2, vol: 0.6, mark: seg.steps ? 0 : null });
-    t += 1.2;
+    ev.push({ type: 'tone', midi: center + seg.fn(0), at: t, dur: 1.3, vol: 0.95, mark: seg.steps ? 0 : null });
+    t += 1.3;
     return { ev, dur: t };
   }
 
