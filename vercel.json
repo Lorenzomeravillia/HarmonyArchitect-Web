@@ -8,6 +8,8 @@
     { "source": "/", "destination": "/WebVersion/index.html" },
     { "source": "/bimbi", "destination": "/WebVersion/bimbi.html" },
     { "source": "/bimbi/", "destination": "/WebVersion/bimbi.html" },
+    { "source": "/sirena", "destination": "/WebVersion/sirena.html" },
+    { "source": "/sirena/", "destination": "/WebVersion/sirena.html" },
     { "source": "/(.*)", "destination": "/WebVersion/$1" }
   ],
   "headers": [
@@ -19,6 +21,12 @@
     },
     {
       "source": "/",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/sirena",
       "headers": [
         { "key": "Cache-Control", "value": "no-store, must-revalidate" }
       ]

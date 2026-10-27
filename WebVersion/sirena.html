@@ -1,0 +1,1043 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#070a1f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Sirena</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&display=swap" rel="stylesheet">
+<style>
+/* Cielo notturno a tutto schermo; la voce è una cometa che deve restare nella scia di luce.
+   Menu, impostazioni e risultati sono pannelli di vetro sopra il cielo. */
+:root {
+  --night: #070a1f;
+  --night-2: #151b4a;
+  --ink: #eef1ff;
+  --muted: #a3acdc;
+  --glass: rgba(18, 23, 62, .78);
+  --line: rgba(163, 172, 220, .22);
+  --gold: #ffd27a;
+  --cyan: #7ef0ff;
+  --rose: #ff8ad8;
+  --font: "Outfit", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --sat: env(safe-area-inset-top, 0px);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; background: var(--night); color: var(--ink); font: 400 16px/1.35 var(--font); }
+body { overflow: hidden; overscroll-behavior: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+button, a { font: inherit; color: inherit; }
+button { cursor: pointer; }
+button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
+#sky { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+
+/* ---- HUD ---- */
+.hud {
+  position: fixed; left: 0; right: 0; top: 0;
+  padding-top: max(10px, env(safe-area-inset-top, 0px));
+  padding-left: max(14px, env(safe-area-inset-left, 0px));
+  padding-right: max(14px, env(safe-area-inset-right, 0px));
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  pointer-events: none;
+}
+.hud > * { pointer-events: auto; }
+.icon-btn {
+  width: 46px; height: 46px; border-radius: 50%;
+  border: 1px solid var(--line); background: var(--glass);
+  display: grid; place-items: center;
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+.icon-btn svg { width: 20px; height: 20px; fill: currentColor; }
+.score { text-align: center; line-height: 1; }
+.score b { display: block; font-size: 34px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: .01em; text-shadow: 0 0 18px rgba(126,240,255,.35); }
+.score small { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .14em; }
+.combo {
+  min-width: 46px; height: 46px; padding-inline: 10px; border-radius: 23px;
+  border: 1px solid var(--line); background: var(--glass);
+  display: grid; place-items: center;
+  font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--muted);
+  transition: color .2s, border-color .2s, box-shadow .2s;
+}
+.combo.hot { color: var(--gold); border-color: rgba(255,210,122,.55); box-shadow: 0 0 22px rgba(255,210,122,.25); }
+.combo.pop { animation: pop .45s cubic-bezier(.2,1.8,.4,1); }
+@keyframes pop { 40% { transform: scale(1.35); } }
+
+.center-msg {
+  position: fixed; left: 50%; top: 22%;
+  transform: translateX(-50%);
+  width: min(88vw, 420px);
+  text-align: center;
+  display: grid; gap: 10px; justify-items: center;
+}
+.center-msg h2 { margin: 0; font-size: 24px; font-weight: 500; text-wrap: balance; text-shadow: 0 0 20px rgba(7,10,31,.9); }
+.center-msg p { margin: 0; color: var(--muted); text-wrap: balance; text-shadow: 0 0 14px rgba(7,10,31,.9); }
+.ghost {
+  border: 1px solid var(--line); background: var(--glass); border-radius: 999px;
+  padding: 10px 18px; font-weight: 500;
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+
+/* ---- Pannelli ---- */
+.sheet {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  max-height: 100%;
+  overflow-y: auto;
+  padding-top: 16px;
+  padding-bottom: max(18px, env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; justify-items: center;
+}
+.sheet.middle { top: 0; align-content: center; background: rgba(7,10,31,.45); }
+.panel {
+  width: 100%; max-width: 460px;
+  background: var(--glass);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: 20px;
+  display: grid; gap: 14px;
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+}
+.title { margin: 0; font-size: 44px; font-weight: 700; letter-spacing: -.01em; line-height: 1; }
+.title span { color: var(--cyan); text-shadow: 0 0 24px rgba(126,240,255,.5); }
+.lead { margin: 0; color: var(--muted); }
+.levels { display: grid; gap: 8px; }
+.level {
+  border: 1px solid var(--line); background: rgba(255,255,255,.04);
+  border-radius: 16px; padding: 12px 14px;
+  display: grid; grid-template-columns: 64px 1fr auto; align-items: center; gap: 12px;
+  text-align: left;
+}
+.level:active { background: rgba(126,240,255,.08); }
+.level svg { width: 64px; height: 30px; fill: none; stroke: var(--cyan); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 4px rgba(126,240,255,.6)); }
+.level b { display: block; font-size: 18px; font-weight: 500; }
+.level small { color: var(--muted); font-size: 13px; }
+.level .rec { font-size: 13px; color: var(--gold); font-variant-numeric: tabular-nums; text-align: right; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; }
+.row > * { flex: 1 1 auto; }
+.btn {
+  height: 50px; border-radius: 14px; padding-inline: 16px;
+  border: 1px solid var(--line); background: rgba(255,255,255,.05);
+  font-weight: 500; text-decoration: none;
+  display: grid; place-items: center;
+}
+.btn.go { background: var(--cyan); color: var(--night); border-color: var(--cyan); font-weight: 700; box-shadow: 0 0 24px rgba(126,240,255,.35); }
+.field { display: grid; gap: 6px; }
+.field > span { font-size: 12px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; background: rgba(255,255,255,.05); border-radius: 12px; padding: 4px; }
+.seg button { border: 0; background: transparent; border-radius: 9px; padding: 9px 4px; color: var(--muted); font-weight: 500; display: grid; line-height: 1.15; }
+.seg button small { font-size: 11px; }
+.seg button[aria-pressed="true"] { background: rgba(126,240,255,.16); color: var(--ink); }
+.big-score { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.big-score strong { font-size: 52px; line-height: 1; font-weight: 700; color: var(--gold); font-variant-numeric: tabular-nums; text-shadow: 0 0 26px rgba(255,210,122,.4); }
+.big-score span { color: var(--muted); }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.stats div { background: rgba(255,255,255,.05); border-radius: 12px; padding: 10px; }
+.stats b { display: block; font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.stats span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+.quip { margin: 0; font-size: 18px; text-wrap: balance; }
+#copyOut { width: 100%; height: 110px; font: 12px ui-monospace, Menlo, monospace; background: rgba(0,0,0,.3); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; }
+@media (prefers-reduced-motion: reduce) { .combo.pop { animation: none; } }
+</style>
+</head>
+<body>
+<canvas id="sky"></canvas>
+
+<div class="hud" id="hud" hidden>
+  <button class="icon-btn" id="pauseBtn" aria-label="Pausa">
+    <svg viewBox="0 0 24 24"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>
+  </button>
+  <div class="score"><b id="score">0</b><small>punti</small></div>
+  <div class="combo" id="combo" aria-label="Moltiplicatore">×1</div>
+</div>
+
+<div class="center-msg" id="centerMsg" hidden>
+  <h2 id="cmTitle"></h2>
+  <p id="cmText"></p>
+  <button class="ghost" id="skipCalib" hidden></button>
+</div>
+
+<section class="sheet" id="menu">
+  <div class="panel">
+    <h1 class="title">Si<span>rena</span></h1>
+    <p class="lead">La tua voce è la cometa. Tienila dentro la scia di luce e attraversa le porte. Nelle pause, respira.</p>
+    <div class="levels" id="levels"></div>
+    <div class="row">
+      <button class="btn" id="openSettings">Impostazioni</button>
+      <a class="btn" href="/pitch-roll.html">Rullo delle note</a>
+    </div>
+  </div>
+</section>
+
+<section class="sheet middle" id="pausePanel" hidden>
+  <div class="panel">
+    <h2 class="quip">In pausa</h2>
+    <div class="row">
+      <button class="btn" id="quit">Esci</button>
+      <button class="btn" id="restart">Ricomincia</button>
+      <button class="btn go" id="resume">Riprendi</button>
+    </div>
+  </div>
+</section>
+
+<section class="sheet middle" id="endPanel" hidden>
+  <div class="panel">
+    <p class="quip" id="quip"></p>
+    <div class="big-score"><strong id="endScore">0</strong><span id="endRecord"></span></div>
+    <div class="stats">
+      <div><b id="endAcc">–</b><span>Nella scia</span></div>
+      <div><b id="endGates">–</b><span>Porte</span></div>
+      <div><b id="endCombo">–</b><span>Combo max</span></div>
+    </div>
+    <textarea id="copyOut" hidden readonly></textarea>
+    <div class="row">
+      <button class="btn" id="toMenu">Livelli</button>
+      <button class="btn" id="copyRes">Copia</button>
+      <button class="btn go" id="again">Ancora</button>
+    </div>
+  </div>
+</section>
+
+<section class="sheet middle" id="settingsPanel" hidden>
+  <div class="panel">
+    <h2 class="quip">Impostazioni</h2>
+    <div class="field">
+      <span>Larghezza della scia</span>
+      <div class="seg" id="tolSeg">
+        <button data-v="60">Larga<small>±60 cents</small></button>
+        <button data-v="40">Media<small>±40 cents</small></button>
+        <button data-v="25">Stretta<small>±25 cents</small></button>
+      </div>
+    </div>
+    <div class="field">
+      <span>Effetti</span>
+      <div class="seg" id="fxSeg">
+        <button data-v="full">Pieni</button>
+        <button data-v="soft">Morbidi</button>
+      </div>
+    </div>
+    <div class="field">
+      <span>Nota di partenza prima di ogni onda</span>
+      <div class="seg" id="refSeg">
+        <button data-v="1">Sì</button>
+        <button data-v="0">No</button>
+      </div>
+    </div>
+    <div class="field">
+      <span>Nomi delle note a sinistra</span>
+      <div class="seg" id="namesSeg">
+        <button data-v="1">Sì</button>
+        <button data-v="0">No</button>
+      </div>
+    </div>
+    <div class="row"><button class="btn go" id="closeSettings">Fatto</button></div>
+  </div>
+</section>
+
+<section class="sheet middle" id="msgPanel" hidden>
+  <div class="panel">
+    <h2 class="quip">Serve il microfono</h2>
+    <p class="lead" id="msgText"></p>
+    <div class="row"><button class="btn go" id="msgOk">Ho capito</button></div>
+  </div>
+</section>
+
+<script>
+(() => {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
+  const IT = ['Do', 'Do♯', 'Re', 'Re♯', 'Mi', 'Fa', 'Fa♯', 'Sol', 'Sol♯', 'La', 'La♯', 'Si'];
+  const SHARP = [0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0];
+  const noteName = (n) => IT[((n % 12) + 12) % 12] + (Math.floor(n / 12) - 1);
+  const median = (a) => { const s = [...a].sort((x, y) => x - y); return s[s.length >> 1]; };
+  const wall = () => performance.now() / 1000;
+
+  // ---- Memoria locale ----
+  const KEYS = { settings: 'sirena.settings.v1', best: 'sirena.best.v1', history: 'sirena.history.v1', center: 'sirena.center.v1' };
+  function load(k, fb) { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? fb; } catch (e) { return fb; } }
+  function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  const settings = Object.assign({ tol: 40, fx: 'full', ref: true, names: true }, load(KEYS.settings, {}));
+  let best = load(KEYS.best, {});
+  let history = load(KEYS.history, []);
+  let lastCenter = load(KEYS.center, null);
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const fxK = () => (settings.fx === 'soft' || reducedMotion ? 0.35 : 1);
+
+  // ---- Audio ----
+  let ctx = null, out = null, analyser = null, buf = null, track = null, micReady = false;
+  let muteUntil = 0;
+  function ensureCtx() {
+    if (ctx && ctx.state !== 'closed') return;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    ctx = new AC({ latencyHint: 'interactive' });
+    out = ctx.createDynamicsCompressor();
+    out.connect(ctx.destination);
+  }
+  async function startMic() {
+    if ('audioSession' in navigator) { try { navigator.audioSession.type = 'play-and-record'; } catch (e) {} }
+    ensureCtx();
+    if (ctx.state !== 'running') await ctx.resume();
+    if (micReady && track && track.readyState === 'live') return;
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 },
+    });
+    track = stream.getAudioTracks()[0];
+    track.onended = () => { micReady = false; };
+    if (ctx.state !== 'running') await ctx.resume();
+    const src = ctx.createMediaStreamSource(stream);
+    analyser = ctx.createAnalyser();
+    analyser.fftSize = 2048;
+    analyser.smoothingTimeConstant = 0;
+    const sink = ctx.createGain();
+    sink.gain.value = 0; // Safari elabora solo i nodi collegati all'uscita
+    src.connect(analyser);
+    analyser.connect(sink);
+    sink.connect(ctx.destination);
+    buf = new Float32Array(analyser.fftSize);
+    micReady = true;
+  }
+
+  // Nota di partenza: un suono morbido, quasi di vetro, che non disturba.
+  function playRef(midi) {
+    if (!ctx) return;
+    const t = ctx.currentTime + 0.03, f = mtof(midi);
+    for (const [mul, a, type] of [[1, 0.32, 'sine'], [2, 0.07, 'sine'], [1, 0.08, 'triangle']]) {
+      const o = ctx.createOscillator();
+      o.type = type;
+      o.frequency.value = f * mul;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(a, t + 0.05);
+      g.gain.setValueAtTime(a, t + 0.7);
+      g.gain.setTargetAtTime(0, t + 0.7, 0.09);
+      o.connect(g).connect(out);
+      o.start(t);
+      o.stop(t + 1.3);
+    }
+    muteUntil = Math.max(muteUntil, wall() + 1.15);
+  }
+  function endChime(midi) {
+    if (!ctx) return;
+    const t = ctx.currentTime + 0.05;
+    [0, 4, 7, 12, 16].forEach((iv, i) => {
+      const o = ctx.createOscillator();
+      o.frequency.value = mtof(midi + 12 + iv);
+      const g = ctx.createGain();
+      const s = t + i * 0.09;
+      g.gain.setValueAtTime(0, s);
+      g.gain.linearRampToValueAtTime(0.12, s + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, s + 1.2);
+      o.connect(g).connect(out);
+      o.start(s);
+      o.stop(s + 1.25);
+    });
+  }
+
+  // ---- Rilevamento nota (YIN) ----
+  let yinD = null;
+  function yin(x, sr) {
+    const tauMin = Math.floor(sr / 1000);
+    const tauMax = Math.min(Math.floor(sr / 60), (x.length >> 1) - 1);
+    const N = x.length - tauMax;
+    if (!yinD || yinD.length < tauMax + 2) yinD = new Float32Array(tauMax + 2);
+    const d = yinD;
+    d[0] = 1;
+    let run = 0;
+    for (let tau = 1; tau <= tauMax; tau++) {
+      let s = 0;
+      for (let i = 0; i < N; i++) { const v = x[i] - x[i + tau]; s += v * v; }
+      run += s;
+      d[tau] = run ? (s * tau) / run : 1;
+    }
+    let tau = -1;
+    for (let t = tauMin; t < tauMax; t++) {
+      if (d[t] < 0.15) { while (t + 1 < tauMax && d[t + 1] < d[t]) t++; tau = t; break; }
+    }
+    if (tau < 1) return null;
+    const a = d[tau - 1], b = d[tau], c = d[tau + 1];
+    const den = a + c - 2 * b;
+    return { f: sr / (tau + (den ? (a - c) / (2 * den) : 0)), clarity: 1 - b };
+  }
+  const recent = [];
+  function readVoice() {
+    analyser.getFloatTimeDomainData(buf);
+    let sum = 0;
+    for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+    const db = 10 * Math.log10(sum / buf.length + 1e-12);
+    const r = db > -52 ? yin(buf, ctx.sampleRate) : null;
+    recent.push(r && r.clarity > 0.8 ? 69 + 12 * Math.log2(r.f / 440) : NaN);
+    if (recent.length > 3) recent.shift();
+    const v = recent.filter((x) => !Number.isNaN(x)).sort((a, b) => a - b);
+    return v.length >= 2 ? v[v.length >> 1] : NaN;
+  }
+
+  // ---- Percorsi ----
+  // Ogni onda è una funzione: secondi dall'inizio dell'onda → semitoni rispetto al centro della voce.
+  const smoothstep = (x) => x * x * (3 - 2 * x);
+  const GEN = {
+    onde() {
+      const A = 1.6 + Math.random() * 1.4, P = 5 + Math.random() * 2;
+      const base = Math.random() * 1.5 - 0.5, ph = -Math.PI / 2 + (Math.random() - 0.5);
+      return (u) => base + A * Math.sin((2 * Math.PI * u) / P + ph);
+    },
+    gradini(dur) {
+      const scale = [-5, -3, -1, 0, 2, 4, 5, 7];
+      const HOLD = 1.3, GLIDE = 0.22;
+      let i = 3 + Math.floor(Math.random() * 2);
+      const notes = [];
+      for (let k = 0; k < Math.ceil(dur / HOLD) + 2; k++) {
+        notes.push(scale[i]);
+        i = clamp(i + [-2, -1, 1, 2][Math.floor(Math.random() * 4)], 0, scale.length - 1);
+      }
+      return (u) => {
+        const k = Math.floor(u / HOLD), f = u - k * HOLD;
+        const a = notes[k] ?? notes[notes.length - 1], b = notes[k + 1] ?? a;
+        return f < HOLD - GLIDE ? a : a + (b - a) * smoothstep((f - (HOLD - GLIDE)) / GLIDE);
+      };
+    },
+    sirena(dur) {
+      const pts = [[0, Math.random() * 2 - 1]];
+      let t = 0, up = true;
+      while (t < dur + 4) {
+        t += 2.6 + Math.random() * 0.9;
+        pts.push([t, up ? 4 + Math.random() * 5 : -5 + Math.random() * 3.5]);
+        up = !up;
+      }
+      return (u) => {
+        let i = 0;
+        while (i < pts.length - 2 && u > pts[i + 1][0]) i++;
+        const [ta, va] = pts[i], [tb, vb] = pts[i + 1];
+        const x = clamp((u - ta) / (tb - ta), 0, 1);
+        return va + (vb - va) * (0.5 - 0.5 * Math.cos(Math.PI * x));
+      };
+    },
+  };
+  const LEVELS = [
+    { id: 'onde', name: 'Onde', desc: 'Scivola su e giù, con calma.', kind: 'onde', segs: 4, dur: 11, tolK: 1,
+      icon: 'M2 15 C10 2 18 2 26 15 S42 28 50 15 S58 6 62 12' },
+    { id: 'gradini', name: 'Gradini', desc: 'Note tenute, un passo alla volta.', kind: 'gradini', segs: 4, dur: 11, tolK: 1,
+      icon: 'M2 24 H14 V16 H26 V20 H38 V8 H50 V14 H62' },
+    { id: 'sirena', name: 'Sirena', desc: 'Grandi salite e discese.', kind: 'sirena', segs: 4, dur: 12, tolK: 1,
+      icon: 'M2 26 C14 26 18 3 32 3 S50 27 62 27' },
+    { id: 'tempesta', name: 'Tempesta', desc: 'Un po’ di tutto, con la scia più stretta.', kind: 'mista', segs: 5, dur: 11, tolK: 0.75,
+      icon: 'M2 18 C8 6 12 6 16 16 H24 V8 H32 C40 8 44 28 52 24 L62 6' },
+  ];
+
+  function buildWorld(level) {
+    const segs = [], gates = [];
+    let t = 0;
+    for (let i = 0; i < level.segs; i++) {
+      t += i === 0 ? 3.4 : 2.8; // pausa per respirare (e per la nota di partenza)
+      const kind = level.kind === 'mista' ? ['onde', 'gradini', 'sirena'][i % 3] : level.kind;
+      const seg = { t0: t, t1: t + level.dur, fn: GEN[kind](level.dur), refAt: t - 1.9, refDone: false, refWall: -9 };
+      segs.push(seg);
+      for (let gt0 = seg.t0 + 1.6; gt0 < seg.t1 - 0.6; gt0 += 2.4) gates.push({ t: gt0, seg, state: 'todo', fade: 1 });
+      t = seg.t1;
+    }
+    return {
+      level, segs, gates, end: t + 2.2,
+      tol: settings.tol * level.tolK,
+      score: 0, streak: 0, outFor: 0, combo: 1, bestCombo: 1,
+      pathTime: 0, inTime: 0, lastIn: -9, gatesOk: 0,
+    };
+  }
+  // Nel menu la cometa vola da sola su un'onda lunga: una "demo" come nelle sale giochi.
+  function buildDemo() {
+    const fn = GEN.onde();
+    return { segs: [{ t0: -1e6, t1: 1e6, fn: (u) => fn(u + 1e6), refDone: true, refWall: -9 }], gates: [], tol: 40 };
+  }
+  function pathAt(world, time) {
+    for (const s of world.segs) if (time >= s.t0 && time <= s.t1) return { v: s.fn(time - s.t0), s };
+    return null;
+  }
+
+  // ---- Stato ----
+  let state = 'menu'; // menu | calib | run | paused | end
+  let level = null;
+  let world = buildDemo();
+  let gt = 0;              // tempo di gioco: si ferma in pausa
+  let center = lastCenter ?? 55;
+  let viewMid = center + 2;
+  const voice = { m: NaN };
+  const comet = { y: 0, vis: 0, inside: false };
+  const calib = { anchor: NaN, since: 0, vals: [], last: -9, progress: 0 };
+  let particles = [], floats = [];
+
+  // ---- Grafica ----
+  const canvas = $('sky');
+  const g = canvas.getContext('2d');
+  let W = 0, H = 0, dpr = 1;
+  let SPEED = 60, cometX = 100, top = 80, bottom = 600, pxSemi = 30;
+  const SPAN = 17;
+  let FONT = 'sans-serif';
+
+  // Gli "sprite" di luce: piccole immagini sfumate disegnate una volta e poi riusate.
+  function glowSprite(rgb) {
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const x = c.getContext('2d');
+    const gr = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gr.addColorStop(0, `rgba(${rgb},1)`);
+    gr.addColorStop(0.22, `rgba(${rgb},.55)`);
+    gr.addColorStop(1, `rgba(${rgb},0)`);
+    x.fillStyle = gr;
+    x.fillRect(0, 0, 64, 64);
+    return c;
+  }
+  const SPR = {
+    gold: glowSprite('255,210,122'),
+    cyan: glowSprite('126,240,255'),
+    rose: glowSprite('255,138,216'),
+    white: glowSprite('255,255,255'),
+    dim: glowSprite('150,160,220'),
+  };
+  const stars = [0.15, 0.35, 0.7].map((k, layer) => Array.from({ length: 50 }, () => ({
+    x: Math.random(), y: Math.random() * 0.85, r: 0.5 + Math.random() * (1 + layer * 0.6), tw: Math.random() * 6.28, k,
+  })));
+
+  function resize() {
+    dpr = Math.min(2, window.devicePixelRatio || 1);
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    SPEED = Math.max(60, W * 0.16);
+    cometX = W * 0.28;
+    const sat = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sat')) || 0;
+    top = 92 + sat;
+    FONT = getComputedStyle(document.body).fontFamily;
+    bottom = H - Math.max(60, H * 0.09);
+    pxSemi = (bottom - top) / SPAN;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  const yOf = (m) => (top + bottom) / 2 - (m - viewMid) * pxSemi;
+  const xOfTime = (t) => cometX + (t - gt) * SPEED;
+
+  function ridge(x, k, seed) {
+    return Math.sin(x * 0.004 * k + seed) * 0.5 + Math.sin(x * 0.011 * k + seed * 2) * 0.3 + Math.sin(x * 0.023 * k + seed * 3) * 0.2;
+  }
+
+  function strokePts(pts, width, style) {
+    g.lineWidth = width;
+    g.strokeStyle = style;
+    g.beginPath();
+    pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
+    g.stroke();
+  }
+
+  function draw(now, dt) {
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.globalCompositeOperation = 'source-over';
+    const bg = g.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, '#070a1f');
+    bg.addColorStop(1, '#151b4a');
+    g.fillStyle = bg;
+    g.fillRect(0, 0, W, H);
+    const fx = fxK();
+
+    // stelle su tre piani che scorrono a velocità diverse
+    g.fillStyle = '#ffffff';
+    for (const layer of stars) for (const s of layer) {
+      const x = (((s.x * W - gt * SPEED * s.k) % W) + W) % W;
+      g.globalAlpha = 0.35 + 0.35 * Math.sin(now * (0.8 + s.k) + s.tw) * fx + 0.2;
+      g.fillRect(x, s.y * H, s.r, s.r);
+    }
+    g.globalAlpha = 1;
+
+    // aurora
+    if (fx > 0.5) {
+      g.globalCompositeOperation = 'lighter';
+      for (let b = 0; b < 2; b++) {
+        g.beginPath();
+        for (let x = 0; x <= W; x += 16) {
+          const y = H * (0.2 + b * 0.12) + Math.sin(x * 0.006 + now * 0.25 + b * 2) * 26 + Math.sin(x * 0.013 - now * 0.17) * 14;
+          if (x) g.lineTo(x, y); else g.moveTo(x, y);
+        }
+        g.lineWidth = 90;
+        g.strokeStyle = b ? 'rgba(255,138,216,0.035)' : 'rgba(110,255,200,0.04)';
+        g.stroke();
+      }
+      g.globalCompositeOperation = 'source-over';
+    }
+
+    // righe dei semitoni e nomi delle note
+    const lo = Math.floor(viewMid - SPAN / 2) - 1, hi = Math.ceil(viewMid + SPAN / 2) + 1;
+    g.font = '500 11px ' + FONT;
+    g.textBaseline = 'middle';
+    for (let n = lo; n <= hi; n++) {
+      const y = yOf(n);
+      if (y < top - 20 || y > bottom + 20) continue;
+      g.fillStyle = SHARP[((n % 12) + 12) % 12] ? 'rgba(163,172,220,0.05)' : 'rgba(163,172,220,0.10)';
+      g.fillRect(0, Math.round(y), W, 1);
+      if (settings.names && state !== 'menu' && !SHARP[((n % 12) + 12) % 12]) {
+        g.fillStyle = 'rgba(163,172,220,0.45)';
+        g.fillText(noteName(n), 10, y - 7);
+      }
+    }
+
+    // montagne
+    for (const [k, col, hK, sp] of [[1, '#0d1238', 0.11, 0.05], [1.7, '#090c27', 0.07, 0.12]]) {
+      g.fillStyle = col;
+      g.beginPath();
+      g.moveTo(0, H);
+      for (let x = 0; x <= W + 8; x += 8) g.lineTo(x, H - H * hK * (1 + ridge(x + gt * SPEED * sp, k, k * 3)));
+      g.lineTo(W, H);
+      g.fill();
+    }
+
+    if (world) drawWorld(now, fx);
+
+    // scia della cometa
+    g.globalCompositeOperation = 'lighter';
+    particles = particles.filter((p) => (p.age += dt) < p.life);
+    for (const p of particles) {
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      const k = 1 - p.age / p.life;
+      const s = p.size * (0.4 + 0.6 * k);
+      g.globalAlpha = k * p.a;
+      g.drawImage(p.spr, p.x - s / 2, p.y - s / 2, s, s);
+    }
+    g.globalAlpha = 1;
+
+    // cometa
+    if (state !== 'end') {
+      const cy = comet.y;
+      const pulse = 1 + 0.06 * Math.sin(now * 7) * fx;
+      const size = (comet.inside ? 96 : 70) * (0.35 + 0.65 * comet.vis) * pulse;
+      g.globalAlpha = 0.45 + 0.55 * comet.vis;
+      g.drawImage(comet.inside ? SPR.gold : comet.vis > 0.5 ? SPR.cyan : SPR.dim, cometX - size / 2, cy - size / 2, size, size);
+      const core = size * 0.34;
+      g.drawImage(SPR.white, cometX - core / 2, cy - core / 2, core, core);
+      g.globalAlpha = 1;
+    }
+    g.globalCompositeOperation = 'source-over';
+
+    // anello di calibrazione
+    if (state === 'calib' && calib.progress > 0) {
+      g.strokeStyle = 'rgba(255,210,122,0.9)';
+      g.lineWidth = 3;
+      g.lineCap = 'round';
+      g.beginPath();
+      g.arc(cometX, comet.y, 30, -Math.PI / 2, -Math.PI / 2 + calib.progress * Math.PI * 2);
+      g.stroke();
+    }
+
+    // punti che salgono
+    floats = floats.filter((f) => (f.age += dt) < f.life);
+    g.textAlign = 'center';
+    g.font = '700 18px ' + FONT;
+    for (const f of floats) {
+      const k = f.age / f.life;
+      g.globalAlpha = 1 - k * k;
+      g.fillStyle = f.color;
+      g.fillText(f.text, f.x - f.age * SPEED * (f.world ? 1 : 0), f.y - k * 26);
+    }
+    g.globalAlpha = 1;
+    g.textAlign = 'start';
+  }
+
+  function drawWorld(now, fx) {
+    const tolPx = (world.tol / 100) * pxSemi;
+    const runs = [];
+    let cur = null;
+    for (let x = -8; x <= W + 8; x += 6) {
+      const p = pathAt(world, gt + (x - cometX) / SPEED);
+      if (p) { if (!cur) { cur = []; runs.push(cur); } cur.push([x, yOf(center + p.v)]); }
+      else cur = null;
+    }
+    g.lineJoin = 'round';
+    g.lineCap = 'round';
+    g.globalCompositeOperation = 'lighter';
+    for (const pts of runs) {
+      strokePts(pts, tolPx * 2 + 14, 'rgba(126,240,255,0.045)');
+      strokePts(pts, tolPx * 2, 'rgba(126,240,255,0.10)');
+      strokePts(pts, 1.5, 'rgba(210,250,255,0.55)');
+    }
+    g.globalCompositeOperation = 'source-over';
+    // la parte già passata sfuma a sinistra
+    const fade = g.createLinearGradient(0, 0, cometX, 0);
+    fade.addColorStop(0, 'rgba(7,10,31,0.75)');
+    fade.addColorStop(1, 'rgba(7,10,31,0)');
+    g.fillStyle = fade;
+    g.fillRect(0, top - 40, cometX, bottom - top + 80);
+
+    g.globalCompositeOperation = 'lighter';
+    // inizio di ogni onda: una sfera che pulsa mentre suona la nota di partenza
+    for (const s of world.segs) {
+      if (s.t0 < -1e5) continue;
+      const x = xOfTime(s.t0);
+      if (x < -40 || x > W + 40) continue;
+      const y = yOf(center + s.fn(0));
+      const ringing = wall() - s.refWall < 1.0;
+      const r = (ringing ? 46 + 10 * Math.sin(now * 12) : 30);
+      g.drawImage(ringing ? SPR.gold : SPR.white, x - r / 2, y - r / 2, r, r);
+    }
+    // porte di luce
+    for (const gate of world.gates) {
+      if (gate.state === 'ok') continue;
+      const x = xOfTime(gate.t);
+      if (x < -40 || x > W + 40) continue;
+      if (gate.state === 'miss') gate.fade = Math.max(0, gate.fade - 0.03);
+      const y = yOf(center + gate.seg.fn(gate.t - gate.seg.t0));
+      const a = gate.state === 'miss' ? 0.25 * gate.fade : 0.9;
+      g.strokeStyle = gate.state === 'miss' ? `rgba(150,160,220,${a})` : `rgba(255,210,122,${a})`;
+      g.lineWidth = 3;
+      g.beginPath();
+      g.ellipse(x, y, Math.max(7, tolPx * 0.45), tolPx * 1.7 + 6, 0, 0, Math.PI * 2);
+      g.stroke();
+      if (gate.state === 'todo') {
+        const s = tolPx * 3 + 30;
+        g.globalAlpha = 0.35 + 0.15 * Math.sin(now * 3 + gate.t) * fx;
+        g.drawImage(SPR.gold, x - s / 2, y - s / 2, s, s);
+        g.globalAlpha = 1;
+      }
+    }
+    g.globalCompositeOperation = 'source-over';
+  }
+
+  function emitTrail(dt) {
+    if (comet.vis < 0.3) return;
+    const n = Math.round((comet.inside ? 5 : 2) * fxK() * dt * 60);
+    for (let i = 0; i < n; i++) {
+      particles.push({
+        x: cometX - 4 + Math.random() * 8, y: comet.y + (Math.random() - 0.5) * 8,
+        vx: -SPEED * (0.75 + Math.random() * 0.3), vy: (Math.random() - 0.5) * 24,
+        life: 0.6 + Math.random() * 0.7, age: 0, size: 10 + Math.random() * 14,
+        spr: comet.inside ? (Math.random() < 0.7 ? SPR.gold : SPR.rose) : SPR.cyan, a: comet.inside ? 0.9 : 0.5,
+      });
+    }
+  }
+  function burst(x, y, n, spr, spread = 160) {
+    const k = fxK();
+    for (let i = 0; i < Math.round(n * k); i++) {
+      const a = Math.random() * Math.PI * 2, v = 40 + Math.random() * spread;
+      particles.push({ x, y, vx: Math.cos(a) * v - SPEED * 0.6, vy: Math.sin(a) * v, life: 0.5 + Math.random() * 0.6,
+        age: 0, size: 8 + Math.random() * 14, spr, a: 1 });
+    }
+  }
+
+  // ---- Logica di gioco ----
+  function setCenterMsg(title, text, skip) {
+    $('centerMsg').hidden = !title;
+    $('cmTitle').textContent = title || '';
+    $('cmText').textContent = text || '';
+    $('skipCalib').hidden = !skip;
+    if (skip) $('skipCalib').textContent = skip;
+  }
+  let msgTimer = 0;
+
+  function beginCalib(lv) {
+    level = lv;
+    state = 'calib';
+    world = null;
+    particles = [];
+    floats = [];
+    Object.assign(calib, { anchor: NaN, since: 0, vals: [], last: -9, progress: 0 });
+    viewMid = (lastCenter ?? 55) + 2;
+    $('menu').hidden = true;
+    $('hud').hidden = true;
+    setCenterMsg('Canta una nota comoda e tienila', 'Così la scia parte dalla tua voce.',
+      lastCenter != null ? `Usa ${noteName(lastCenter)}, come l'ultima volta` : null);
+  }
+
+  function stepCalib() {
+    const t = wall(), m = voice.m;
+    if (!Number.isNaN(m)) {
+      if (Number.isNaN(calib.anchor) || Math.abs(m - calib.anchor) > 0.6) { calib.anchor = m; calib.since = t; calib.vals = []; }
+      calib.vals.push(m);
+      calib.last = t;
+    } else if (t - calib.last > 0.3) {
+      calib.anchor = NaN;
+      calib.vals = [];
+    }
+    calib.progress = Number.isNaN(calib.anchor) ? 0 : clamp((t - calib.since) / 1.2, 0, 1);
+    if (calib.progress >= 1) {
+      center = clamp(Math.round(median(calib.vals)), 40, 76);
+      lastCenter = center;
+      save(KEYS.center, center);
+      burst(cometX, comet.y, 24, SPR.gold);
+      beginRun();
+    }
+  }
+
+  function beginRun() {
+    state = 'run';
+    world = buildWorld(level);
+    gt = 0;
+    particles = particles.filter((p) => p.age < 0.2);
+    $('hud').hidden = false;
+    $('score').textContent = '0';
+    setCombo(1, false);
+    setCenterMsg(`Centro: ${noteName(center)}`, 'Segui la scia. Nelle pause respira.');
+    msgTimer = wall() + 2.2;
+  }
+
+  function stepRun(dt) {
+    gt += dt;
+    const r = world;
+    for (const s of r.segs) {
+      if (!s.refDone && gt >= s.refAt) {
+        s.refDone = true;
+        s.refWall = wall();
+        if (settings.ref) playRef(center + s.fn(0));
+      }
+    }
+    const here = pathAt(r, gt);
+    let inside = false;
+    if (here) {
+      const target = center + here.v;
+      const c = Number.isNaN(voice.m) ? NaN : (voice.m - target) * 100;
+      inside = !Number.isNaN(c) && Math.abs(c) <= r.tol;
+      const settled = gt - here.s.t0 > 0.6; // un attimo per entrare nella scia
+      if (settled) { r.pathTime += dt; if (inside) r.inTime += dt; }
+      if (inside) {
+        r.lastIn = gt;
+        r.outFor = 0;
+        r.streak += dt;
+        const combo = r.streak >= 10 ? 4 : r.streak >= 6 ? 3 : r.streak >= 3 ? 2 : 1;
+        if (combo > r.combo) {
+          setCombo(combo, true);
+          floats.push({ x: cometX, y: comet.y - 34, text: `×${combo}`, color: '#ffd27a', age: 0, life: 1.1, world: false });
+          burst(cometX, comet.y, 14, SPR.gold, 120);
+        }
+        r.combo = combo;
+        r.score += dt * 100 * r.combo;
+      } else if (settled) {
+        r.outFor += dt;
+        if (r.outFor > 0.35 && r.streak > 0) {
+          r.streak = 0;
+          if (r.combo > 1) setCombo(1, false);
+          r.combo = 1;
+        }
+      }
+    }
+    for (const gate of r.gates) {
+      if (gate.state !== 'todo' || gt < gate.t) continue;
+      if (gt - r.lastIn < 0.15) {
+        gate.state = 'ok';
+        r.gatesOk++;
+        const pts = 50 * r.combo;
+        r.score += pts;
+        const y = yOf(center + gate.seg.fn(gate.t - gate.seg.t0));
+        burst(cometX, y, 22, SPR.gold);
+        burst(cometX, y, 8, SPR.rose);
+        floats.push({ x: cometX + 10, y: y - 30, text: `+${pts}`, color: '#ffd27a', age: 0, life: 1.2, world: true });
+      } else {
+        gate.state = 'miss';
+      }
+    }
+    r.bestCombo = Math.max(r.bestCombo, r.combo);
+    comet.inside = inside;
+    const sc = String(Math.floor(r.score));
+    if ($('score').textContent !== sc) $('score').textContent = sc;
+    if (gt >= r.end) endRun();
+  }
+
+  function setCombo(n, pop) {
+    const el = $('combo');
+    el.textContent = `×${n}`;
+    el.classList.toggle('hot', n > 1);
+    if (pop) { el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
+  }
+
+  const QUIPS = [
+    [0.9, 'Intonazione da laser.'],
+    [0.75, 'Volo pulito. Qualche sbandata, niente di che.'],
+    [0.55, 'Turbolenze moderate. La cometa è ancora intera.'],
+    [0, 'La cometa ha fatto un po’ di turismo. Si riparte?'],
+  ];
+  function endRun() {
+    state = 'end';
+    const r = world;
+    const acc = r.pathTime ? r.inTime / r.pathTime : 0;
+    const score = Math.floor(r.score);
+    const key = `${level.id}|${settings.tol}`;
+    const prev = best[key] || 0;
+    if (score > prev) { best[key] = score; save(KEYS.best, best); }
+    history.unshift({ at: Date.now(), level: level.id, tol: settings.tol, center, score, acc: +acc.toFixed(3),
+      gates: `${r.gatesOk}/${r.gates.length}`, combo: r.bestCombo });
+    history = history.slice(0, 50);
+    save(KEYS.history, history);
+    $('quip').textContent = score > prev && prev > 0 ? 'Nuovo record. ' + QUIPS.find(([k]) => acc >= k)[1] : QUIPS.find(([k]) => acc >= k)[1];
+    $('endScore').textContent = score;
+    $('endRecord').textContent = `record ${Math.max(prev, score)}`;
+    $('endAcc').textContent = Math.round(acc * 100) + '%';
+    $('endGates').textContent = `${r.gatesOk}/${r.gates.length}`;
+    $('endCombo').textContent = `×${r.bestCombo}`;
+    $('copyOut').hidden = true;
+    $('hud').hidden = true;
+    setCenterMsg(null);
+    $('endPanel').hidden = false;
+    endChime(center);
+    for (let i = 0; i < 6; i++) burst(Math.random() * W, H * (0.2 + Math.random() * 0.4), 10, Math.random() < 0.5 ? SPR.gold : SPR.cyan, 120);
+  }
+
+  function toMenu() {
+    state = 'menu';
+    world = buildDemo();
+    gt = 0;
+    for (const id of ['endPanel', 'pausePanel', 'hud']) $(id).hidden = true;
+    setCenterMsg(null);
+    renderLevels();
+    $('menu').hidden = false;
+  }
+
+  function pause() {
+    if (state !== 'run') return;
+    state = 'paused';
+    $('pausePanel').hidden = false;
+  }
+  function resume() {
+    if (state !== 'paused') return;
+    if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {});
+    $('pausePanel').hidden = true;
+    state = 'run';
+  }
+
+  // ---- Ciclo principale ----
+  let last = wall();
+  function frame() {
+    const now = wall();
+    const dt = Math.min(0.05, now - last);
+    last = now;
+
+    voice.m = NaN;
+    if (micReady && analyser && (state === 'calib' || state === 'run')) {
+      const m = readVoice();
+      if (now >= muteUntil) voice.m = m;
+    }
+
+    if (state === 'menu') {
+      gt += dt;
+      const p = pathAt(world, gt);
+      voice.m = center + p.v + Math.sin(now * 5) * 0.06;
+      comet.inside = true;
+    } else if (state === 'calib') {
+      stepCalib();
+      comet.inside = calib.progress > 0;
+    } else if (state === 'run') {
+      stepRun(dt);
+    }
+    if (msgTimer && now > msgTimer && state === 'run') { setCenterMsg(null); msgTimer = 0; }
+
+    // la vista si centra dolcemente sulla voce
+    // nel menu la demo vola nella parte alta, sopra il pannello
+    const wantMid = state === 'calib' ? viewMid : state === 'menu' ? center - 5 : center + 2;
+    viewMid += (wantMid - viewMid) * (1 - Math.exp(-dt / 0.6));
+
+    // posizione e luce della cometa
+    if (!Number.isNaN(voice.m)) {
+      const ty = clamp(yOf(voice.m), top - 30, bottom + 10);
+      if (comet.vis < 0.05) comet.y = ty;
+      comet.y += (ty - comet.y) * (1 - Math.exp(-dt / 0.05));
+      comet.vis = Math.min(1, comet.vis + dt * 6);
+    } else if (state !== 'paused') {
+      comet.vis = Math.max(0, comet.vis - dt * 2.5);
+      comet.inside = false;
+      if (comet.vis < 0.05 && state !== 'end') comet.y += (yOf(center) - comet.y) * (1 - Math.exp(-dt / 1.5));
+    }
+    if (state !== 'paused' && state !== 'end') emitTrail(dt);
+
+    draw(now, state === 'paused' ? 0 : dt);
+    requestAnimationFrame(frame);
+  }
+  viewMid = center - 5;
+  comet.y = yOf(center);
+  requestAnimationFrame(frame);
+
+  // ---- Menu e pannelli ----
+  function renderLevels() {
+    $('levels').innerHTML = LEVELS.map((lv) => {
+      const rec = best[`${lv.id}|${settings.tol}`];
+      return `<button class="level" data-id="${lv.id}">
+        <svg viewBox="0 0 64 30" aria-hidden="true"><path d="${lv.icon}"/></svg>
+        <span><b>${lv.name}</b><small>${lv.desc}</small></span>
+        <span class="rec">${rec ? 'record<br>' + rec : ''}</span>
+      </button>`;
+    }).join('');
+  }
+  renderLevels();
+
+  $('levels').addEventListener('click', async (e) => {
+    const b = e.target.closest('.level');
+    if (!b) return;
+    const lv = LEVELS.find((x) => x.id === b.dataset.id);
+    try { await startMic(); }
+    catch (err) {
+      $('msgText').textContent = err.name === 'NotAllowedError'
+        ? 'Il microfono è bloccato per questo sito. Riattivalo dalle impostazioni del browser (aA nella barra degli indirizzi su Safari) e riprova.'
+        : `Non riesco ad aprire il microfono (${err.name}). Chiudi le altre app che lo usano e riprova.`;
+      $('msgPanel').hidden = false;
+      return;
+    }
+    beginCalib(lv);
+  });
+  $('skipCalib').addEventListener('click', () => {
+    if (state !== 'calib' || lastCenter == null) return;
+    center = lastCenter;
+    beginRun();
+  });
+  $('msgOk').addEventListener('click', () => { $('msgPanel').hidden = true; });
+  $('pauseBtn').addEventListener('click', pause);
+  $('resume').addEventListener('click', resume);
+  $('restart').addEventListener('click', () => { $('pausePanel').hidden = true; beginRun(); });
+  $('quit').addEventListener('click', toMenu);
+  $('toMenu').addEventListener('click', toMenu);
+  $('again').addEventListener('click', () => { $('endPanel').hidden = true; beginRun(); });
+  $('copyRes').addEventListener('click', async () => {
+    const lines = ['Sirena – ultime partite'];
+    for (const h of history.slice(0, 15)) {
+      const lv = LEVELS.find((x) => x.id === h.level);
+      lines.push(`${new Date(h.at).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} · ${lv ? lv.name : h.level} · ±${h.tol}c · centro ${noteName(h.center)} · ${h.score} punti · nella scia ${Math.round(h.acc * 100)}% · porte ${h.gates} · combo ×${h.combo}`);
+    }
+    const text = lines.join('\n');
+    try {
+      await navigator.clipboard.writeText(text);
+      $('copyRes').textContent = 'Copiato';
+      setTimeout(() => ($('copyRes').textContent = 'Copia'), 1800);
+    } catch (err) {
+      const ta = $('copyOut');
+      ta.hidden = false;
+      ta.value = text;
+      ta.focus();
+      ta.select();
+    }
+  });
+
+  function bindSeg(id, key, parse) {
+    const el = $(id);
+    const sync = () => el.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(parse(b.dataset.v) === settings[key])));
+    el.addEventListener('click', (e) => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      settings[key] = parse(b.dataset.v);
+      save(KEYS.settings, settings);
+      sync();
+    });
+    sync();
+  }
+  bindSeg('tolSeg', 'tol', Number);
+  bindSeg('fxSeg', 'fx', String);
+  bindSeg('refSeg', 'ref', (v) => v === '1');
+  bindSeg('namesSeg', 'names', (v) => v === '1');
+  $('openSettings').addEventListener('click', () => { $('settingsPanel').hidden = false; });
+  $('closeSettings').addEventListener('click', () => { $('settingsPanel').hidden = true; renderLevels(); });
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { pause(); return; }
+    if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {});
+  });
+})();
+</script>
+</body>
+</html>

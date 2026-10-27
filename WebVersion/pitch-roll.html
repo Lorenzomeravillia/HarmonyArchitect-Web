@@ -167,6 +167,9 @@ select {
 .tbl td.miss { color: var(--muted); }
 .stars { color: var(--note); letter-spacing: 1px; }
 #copyOut { width: 100%; height: 110px; font: 12px ui-monospace, Menlo, monospace; background: var(--row-black); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; }
+a.navlink { color: var(--fg); width: 48px; height: 48px; border-radius: 12px; display: grid; place-items: center; }
+a.navlink svg { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
+a.navlink:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
 </style>
 </head>
 <body>
@@ -264,9 +267,14 @@ select {
   </div>
 </div>
 <nav>
-  <button id="clear" aria-label="Cancella la traccia">
-    <svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM19 5v14L9.5 12z"/></svg>
-  </button>
+  <div class="mid">
+    <button id="clear" aria-label="Cancella la traccia">
+      <svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM19 5v14L9.5 12z"/></svg>
+    </button>
+    <a class="navlink" href="/sirena" aria-label="Gioco Sirena">
+      <svg viewBox="0 0 24 24"><path d="M2 12c2.5-6 5-6 7.5 0s5 6 7.5 0 3.5-4 5-2"/></svg>
+    </a>
+  </div>
   <div class="mid">
     <button id="play" aria-label="Avvia ascolto">
       <svg viewBox="0 0 24 24" id="playIcon"><circle cx="12" cy="12" r="0"/></svg>
