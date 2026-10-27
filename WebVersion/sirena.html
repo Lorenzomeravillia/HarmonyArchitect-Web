@@ -18,7 +18,7 @@
   --night-2: #151b4a;
   --ink: #eef1ff;
   --muted: #a3acdc;
-  --glass: rgba(18, 23, 62, .78);
+  --glass: rgba(18, 23, 62, .8);
   --line: rgba(163, 172, 220, .22);
   --gold: #ffd27a;
   --cyan: #7ef0ff;
@@ -87,13 +87,13 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   position: fixed; left: 0; right: 0; bottom: 0;
   max-height: 100%;
   overflow-y: auto;
-  padding-top: 16px;
+  padding-top: max(16px, env(safe-area-inset-top, 0px));
   padding-bottom: max(18px, env(safe-area-inset-bottom, 0px));
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
   display: grid; justify-items: center;
 }
-.sheet.middle { top: 0; align-content: center; background: rgba(7,10,31,.45); }
+.sheet.middle { top: 0; align-content: center; background: rgba(7,10,31,.5); }
 .panel {
   width: 100%; max-width: 460px;
   background: var(--glass);
@@ -103,32 +103,57 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   display: grid; gap: 14px;
   -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
 }
+.menu-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .title { margin: 0; font-size: 44px; font-weight: 700; letter-spacing: -.01em; line-height: 1; }
 .title span { color: var(--cyan); text-shadow: 0 0 24px rgba(126,240,255,.5); }
+.chip {
+  border: 1px solid rgba(255,210,122,.45); background: rgba(255,210,122,.08); color: var(--gold);
+  border-radius: 999px; padding: 7px 14px; font-weight: 500; font-size: 14px;
+  display: flex; align-items: center; gap: 6px;
+}
+.chip svg { width: 12px; height: 12px; fill: currentColor; }
 .lead { margin: 0; color: var(--muted); }
-.levels { display: grid; gap: 8px; }
-.level {
+.continue {
+  border: 1px solid rgba(126,240,255,.5); background: rgba(126,240,255,.12);
+  border-radius: 16px; padding: 12px 16px;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; text-align: left;
+  box-shadow: 0 0 26px rgba(126,240,255,.15);
+}
+.continue small { display: block; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .1em; }
+.continue b { font-size: 18px; font-weight: 500; }
+.continue svg { width: 22px; height: 22px; fill: var(--cyan); flex: none; }
+.list { display: grid; gap: 8px; }
+.ex {
   border: 1px solid var(--line); background: rgba(255,255,255,.04);
   border-radius: 16px; padding: 12px 14px;
-  display: grid; grid-template-columns: 64px 1fr auto; align-items: center; gap: 12px;
-  text-align: left;
+  display: grid; grid-template-columns: 64px 1fr auto; align-items: center; gap: 6px 12px;
 }
-.level:active { background: rgba(126,240,255,.08); }
-.level svg { width: 64px; height: 30px; fill: none; stroke: var(--cyan); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 4px rgba(126,240,255,.6)); }
-.level b { display: block; font-size: 18px; font-weight: 500; }
-.level small { color: var(--muted); font-size: 13px; }
-.level .rec { font-size: 13px; color: var(--gold); font-variant-numeric: tabular-nums; text-align: right; }
+.ex svg { width: 64px; height: 30px; fill: none; stroke: var(--cyan); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 4px rgba(126,240,255,.6)); }
+.ex b { display: block; font-size: 18px; font-weight: 500; }
+.ex small { color: var(--muted); font-size: 13px; }
+.ex .rec { font-size: 12px; color: var(--gold); font-variant-numeric: tabular-nums; text-align: right; line-height: 1.2; }
+.ex .acts { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+.pick {
+  border: 1px solid var(--line); background: rgba(255,255,255,.04);
+  border-radius: 16px; padding: 12px 14px; text-align: left;
+  display: grid; gap: 2px;
+}
+.pick b { font-size: 18px; font-weight: 500; }
+.pick small { color: var(--muted); font-size: 13px; }
+.pick[aria-pressed="true"] { border-color: rgba(255,210,122,.6); background: rgba(255,210,122,.08); }
 .row { display: flex; gap: 8px; flex-wrap: wrap; }
 .row > * { flex: 1 1 auto; }
 .btn {
-  height: 50px; border-radius: 14px; padding-inline: 16px;
+  height: 48px; border-radius: 14px; padding-inline: 16px;
   border: 1px solid var(--line); background: rgba(255,255,255,.05);
   font-weight: 500; text-decoration: none;
   display: grid; place-items: center;
 }
+.btn.small { height: 40px; border-radius: 12px; font-size: 15px; }
 .btn.go { background: var(--cyan); color: var(--night); border-color: var(--cyan); font-weight: 700; box-shadow: 0 0 24px rgba(126,240,255,.35); }
 .field { display: grid; gap: 6px; }
 .field > span { font-size: 12px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.field > small { color: var(--muted); font-size: 12px; }
 .seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; background: rgba(255,255,255,.05); border-radius: 12px; padding: 4px; }
 .seg button { border: 0; background: transparent; border-radius: 9px; padding: 9px 4px; color: var(--muted); font-weight: 500; display: grid; line-height: 1.15; }
 .seg button small { font-size: 11px; }
@@ -141,6 +166,11 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
 .stats b { display: block; font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .stats span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
 .quip { margin: 0; font-size: 18px; text-wrap: balance; }
+.suggest {
+  border: 1px solid rgba(255,210,122,.45); background: rgba(255,210,122,.08);
+  border-radius: 14px; padding: 12px; display: grid; gap: 10px;
+}
+.suggest p { margin: 0; text-wrap: balance; }
 #copyOut { width: 100%; height: 110px; font: 12px ui-monospace, Menlo, monospace; background: rgba(0,0,0,.3); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; }
 @media (prefers-reduced-motion: reduce) { .combo.pop { animation: none; } }
 </style>
@@ -152,7 +182,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   <button class="icon-btn" id="pauseBtn" aria-label="Pausa">
     <svg viewBox="0 0 24 24"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>
   </button>
-  <div class="score"><b id="score">0</b><small>punti</small></div>
+  <div class="score"><b id="score">0</b><small id="scoreLabel">sfida</small></div>
   <div class="combo" id="combo" aria-label="Moltiplicatore">×1</div>
 </div>
 
@@ -164,13 +194,32 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
 
 <section class="sheet" id="menu">
   <div class="panel">
-    <h1 class="title">Si<span>rena</span></h1>
-    <p class="lead">La tua voce è la cometa. Tienila dentro la scia di luce e attraversa le porte. Nelle pause, respira.</p>
-    <div class="levels" id="levels"></div>
+    <div class="menu-head">
+      <h1 class="title">Si<span>rena</span></h1>
+      <button class="chip" id="levelChip" aria-label="Cambia livello">
+        <span id="levelChipText">Livello</span>
+        <svg viewBox="0 0 12 12"><path d="M2 4l4 4 4-4z"/></svg>
+      </button>
+    </div>
+    <p class="lead">La tua voce è la cometa. Tienila nella scia di luce e attraversa le porte. Nelle pause ascolta e respira.</p>
+    <button class="continue" id="continueBtn" hidden>
+      <span><small>Continua</small><b id="continueText"></b></span>
+      <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+    </button>
+    <div class="list" id="exercises"></div>
     <div class="row">
       <button class="btn" id="openSettings">Impostazioni</button>
       <a class="btn" href="/pitch-roll.html">Rullo delle note</a>
     </div>
+  </div>
+</section>
+
+<section class="sheet middle" id="levelPanel" hidden>
+  <div class="panel">
+    <h2 class="quip">Che esperienza hai?</h2>
+    <p class="lead">Decide quanto aiuto ricevi e quanto sono difficili i percorsi. Si può cambiare quando vuoi.</p>
+    <div class="list" id="levelList"></div>
+    <div class="row" id="levelCancelRow"><button class="btn" id="levelCancel">Annulla</button></div>
   </div>
 </section>
 
@@ -194,11 +243,15 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
       <div><b id="endGates">–</b><span>Porte</span></div>
       <div><b id="endCombo">–</b><span>Combo max</span></div>
     </div>
+    <div class="suggest" id="suggest" hidden>
+      <p id="suggestText"></p>
+      <button class="btn small go" id="suggestYes">Sì, passo al livello successivo</button>
+    </div>
     <textarea id="copyOut" hidden readonly></textarea>
     <div class="row">
-      <button class="btn" id="toMenu">Livelli</button>
-      <button class="btn" id="copyRes">Copia</button>
-      <button class="btn go" id="again">Ancora</button>
+      <button class="btn" id="toMenu">Esercizi</button>
+      <button class="btn" id="endSecond"></button>
+      <button class="btn go" id="endMain"></button>
     </div>
   </div>
 </section>
@@ -207,12 +260,13 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   <div class="panel">
     <h2 class="quip">Impostazioni</h2>
     <div class="field">
-      <span>Larghezza della scia</span>
-      <div class="seg" id="tolSeg">
-        <button data-v="60">Larga<small>±60 cents</small></button>
-        <button data-v="40">Media<small>±40 cents</small></button>
-        <button data-v="25">Stretta<small>±25 cents</small></button>
+      <span>Nomi delle note</span>
+      <div class="seg" id="namesSeg">
+        <button data-v="mobile">Do mobile<small>do re mi</small></button>
+        <button data-v="numeri">Numeri<small>1 2 3</small></button>
+        <button data-v="reali">Nomi reali<small>Do3 Re3</small></button>
       </div>
+      <small>Con il do mobile e i numeri, "do" e "1" sono la tua nota comoda. Nel livello Esperto si usano sempre i nomi reali.</small>
     </div>
     <div class="field">
       <span>Effetti</span>
@@ -221,21 +275,10 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
         <button data-v="soft">Morbidi</button>
       </div>
     </div>
-    <div class="field">
-      <span>Nota di partenza prima di ogni onda</span>
-      <div class="seg" id="refSeg">
-        <button data-v="1">Sì</button>
-        <button data-v="0">No</button>
-      </div>
+    <div class="row">
+      <button class="btn" id="settingsLevel">Cambia livello</button>
+      <button class="btn go" id="closeSettings">Fatto</button>
     </div>
-    <div class="field">
-      <span>Nomi delle note a sinistra</span>
-      <div class="seg" id="namesSeg">
-        <button data-v="1">Sì</button>
-        <button data-v="0">No</button>
-      </div>
-    </div>
-    <div class="row"><button class="btn go" id="closeSettings">Fatto</button></div>
   </div>
 </section>
 
@@ -254,19 +297,47 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
   const IT = ['Do', 'Do♯', 'Re', 'Re♯', 'Mi', 'Fa', 'Fa♯', 'Sol', 'Sol♯', 'La', 'La♯', 'Si'];
-  const SHARP = [0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0];
   const noteName = (n) => IT[((n % 12) + 12) % 12] + (Math.floor(n / 12) - 1);
   const median = (a) => { const s = [...a].sort((x, y) => x - y); return s[s.length >> 1]; };
   const wall = () => performance.now() / 1000;
+  const pick = (a) => a[Math.floor(Math.random() * a.length)];
+
+  // ---- Note, gradi e colori ----
+  const MAJOR = [0, 2, 4, 5, 7, 9, 11];
+  const degSemi = (d) => Math.floor(d / 7) * 12 + MAJOR[((d % 7) + 7) % 7];
+  const MOBILE = ['do', 're', 'mi', 'fa', 'sol', 'la', 'si'];
+  // un colore per grado (do mobile, numeri) o per nota (nomi reali): i diesis prendono quello della nota sotto
+  const COLORS = ['#ff8a8a', '#ffb46b', '#ffdd62', '#96e9a8', '#74dded', '#97a9ff', '#dc97f4'];
+  const PC_NAT = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6];
+
+  // ---- Livelli ----
+  // Il livello si sceglie una volta e decide da solo tutto il resto: materiale dei percorsi,
+  // contesto tonale nelle pause, larghezza della scia, nomi delle note.
+  const LEVELS = [
+    { id: 'base', name: 'Principiante', desc: 'Passi piccoli e tanta guida. Va bene anche senza esperienza.', tol: 50, hold: 1.6, amp: 0.6, ctx: 'arpeggio' },
+    { id: 'medio', name: 'Intermedio', desc: 'Scale e arpeggi. Per chi canta già un po’.', tol: 40, hold: 1.4, amp: 0.8, ctx: 'arpeggio' },
+    { id: 'avanzato', name: 'Avanzato', desc: 'Salti più ampi, percorsi meno prevedibili.', tol: 30, hold: 1.25, amp: 1, ctx: 'tonica' },
+    { id: 'esperto', name: 'Esperto', desc: 'Sequenze atonali e scia stretta. Le note usano il nome reale.', tol: 25, hold: 1.1, amp: 1.15, ctx: 'none', atonal: true },
+  ];
+  const EXERCISES = [
+    { id: 'onde', name: 'Onde', desc: 'Scivola su e giù con calma.', icon: 'M2 15 C10 2 18 2 26 15 S42 28 50 15 S58 6 62 12' },
+    { id: 'gradini', name: 'Gradini', desc: 'Note tenute, passo dopo passo.', icon: 'M2 24 H14 V16 H26 V20 H38 V8 H50 V14 H62' },
+    { id: 'sirena', name: 'Sirena', desc: 'Grandi salite e discese.', icon: 'M2 26 C14 26 18 3 32 3 S50 27 62 27' },
+    { id: 'tempesta', name: 'Tempesta', desc: 'Un po’ di tutto.', icon: 'M2 18 C8 6 12 6 16 16 H24 V8 H32 C40 8 44 28 52 24 L62 6' },
+  ];
+  const MODE_NAME = { allena: 'Allenati', sfida: 'Sfida' };
 
   // ---- Memoria locale ----
-  const KEYS = { settings: 'sirena.settings.v1', best: 'sirena.best.v1', history: 'sirena.history.v1', center: 'sirena.center.v1' };
+  const KEYS = { settings: 'sirena.settings.v2', best: 'sirena.best.v2', history: 'sirena.history.v2', center: 'sirena.center.v1' };
   function load(k, fb) { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? fb; } catch (e) { return fb; } }
   function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
-  const settings = Object.assign({ tol: 40, fx: 'full', ref: true, names: true }, load(KEYS.settings, {}));
+  const old = load('sirena.settings.v1', {});
+  const settings = Object.assign({ level: null, names: 'mobile', fx: old.fx || 'full', last: null, highRuns: null }, load(KEYS.settings, {}));
+  const saveSettings = () => save(KEYS.settings, settings);
   let best = load(KEYS.best, {});
   let history = load(KEYS.history, []);
   let lastCenter = load(KEYS.center, null);
+  const L = () => LEVELS.find((l) => l.id === settings.level) || LEVELS[0];
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const fxK = () => (settings.fx === 'soft' || reducedMotion ? 0.35 : 1);
 
@@ -304,24 +375,46 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     micReady = true;
   }
 
-  // Nota di partenza: un suono morbido, quasi di vetro, che non disturba.
-  function playRef(midi) {
-    if (!ctx) return;
-    const t = ctx.currentTime + 0.03, f = mtof(midi);
-    for (const [mul, a, type] of [[1, 0.32, 'sine'], [2, 0.07, 'sine'], [1, 0.08, 'triangle']]) {
+  // Suono morbido, quasi di vetro, per le note delle pause.
+  function tone(midi, t, dur, vol) {
+    const f = mtof(midi);
+    for (const [mul, a, type] of [[1, vol, 'sine'], [2, vol * 0.2, 'sine'], [1, vol * 0.25, 'triangle']]) {
       const o = ctx.createOscillator();
       o.type = type;
       o.frequency.value = f * mul;
       const g = ctx.createGain();
+      const rel = Math.max(t + 0.06, t + dur - 0.06);
       g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(a, t + 0.05);
-      g.gain.setValueAtTime(a, t + 0.7);
-      g.gain.setTargetAtTime(0, t + 0.7, 0.09);
+      g.gain.linearRampToValueAtTime(a, t + 0.03);
+      g.gain.setValueAtTime(a, rel);
+      g.gain.setTargetAtTime(0, rel, 0.06);
       o.connect(g).connect(out);
       o.start(t);
-      o.stop(t + 1.3);
+      o.stop(rel + 0.5);
     }
-    muteUntil = Math.max(muteUntil, wall() + 1.15);
+  }
+  // Anteprima di un'onda continua: lo stesso disegno, cantato più in fretta.
+  function glide(seg, t, dur, vol = 0.5) {
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.05);
+    g.gain.setValueAtTime(vol, t + dur - 0.08);
+    g.gain.setTargetAtTime(0, t + dur - 0.08, 0.05);
+    g.connect(out);
+    for (const [type, a] of [['sine', 1], ['triangle', 0.25]]) {
+      const o = ctx.createOscillator();
+      o.type = type;
+      const N = Math.ceil(dur / 0.04);
+      for (let i = 0; i <= N; i++) {
+        const f = mtof(center + seg.fn((i / N) * seg.dur));
+        if (i) o.frequency.linearRampToValueAtTime(f, t + (i / N) * dur); else o.frequency.setValueAtTime(f, t);
+      }
+      const og = ctx.createGain();
+      og.gain.value = a;
+      o.connect(og).connect(g);
+      o.start(t);
+      o.stop(t + dur + 0.3);
+    }
   }
   function endChime(midi) {
     if (!ctx) return;
@@ -379,92 +472,165 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   }
 
   // ---- Percorsi ----
-  // Ogni onda è una funzione: secondi dall'inizio dell'onda → semitoni rispetto al centro della voce.
+  // Ogni onda è una funzione: secondi dall'inizio dell'onda → semitoni rispetto alla nota comoda,
+  // che fa da tonica ("do") nei livelli tonali.
   const smoothstep = (x) => x * x * (3 - 2 * x);
-  const GEN = {
-    onde() {
-      const A = 1.6 + Math.random() * 1.4, P = 5 + Math.random() * 2;
-      const base = Math.random() * 1.5 - 0.5, ph = -Math.PI / 2 + (Math.random() - 0.5);
-      return (u) => base + A * Math.sin((2 * Math.PI * u) / P + ph);
-    },
-    gradini(dur) {
-      const scale = [-5, -3, -1, 0, 2, 4, 5, 7];
-      const HOLD = 1.3, GLIDE = 0.22;
-      let i = 3 + Math.floor(Math.random() * 2);
-      const notes = [];
-      for (let k = 0; k < Math.ceil(dur / HOLD) + 2; k++) {
-        notes.push(scale[i]);
-        i = clamp(i + [-2, -1, 1, 2][Math.floor(Math.random() * 4)], 0, scale.length - 1);
+
+  // Passeggiata fra gradi o semitoni: passi presi da `steps`, dentro [lo, hi].
+  // Con `home` la sequenza deve finire sulla tonica, e si avvicina per tempo.
+  function walk(count, lo, hi, steps, start, home) {
+    const notes = [start];
+    const maxStep = Math.max(...steps);
+    let cur = start;
+    for (let i = 1; i < count; i++) {
+      const left = count - 1 - i;
+      const opts = [];
+      for (const s of steps) for (const d of [s, -s]) {
+        const nx = cur + d;
+        if (nx < lo || nx > hi) continue;
+        if (home && (left === 0 ? nx !== 0 : Math.abs(nx) > maxStep * left)) continue;
+        opts.push(nx);
       }
-      return (u) => {
-        const k = Math.floor(u / HOLD), f = u - k * HOLD;
-        const a = notes[k] ?? notes[notes.length - 1], b = notes[k + 1] ?? a;
-        return f < HOLD - GLIDE ? a : a + (b - a) * smoothstep((f - (HOLD - GLIDE)) / GLIDE);
-      };
-    },
-    sirena(dur) {
-      const pts = [[0, Math.random() * 2 - 1]];
-      let t = 0, up = true;
-      while (t < dur + 4) {
-        t += 2.6 + Math.random() * 0.9;
-        pts.push([t, up ? 4 + Math.random() * 5 : -5 + Math.random() * 3.5]);
-        up = !up;
-      }
-      return (u) => {
+      cur = opts.length ? pick(opts) : home ? 0 : cur;
+      notes.push(cur);
+    }
+    return notes;
+  }
+  function makeGradini(lv, dur, hold) {
+    const count = Math.max(3, Math.floor(dur / hold));
+    let vals;
+    if (lv.atonal) {
+      vals = walk(count, -5, 9, [1, 2, 3, 4, 5, 6, 7, 8, 9], -3 + Math.floor(Math.random() * 11), false);
+    } else {
+      const deg = lv.id === 'base' ? walk(count, -2, 4, [1], 0, true)                 // gradi vicini, si torna a casa
+        : lv.id === 'medio' ? walk(count, -3, 5, [1, 1, 2], 0, true)                   // scale e terze
+        : walk(count, -3, 5, [1, 2, 2, 3, 3, 4, 5], -2 + Math.floor(Math.random() * 7), false); // salti
+      vals = deg.map(degSemi);
+    }
+    const GLIDE = 0.2;
+    return {
+      steps: vals.map((v, k) => ({ t: k * hold, v })),
+      hold,
+      dur: vals.length * hold,
+      fn: (u) => {
+        const k = clamp(Math.floor(u / hold), 0, vals.length - 1), f = u - k * hold;
+        const a = vals[k], b = vals[k + 1] ?? a;
+        return f < hold - GLIDE ? a : a + (b - a) * smoothstep((f - (hold - GLIDE)) / GLIDE);
+      },
+    };
+  }
+  function makeOnde(lv, dur) {
+    const A = (1.6 + Math.random() * 1.4) * lv.amp, P = lv.atonal ? 4 + Math.random() * 1.5 : 5 + Math.random() * 2;
+    const base = Math.random() * 1.5 - 0.5, ph = -Math.PI / 2 + (Math.random() - 0.5);
+    return { dur, fn: (u) => base + A * Math.sin((2 * Math.PI * u) / P + ph) };
+  }
+  function makeSirena(lv, dur) {
+    const pts = [[0, Math.random() * 2 - 1]];
+    let t = 0, up = true;
+    while (t < dur + 4) {
+      t += (lv.atonal ? 2.2 : 2.6) + Math.random() * 0.9;
+      pts.push([t, up ? Math.min(9.5, (3 + Math.random() * 5) * lv.amp) : Math.max(-5.5, -(2 + Math.random() * 3) * lv.amp)]);
+      up = !up;
+    }
+    return {
+      dur,
+      fn: (u) => {
         let i = 0;
         while (i < pts.length - 2 && u > pts[i + 1][0]) i++;
         const [ta, va] = pts[i], [tb, vb] = pts[i + 1];
         const x = clamp((u - ta) / (tb - ta), 0, 1);
         return va + (vb - va) * (0.5 - 0.5 * Math.cos(Math.PI * x));
-      };
-    },
-  };
-  const LEVELS = [
-    { id: 'onde', name: 'Onde', desc: 'Scivola su e giù, con calma.', kind: 'onde', segs: 4, dur: 11, tolK: 1,
-      icon: 'M2 15 C10 2 18 2 26 15 S42 28 50 15 S58 6 62 12' },
-    { id: 'gradini', name: 'Gradini', desc: 'Note tenute, un passo alla volta.', kind: 'gradini', segs: 4, dur: 11, tolK: 1,
-      icon: 'M2 24 H14 V16 H26 V20 H38 V8 H50 V14 H62' },
-    { id: 'sirena', name: 'Sirena', desc: 'Grandi salite e discese.', kind: 'sirena', segs: 4, dur: 12, tolK: 1,
-      icon: 'M2 26 C14 26 18 3 32 3 S50 27 62 27' },
-    { id: 'tempesta', name: 'Tempesta', desc: 'Un po’ di tutto, con la scia più stretta.', kind: 'mista', segs: 5, dur: 11, tolK: 0.75,
-      icon: 'M2 18 C8 6 12 6 16 16 H24 V8 H32 C40 8 44 28 52 24 L62 6' },
-  ];
+      },
+    };
+  }
 
-  function buildWorld(level) {
-    const segs = [], gates = [];
+  // Cosa si sente nella pausa prima di un'onda. Senza cuffie il suono può esserci solo qui.
+  //  - Gradini nei livelli tonali: prima la tonalità (arpeggio o tonica).
+  //  - Allenati: tutta l'onda in versione rapida, poi di nuovo la prima nota.
+  //  - Sfida: solo la prima nota, lunga.
+  function planPause(seg, lv, allena) {
+    const ev = [];
     let t = 0;
-    for (let i = 0; i < level.segs; i++) {
-      t += i === 0 ? 3.4 : 2.8; // pausa per respirare (e per la nota di partenza)
-      const kind = level.kind === 'mista' ? ['onde', 'gradini', 'sirena'][i % 3] : level.kind;
-      const seg = { t0: t, t1: t + level.dur, fn: GEN[kind](level.dur), refAt: t - 1.9, refDone: false, refWall: -9 };
+    if (seg.steps && !lv.atonal) {
+      if (lv.ctx === 'arpeggio') {
+        for (const iv of [0, 4, 7, 12]) { ev.push({ type: 'tone', midi: center + iv, at: t, dur: 0.32, vol: 0.4 }); t += 0.28; }
+        t += 0.45;
+      } else if (lv.ctx === 'tonica') {
+        ev.push({ type: 'tone', midi: center, at: t, dur: 0.9, vol: 0.45 });
+        t += 1.2;
+      }
+    }
+    if (allena) {
+      if (seg.steps) {
+        const per = lv.id === 'base' ? 0.55 : 0.45;
+        seg.steps.forEach((s, i) => { ev.push({ type: 'tone', midi: center + s.v, at: t, dur: per * 0.9, vol: 0.5, mark: i }); t += per; });
+      } else {
+        const d = clamp(seg.dur / 3, 2.2, 3.4);
+        ev.push({ type: 'glide', at: t, dur: d });
+        t += d;
+      }
+      t += 0.45;
+    }
+    ev.push({ type: 'tone', midi: center + seg.fn(0), at: t, dur: 1.2, vol: 0.6, mark: seg.steps ? 0 : null });
+    t += 1.2;
+    return { ev, dur: t };
+  }
+
+  const LEAD = 2.0; // secondi fra la fine dell'anteprima e l'arrivo dell'onda sotto la cometa
+  function buildWorld(ex, mode) {
+    const lv = L(), allena = mode === 'allena';
+    const nSeg = ex.id === 'tempesta' && !allena ? 5 : 4;
+    const dur = allena ? 7 : 11;
+    const segs = [], gates = [];
+    let t = 0.4;
+    for (let i = 0; i < nSeg; i++) {
+      const kind = ex.id === 'tempesta' ? ['onde', 'gradini', 'sirena'][i % 3] : ex.id;
+      const seg = kind === 'gradini' ? makeGradini(lv, dur, lv.hold * (allena ? 1.1 : 1))
+        : kind === 'onde' ? makeOnde(lv, dur) : makeSirena(lv, dur);
+      seg.kind = kind;
+      seg.plan = planPause(seg, lv, allena);
+      t += 0.6 + LEAD;
+      Object.assign(seg, { t0: t, t1: t + seg.dur, audioAt: t - LEAD, audioDone: false, marks: [], refWall: -9 });
       segs.push(seg);
       for (let gt0 = seg.t0 + 1.6; gt0 < seg.t1 - 0.6; gt0 += 2.4) gates.push({ t: gt0, seg, state: 'todo', fade: 1 });
       t = seg.t1;
     }
     return {
-      level, segs, gates, end: t + 2.2,
-      tol: settings.tol * level.tolK,
+      ex, mode, segs, gates, end: t + 2.2, tol: lv.tol, freezeUntil: 0,
       score: 0, streak: 0, outFor: 0, combo: 1, bestCombo: 1,
       pathTime: 0, inTime: 0, lastIn: -9, gatesOk: 0,
     };
   }
   // Nel menu la cometa vola da sola su un'onda lunga: una "demo" come nelle sale giochi.
   function buildDemo() {
-    const fn = GEN.onde();
-    return { segs: [{ t0: -1e6, t1: 1e6, fn: (u) => fn(u + 1e6), refDone: true, refWall: -9 }], gates: [], tol: 40 };
+    const o = makeOnde(LEVELS[1], 1e6);
+    return { segs: [{ t0: -1e6, t1: 1e6, fn: (u) => o.fn(u), refWall: -9, marks: [] }], gates: [], tol: 40 };
   }
-  function pathAt(world, time) {
-    for (const s of world.segs) if (time >= s.t0 && time <= s.t1) return { v: s.fn(time - s.t0), s };
+  function pathAt(w, time) {
+    for (const s of w.segs) if (time >= s.t0 && time <= s.t1) return { v: s.fn(time - s.t0), s };
     return null;
+  }
+
+  // ---- Nomi delle note ----
+  const nameStyle = () => (L().atonal ? 'reali' : settings.names);
+  const relPc = (n) => ((Math.round(n - center) % 12) + 12) % 12;
+  const inScale = (n) => MAJOR.includes(relPc(n));
+  function labelFor(n) {
+    n = Math.round(n);
+    const style = nameStyle();
+    if (style === 'reali') return { text: noteName(n), color: COLORS[PC_NAT[((n % 12) + 12) % 12]] };
+    const deg = MAJOR.indexOf(relPc(n));
+    if (deg < 0) return null;
+    return { text: style === 'numeri' ? String(deg + 1) : MOBILE[deg], color: COLORS[deg] };
   }
 
   // ---- Stato ----
   let state = 'menu'; // menu | calib | run | paused | end
-  let level = null;
+  let exercise = null, mode = 'sfida';
   let world = buildDemo();
-  let gt = 0;              // tempo di gioco: si ferma in pausa
+  let gt = 0;              // tempo del percorso: si ferma in pausa e durante l'anteprima
   let center = lastCenter ?? 55;
-  let viewMid = center + 2;
+  let viewMid = center - 5;
   const voice = { m: NaN };
   const comet = { y: 0, vis: 0, inside: false };
   const calib = { anchor: NaN, since: 0, vals: [], last: -9, progress: 0 };
@@ -474,9 +640,10 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   const canvas = $('sky');
   const g = canvas.getContext('2d');
   let W = 0, H = 0, dpr = 1;
-  let SPEED = 60, cometX = 100, top = 80, bottom = 600, pxSemi = 30;
+  let SPEED = 60, speedK = 0.16, cometX = 100, top = 80, bottom = 600, pxSemi = 30;
   const SPAN = 17;
   let FONT = 'sans-serif';
+  let bgT = 0; // tempo dello sfondo: scorre sempre
 
   // Gli "sprite" di luce: piccole immagini sfumate disegnate una volta e poi riusate.
   function glowSprite(rgb) {
@@ -508,13 +675,13 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     H = window.innerHeight;
     canvas.width = Math.round(W * dpr);
     canvas.height = Math.round(H * dpr);
-    SPEED = Math.max(60, W * 0.16);
+    SPEED = Math.max(60, W * speedK);
     cometX = W * 0.28;
     const sat = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sat')) || 0;
     top = 92 + sat;
-    FONT = getComputedStyle(document.body).fontFamily;
     bottom = H - Math.max(60, H * 0.09);
     pxSemi = (bottom - top) / SPAN;
+    FONT = getComputedStyle(document.body).fontFamily;
   }
   window.addEventListener('resize', resize);
   resize();
@@ -525,13 +692,51 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   function ridge(x, k, seed) {
     return Math.sin(x * 0.004 * k + seed) * 0.5 + Math.sin(x * 0.011 * k + seed * 2) * 0.3 + Math.sin(x * 0.023 * k + seed * 3) * 0.2;
   }
-
   function strokePts(pts, width, style) {
     g.lineWidth = width;
     g.strokeStyle = style;
     g.beginPath();
     pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
     g.stroke();
+  }
+
+  function drawAxis() {
+    const lo = Math.floor(viewMid - SPAN / 2) - 1, hi = Math.ceil(viewMid + SPAN / 2) + 1;
+    const atonal = L().atonal, labels = state !== 'menu';
+    g.textBaseline = 'middle';
+    for (let n = lo; n <= hi; n++) {
+      const y = yOf(n);
+      if (y < top - 20 || y > bottom + 20) continue;
+      if (atonal) {
+        g.fillStyle = 'rgba(163,172,220,0.07)';
+        g.fillRect(0, Math.round(y), W, 1);
+        if (labels) {
+          const lab = labelFor(n);
+          g.font = '600 12px ' + FONT;
+          g.globalAlpha = 0.75;
+          g.fillStyle = lab.color;
+          g.fillText(lab.text, 10, y - 8);
+          g.globalAlpha = 1;
+        }
+        continue;
+      }
+      // livelli tonali: le note della scala appena più chiare, la tonica come "casa" luminosa
+      const tonic = relPc(n) === 0, sc = inScale(n);
+      if (tonic && labels) {
+        g.fillStyle = 'rgba(255,210,122,0.045)';
+        g.fillRect(0, y - pxSemi * 0.45, W, pxSemi * 0.9);
+      }
+      g.fillStyle = tonic ? 'rgba(255,210,122,0.22)' : sc ? 'rgba(163,172,220,0.11)' : 'rgba(163,172,220,0.035)';
+      g.fillRect(0, Math.round(y), W, 1);
+      if (labels && sc) {
+        const lab = labelFor(n);
+        g.font = (tonic ? '700' : '500') + ' 11px ' + FONT;
+        g.globalAlpha = tonic ? 0.9 : 0.55;
+        g.fillStyle = lab.color;
+        g.fillText(lab.text, 10, y - 7);
+        g.globalAlpha = 1;
+      }
+    }
   }
 
   function draw(now, dt) {
@@ -547,7 +752,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     // stelle su tre piani che scorrono a velocità diverse
     g.fillStyle = '#ffffff';
     for (const layer of stars) for (const s of layer) {
-      const x = (((s.x * W - gt * SPEED * s.k) % W) + W) % W;
+      const x = (((s.x * W - bgT * SPEED * s.k) % W) + W) % W;
       g.globalAlpha = 0.35 + 0.35 * Math.sin(now * (0.8 + s.k) + s.tw) * fx + 0.2;
       g.fillRect(x, s.y * H, s.r, s.r);
     }
@@ -569,27 +774,14 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
       g.globalCompositeOperation = 'source-over';
     }
 
-    // righe dei semitoni e nomi delle note
-    const lo = Math.floor(viewMid - SPAN / 2) - 1, hi = Math.ceil(viewMid + SPAN / 2) + 1;
-    g.font = '500 11px ' + FONT;
-    g.textBaseline = 'middle';
-    for (let n = lo; n <= hi; n++) {
-      const y = yOf(n);
-      if (y < top - 20 || y > bottom + 20) continue;
-      g.fillStyle = SHARP[((n % 12) + 12) % 12] ? 'rgba(163,172,220,0.05)' : 'rgba(163,172,220,0.10)';
-      g.fillRect(0, Math.round(y), W, 1);
-      if (settings.names && state !== 'menu' && !SHARP[((n % 12) + 12) % 12]) {
-        g.fillStyle = 'rgba(163,172,220,0.45)';
-        g.fillText(noteName(n), 10, y - 7);
-      }
-    }
+    drawAxis();
 
     // montagne
     for (const [k, col, hK, sp] of [[1, '#0d1238', 0.11, 0.05], [1.7, '#090c27', 0.07, 0.12]]) {
       g.fillStyle = col;
       g.beginPath();
       g.moveTo(0, H);
-      for (let x = 0; x <= W + 8; x += 8) g.lineTo(x, H - H * hK * (1 + ridge(x + gt * SPEED * sp, k, k * 3)));
+      for (let x = 0; x <= W + 8; x += 8) g.lineTo(x, H - H * hK * (1 + ridge(x + bgT * SPEED * sp, k, k * 3)));
       g.lineTo(W, H);
       g.fill();
     }
@@ -635,12 +827,13 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     // punti che salgono
     floats = floats.filter((f) => (f.age += dt) < f.life);
     g.textAlign = 'center';
+    g.textBaseline = 'alphabetic';
     g.font = '700 18px ' + FONT;
     for (const f of floats) {
       const k = f.age / f.life;
       g.globalAlpha = 1 - k * k;
       g.fillStyle = f.color;
-      g.fillText(f.text, f.x - f.age * SPEED * (f.world ? 1 : 0), f.y - k * 26);
+      g.fillText(f.text, f.x - (f.world ? f.age * SPEED : 0), f.y - k * 26);
     }
     g.globalAlpha = 1;
     g.textAlign = 'start';
@@ -672,14 +865,14 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     g.fillRect(0, top - 40, cometX, bottom - top + 80);
 
     g.globalCompositeOperation = 'lighter';
-    // inizio di ogni onda: una sfera che pulsa mentre suona la nota di partenza
+    // inizio di ogni onda: una sfera che pulsa mentre suonano le note della pausa
     for (const s of world.segs) {
       if (s.t0 < -1e5) continue;
       const x = xOfTime(s.t0);
       if (x < -40 || x > W + 40) continue;
       const y = yOf(center + s.fn(0));
-      const ringing = wall() - s.refWall < 1.0;
-      const r = (ringing ? 46 + 10 * Math.sin(now * 12) : 30);
+      const ringing = now >= s.refWall && now < (s.refEnd || 0);
+      const r = ringing ? 46 + 10 * Math.sin(now * 12) * fx : 30;
       g.drawImage(ringing ? SPR.gold : SPR.white, x - r / 2, y - r / 2, r, r);
     }
     // porte di luce
@@ -703,6 +896,37 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
       }
     }
     g.globalCompositeOperation = 'source-over';
+
+    // nomi dei gradini, colorati, sopra la scia; si accendono quando l'anteprima li suona
+    const big = L().atonal;
+    g.textBaseline = 'alphabetic';
+    for (const s of world.segs) {
+      if (!s.steps) continue;
+      s.steps.forEach((st, k) => {
+        const x = xOfTime(s.t0 + st.t);
+        if (x < cometX - 30 || x > W + 10) return;
+        const lab = labelFor(center + st.v);
+        if (!lab) return;
+        const y = yOf(center + st.v);
+        const lit = s.marks.some((m) => m.i === k && now >= m.w0 && now <= m.w1);
+        if (lit) {
+          g.globalCompositeOperation = 'lighter';
+          g.drawImage(SPR.gold, x - 24, y - 24, 48, 48);
+          g.globalCompositeOperation = 'source-over';
+        }
+        g.fillStyle = lab.color;
+        g.globalAlpha = lit ? 1 : 0.9;
+        g.beginPath();
+        g.arc(x + 4, y, lit ? 5 : 3.5, 0, Math.PI * 2);
+        g.fill();
+        g.font = `${big ? 700 : 600} ${big ? 16 : 14}px ${FONT}`;
+        g.shadowColor = 'rgba(7,10,31,0.95)';
+        g.shadowBlur = 6;
+        g.fillText(lab.text, x + 2, y - tolPx - 9);
+        g.shadowBlur = 0;
+        g.globalAlpha = 1;
+      });
+    }
   }
 
   function emitTrail(dt) {
@@ -718,8 +942,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     }
   }
   function burst(x, y, n, spr, spread = 160) {
-    const k = fxK();
-    for (let i = 0; i < Math.round(n * k); i++) {
+    for (let i = 0; i < Math.round(n * fxK()); i++) {
       const a = Math.random() * Math.PI * 2, v = 40 + Math.random() * spread;
       particles.push({ x, y, vx: Math.cos(a) * v - SPEED * 0.6, vy: Math.sin(a) * v, life: 0.5 + Math.random() * 0.6,
         age: 0, size: 8 + Math.random() * 14, spr, a: 1 });
@@ -736,8 +959,11 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   }
   let msgTimer = 0;
 
-  function beginCalib(lv) {
-    level = lv;
+  function beginCalib(ex, md) {
+    exercise = ex;
+    mode = md;
+    settings.last = { ex: ex.id, mode: md };
+    saveSettings();
     state = 'calib';
     world = null;
     particles = [];
@@ -746,7 +972,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     viewMid = (lastCenter ?? 55) + 2;
     $('menu').hidden = true;
     $('hud').hidden = true;
-    setCenterMsg('Canta una nota comoda e tienila', 'Così la scia parte dalla tua voce.',
+    setCenterMsg('Canta una nota comoda e tienila', 'Diventa la "casa" del percorso.',
       lastCenter != null ? `Usa ${noteName(lastCenter)}, come l'ultima volta` : null);
   }
 
@@ -772,24 +998,45 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
 
   function beginRun() {
     state = 'run';
-    world = buildWorld(level);
+    speedK = mode === 'allena' ? 0.12 : 0.16; // in allenamento la scia scorre più piano e se ne vede di più
+    resize();
+    world = buildWorld(exercise, mode);
     gt = 0;
     particles = particles.filter((p) => p.age < 0.2);
     $('hud').hidden = false;
     $('score').textContent = '0';
+    $('scoreLabel').textContent = mode === 'allena' ? 'allenamento' : 'sfida';
     setCombo(1, false);
-    setCenterMsg(`Centro: ${noteName(center)}`, 'Segui la scia. Nelle pause respira.');
-    msgTimer = wall() + 2.2;
+    const lv = L();
+    const casa = labelFor(center);
+    const hint = mode === 'allena' ? 'Prima di ogni onda la senti tutta, poi tocca a te.' : 'Prima di ogni onda senti solo la nota di partenza.';
+    setCenterMsg(`${exercise.name} · ${MODE_NAME[mode]}`, `${lv.name}. Casa: ${casa ? casa.text : noteName(center)}${nameStyle() === 'reali' ? '' : ` (${noteName(center)})`}. ${hint}`);
+    msgTimer = wall() + 3;
+  }
+
+  function playPlan(seg) {
+    if (!ctx) return;
+    const t0 = ctx.currentTime + 0.05, w0 = wall() + 0.05;
+    seg.marks = [];
+    for (const e of seg.plan.ev) {
+      if (e.type === 'tone') tone(e.midi, t0 + e.at, e.dur, e.vol);
+      else glide(seg, t0 + e.at, e.dur);
+      if (e.mark != null) seg.marks.push({ i: e.mark, w0: w0 + e.at, w1: w0 + e.at + e.dur });
+    }
+    seg.refWall = w0;
+    seg.refEnd = w0 + seg.plan.dur;
+    muteUntil = Math.max(muteUntil, w0 + seg.plan.dur + 0.3);
   }
 
   function stepRun(dt) {
-    gt += dt;
     const r = world;
+    // mentre suonano le note della pausa il percorso aspetta
+    if (wall() >= r.freezeUntil) gt += dt;
     for (const s of r.segs) {
-      if (!s.refDone && gt >= s.refAt) {
-        s.refDone = true;
-        s.refWall = wall();
-        if (settings.ref) playRef(center + s.fn(0));
+      if (!s.audioDone && gt >= s.audioAt) {
+        s.audioDone = true;
+        playPlan(s);
+        r.freezeUntil = wall() + s.plan.dur + 0.05;
       }
     }
     const here = pathAt(r, gt);
@@ -798,7 +1045,13 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
       const target = center + here.v;
       const c = Number.isNaN(voice.m) ? NaN : (voice.m - target) * 100;
       inside = !Number.isNaN(c) && Math.abs(c) <= r.tol;
-      const settled = gt - here.s.t0 > 0.6; // un attimo per entrare nella scia
+      const u = gt - here.s.t0;
+      let settled = u > 0.6; // un attimo per entrare nella scia
+      if (here.s.steps && u > here.s.hold) {
+        // ad ogni cambio di gradino c'è un attimo per arrivare alla nota nuova
+        const since = u - Math.floor(u / here.s.hold) * here.s.hold;
+        if (since < 0.4 || since > here.s.hold - 0.2) settled = false;
+      }
       if (settled) { r.pathTime += dt; if (inside) r.inTime += dt; }
       if (inside) {
         r.lastIn = gt;
@@ -859,21 +1112,42 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   function endRun() {
     state = 'end';
     const r = world;
+    const sfida = r.mode === 'sfida';
     const acc = r.pathTime ? r.inTime / r.pathTime : 0;
     const score = Math.floor(r.score);
-    const key = `${level.id}|${settings.tol}`;
+    const key = `${r.ex.id}|${settings.level}`;
     const prev = best[key] || 0;
-    if (score > prev) { best[key] = score; save(KEYS.best, best); }
-    history.unshift({ at: Date.now(), level: level.id, tol: settings.tol, center, score, acc: +acc.toFixed(3),
-      gates: `${r.gatesOk}/${r.gates.length}`, combo: r.bestCombo });
-    history = history.slice(0, 50);
+    if (sfida && score > prev) { best[key] = score; save(KEYS.best, best); }
+    history.unshift({ at: Date.now(), ex: r.ex.id, mode: r.mode, level: settings.level, center, score,
+      acc: +acc.toFixed(3), gates: `${r.gatesOk}/${r.gates.length}`, combo: r.bestCombo });
+    history = history.slice(0, 60);
     save(KEYS.history, history);
-    $('quip').textContent = score > prev && prev > 0 ? 'Nuovo record. ' + QUIPS.find(([k]) => acc >= k)[1] : QUIPS.find(([k]) => acc >= k)[1];
+
+    const quip = QUIPS.find(([k]) => acc >= k)[1];
+    $('quip').textContent = sfida && score > prev && prev > 0 ? 'Nuovo record. ' + quip : quip;
     $('endScore').textContent = score;
-    $('endRecord').textContent = `record ${Math.max(prev, score)}`;
+    $('endRecord').textContent = sfida ? `record ${Math.max(prev, score)}` : 'allenamento';
     $('endAcc').textContent = Math.round(acc * 100) + '%';
     $('endGates').textContent = `${r.gatesOk}/${r.gates.length}`;
     $('endCombo').textContent = `×${r.bestCombo}`;
+
+    // Dopo tre sfide di fila sopra l'85% propone il livello successivo; non lo cambia mai da solo.
+    let next = null;
+    if (sfida) {
+      const prevN = settings.highRuns && settings.highRuns.level === settings.level ? settings.highRuns.n : 0;
+      const n = acc >= 0.85 ? prevN + 1 : 0;
+      settings.highRuns = { level: settings.level, n };
+      saveSettings();
+      const idx = LEVELS.findIndex((l) => l.id === settings.level);
+      if (n >= 3 && idx < LEVELS.length - 1) next = LEVELS[idx + 1];
+    }
+    $('suggest').hidden = !next;
+    if (next) {
+      $('suggestText').textContent = `Tre sfide di fila sopra l'85%. Vuoi passare a ${next.name}?`;
+      $('suggestYes').dataset.level = next.id;
+    }
+    $('endMain').textContent = sfida ? 'Ancora' : 'Ora in Sfida';
+    $('endSecond').textContent = sfida ? 'Copia' : 'Ancora';
     $('copyOut').hidden = true;
     $('hud').hidden = true;
     setCenterMsg(null);
@@ -884,11 +1158,13 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
 
   function toMenu() {
     state = 'menu';
+    speedK = 0.16;
+    resize();
     world = buildDemo();
     gt = 0;
     for (const id of ['endPanel', 'pausePanel', 'hud']) $(id).hidden = true;
     setCenterMsg(null);
-    renderLevels();
+    renderMenu();
     $('menu').hidden = false;
   }
 
@@ -910,6 +1186,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     const now = wall();
     const dt = Math.min(0.05, now - last);
     last = now;
+    if (state !== 'paused') bgT += dt;
 
     voice.m = NaN;
     if (micReady && analyser && (state === 'calib' || state === 'run')) {
@@ -930,8 +1207,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     }
     if (msgTimer && now > msgTimer && state === 'run') { setCenterMsg(null); msgTimer = 0; }
 
-    // la vista si centra dolcemente sulla voce
-    // nel menu la demo vola nella parte alta, sopra il pannello
+    // la vista si centra dolcemente; nel menu la demo vola nella parte alta, sopra il pannello
     const wantMid = state === 'calib' ? viewMid : state === 'menu' ? center - 5 : center + 2;
     viewMid += (wantMid - viewMid) * (1 - Math.exp(-dt / 0.6));
 
@@ -951,27 +1227,54 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     draw(now, state === 'paused' ? 0 : dt);
     requestAnimationFrame(frame);
   }
-  viewMid = center - 5;
   comet.y = yOf(center);
   requestAnimationFrame(frame);
 
   // ---- Menu e pannelli ----
-  function renderLevels() {
-    $('levels').innerHTML = LEVELS.map((lv) => {
-      const rec = best[`${lv.id}|${settings.tol}`];
-      return `<button class="level" data-id="${lv.id}">
-        <svg viewBox="0 0 64 30" aria-hidden="true"><path d="${lv.icon}"/></svg>
-        <span><b>${lv.name}</b><small>${lv.desc}</small></span>
+  function renderMenu() {
+    $('levelChipText').textContent = L().name;
+    const lastEx = settings.last && EXERCISES.find((e) => e.id === settings.last.ex);
+    $('continueBtn').hidden = !lastEx;
+    if (lastEx) $('continueText').textContent = `${lastEx.name} · ${MODE_NAME[settings.last.mode]}`;
+    $('exercises').innerHTML = EXERCISES.map((ex) => {
+      const rec = best[`${ex.id}|${settings.level}`];
+      return `<div class="ex">
+        <svg viewBox="0 0 64 30" aria-hidden="true"><path d="${ex.icon}"/></svg>
+        <span><b>${ex.name}</b><small>${ex.desc}</small></span>
         <span class="rec">${rec ? 'record<br>' + rec : ''}</span>
-      </button>`;
+        <div class="acts">
+          <button class="btn small" data-ex="${ex.id}" data-mode="allena">Allenati</button>
+          <button class="btn small go" data-ex="${ex.id}" data-mode="sfida">Sfida</button>
+        </div>
+      </div>`;
     }).join('');
   }
-  renderLevels();
 
-  $('levels').addEventListener('click', async (e) => {
-    const b = e.target.closest('.level');
+  function renderLevels() {
+    $('levelList').innerHTML = LEVELS.map((l) =>
+      `<button class="pick" data-level="${l.id}" aria-pressed="${l.id === settings.level}"><b>${l.name}</b><small>${l.desc}</small></button>`).join('');
+  }
+  function openLevels(first) {
+    renderLevels();
+    $('levelCancelRow').hidden = !!first;
+    $('levelPanel').hidden = false;
+  }
+  $('levelList').addEventListener('click', (e) => {
+    const b = e.target.closest('.pick');
     if (!b) return;
-    const lv = LEVELS.find((x) => x.id === b.dataset.id);
+    settings.level = b.dataset.level;
+    settings.highRuns = null;
+    saveSettings();
+    $('levelPanel').hidden = true;
+    renderMenu();
+  });
+  $('levelCancel').addEventListener('click', () => { $('levelPanel').hidden = true; });
+  $('levelChip').addEventListener('click', () => openLevels(false));
+  $('settingsLevel').addEventListener('click', () => { $('settingsPanel').hidden = true; openLevels(false); });
+
+  async function start(exId, md) {
+    const ex = EXERCISES.find((x) => x.id === exId);
+    if (!ex) return;
     try { await startMic(); }
     catch (err) {
       $('msgText').textContent = err.name === 'NotAllowedError'
@@ -980,8 +1283,13 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
       $('msgPanel').hidden = false;
       return;
     }
-    beginCalib(lv);
+    beginCalib(ex, md);
+  }
+  $('exercises').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-ex]');
+    if (b) start(b.dataset.ex, b.dataset.mode);
   });
+  $('continueBtn').addEventListener('click', () => { if (settings.last) start(settings.last.ex, settings.last.mode); });
   $('skipCalib').addEventListener('click', () => {
     if (state !== 'calib' || lastCenter == null) return;
     center = lastCenter;
@@ -993,18 +1301,23 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   $('restart').addEventListener('click', () => { $('pausePanel').hidden = true; beginRun(); });
   $('quit').addEventListener('click', toMenu);
   $('toMenu').addEventListener('click', toMenu);
-  $('again').addEventListener('click', () => { $('endPanel').hidden = true; beginRun(); });
-  $('copyRes').addEventListener('click', async () => {
+  $('endMain').addEventListener('click', () => {
+    $('endPanel').hidden = true;
+    if (mode === 'allena') { mode = 'sfida'; settings.last = { ex: exercise.id, mode }; saveSettings(); }
+    beginRun();
+  });
+  $('endSecond').addEventListener('click', async () => {
+    if (mode === 'allena') { $('endPanel').hidden = true; beginRun(); return; }
     const lines = ['Sirena – ultime partite'];
     for (const h of history.slice(0, 15)) {
-      const lv = LEVELS.find((x) => x.id === h.level);
-      lines.push(`${new Date(h.at).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} · ${lv ? lv.name : h.level} · ±${h.tol}c · centro ${noteName(h.center)} · ${h.score} punti · nella scia ${Math.round(h.acc * 100)}% · porte ${h.gates} · combo ×${h.combo}`);
+      const ex = EXERCISES.find((x) => x.id === h.ex), lv = LEVELS.find((x) => x.id === h.level);
+      lines.push(`${new Date(h.at).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} · ${ex ? ex.name : h.ex} · ${MODE_NAME[h.mode] || h.mode} · ${lv ? lv.name : h.level} · casa ${noteName(h.center)} · ${h.score} punti · nella scia ${Math.round(h.acc * 100)}% · porte ${h.gates} · combo ×${h.combo}`);
     }
     const text = lines.join('\n');
     try {
       await navigator.clipboard.writeText(text);
-      $('copyRes').textContent = 'Copiato';
-      setTimeout(() => ($('copyRes').textContent = 'Copia'), 1800);
+      $('endSecond').textContent = 'Copiato';
+      setTimeout(() => ($('endSecond').textContent = 'Copia'), 1800);
     } catch (err) {
       const ta = $('copyOut');
       ta.hidden = false;
@@ -1013,30 +1326,38 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
       ta.select();
     }
   });
+  $('suggestYes').addEventListener('click', (e) => {
+    settings.level = e.currentTarget.dataset.level;
+    settings.highRuns = null;
+    saveSettings();
+    $('suggest').hidden = true;
+    $('endMain').textContent = `Ancora, a livello ${L().name}`;
+  });
 
-  function bindSeg(id, key, parse) {
+  function bindSeg(id, key) {
     const el = $(id);
-    const sync = () => el.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(parse(b.dataset.v) === settings[key])));
+    const sync = () => el.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === settings[key])));
     el.addEventListener('click', (e) => {
       const b = e.target.closest('button');
       if (!b) return;
-      settings[key] = parse(b.dataset.v);
-      save(KEYS.settings, settings);
+      settings[key] = b.dataset.v;
+      saveSettings();
       sync();
     });
     sync();
   }
-  bindSeg('tolSeg', 'tol', Number);
-  bindSeg('fxSeg', 'fx', String);
-  bindSeg('refSeg', 'ref', (v) => v === '1');
-  bindSeg('namesSeg', 'names', (v) => v === '1');
+  bindSeg('namesSeg', 'names');
+  bindSeg('fxSeg', 'fx');
   $('openSettings').addEventListener('click', () => { $('settingsPanel').hidden = false; });
-  $('closeSettings').addEventListener('click', () => { $('settingsPanel').hidden = true; renderLevels(); });
+  $('closeSettings').addEventListener('click', () => { $('settingsPanel').hidden = true; renderMenu(); });
 
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) { pause(); return; }
     if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {});
   });
+
+  renderMenu();
+  if (!settings.level) openLevels(true); // prima apertura: una sola domanda
 })();
 </script>
 </body>
