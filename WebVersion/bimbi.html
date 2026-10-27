@@ -249,9 +249,32 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 .range-box { background: #eef6fc; border-radius: 12px; padding: 10px 12px; display: grid; gap: 8px; }
 .range-box p { margin: 0; color: var(--ink); }
 .count.bump { animation: bump .4s cubic-bezier(.2,1.8,.4,1); }
+/* cartellino di presentazione della tappa: compare da solo, sparisce da solo, si può toccare per saltarlo */
+.title-card {
+  position: absolute; left: 50%; top: 46%;
+  transform: translate(-50%, -50%) scale(.92);
+  width: min(86vw, 360px);
+  background: var(--card); border-radius: 28px;
+  padding: 20px 18px 18px;
+  display: grid; gap: 6px; justify-items: center; text-align: center;
+  box-shadow: 0 10px 0 rgba(34,64,90,.12);
+  opacity: 0; pointer-events: none;
+  transition: opacity .35s, transform .35s;
+}
+.title-card.show { opacity: 1; transform: translate(-50%, -50%) scale(1); pointer-events: auto; }
+.title-card .tc-step { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+.title-card .tc-ico { font-size: 82px; line-height: 1.05; }
+.title-card.show .tc-ico { animation: hop 1.1s ease-in-out infinite; }
+@keyframes hop { 50% { transform: translateY(-8px) rotate(-4deg); } }
+.title-card h2 { margin: 0; font-size: 28px; text-wrap: balance; }
+.title-card p { margin: 0; font-size: 17px; text-wrap: balance; }
+.tc-dots { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; margin-top: 8px; }
+.tc-dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--line); }
+.tc-dots i.done { background: var(--star); }
+.tc-dots i.here { background: var(--accent); box-shadow: 0 0 0 3px rgba(47,134,212,.25); }
 @keyframes bump { 40% { transform: scale(1.25); } }
 @media (prefers-reduced-motion: reduce) {
-  .cue.sing, .sticker-big, .node.next .bubble, .node.shake, .count.bump { animation: none; }
+  .cue.sing, .sticker-big, .node.next .bubble, .node.shake, .count.bump, .title-card.show .tc-ico { animation: none; }
 }
 </style>
 </head>
@@ -285,6 +308,13 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     </button>
     <div class="cue empty" id="cue" aria-hidden="true"></div>
     <div class="count" aria-label="Stelle prese"><b>★</b><span id="starCount">0</span></div>
+  </div>
+  <div class="title-card" id="titleCard" aria-live="polite">
+    <span class="tc-step" id="tcStep"></span>
+    <span class="tc-ico" id="tcIco" aria-hidden="true"></span>
+    <h2 id="tcTitle"></h2>
+    <p id="tcHook"></p>
+    <div class="tc-dots" id="tcDots" aria-hidden="true"></div>
   </div>
 </div>
 
@@ -438,7 +468,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   // L'ordine delle note segue il metodo Kodály: sol-mi, poi il la, poi mi-re-do,
   // poi le cinque note (do re mi sol la) e solo alla fine le canzoni vere.
   // Ogni nota è [semitoni dalla tonica, durata in battiti]; le righe sono corte per stare sullo schermo.
-  const STELLA_A = [[0, 1], [0, 1], [7, 1], [7, 1], [9, 1], [9, 1], [7, 2]];
+  // "Bril-la bril-la la stel-li-na": l'ultima nota lunga si divide in due per il testo italiano
+  const STELLA_A = [[0, 1], [0, 1], [7, 1], [7, 1], [9, 1], [9, 1], [7, 1], [7, 1]];
   const STELLA_B = [[5, 1], [5, 1], [4, 1], [4, 1], [2, 1], [2, 1], [0, 2]];
   const STELLA_C = [[7, 1], [7, 1], [5, 1], [5, 1], [4, 1], [4, 1], [2, 2]];
   const MARTINO = [
@@ -453,50 +484,88 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     [[4, 1], [4, 1], [2, 1], [2, 1], [0, 2]],
   ];
   const PHASES = ['Scopri la voce', 'Una nota', 'Sol e mi', 'Arriva il la', 'Mi, re, do', 'Cinque note', 'Canzoni'];
+  // Ogni tappa ha il suo personaggio e le sue parole: la voce canta quelle sillabe, così il titolo
+  // ("Il gatto", "La campanella") si sente nell'esercizio. `syl` vale per tutte le note,
+  // `words` dà le sillabe frase per frase. `hook` è la frase del cartellino, da leggere ad alta voce.
+  const LA = (n) => Array(n).fill('la');
   const LEVELS = [
     // L'arcobaleno: una scia larga da seguire con la voce. Avanza solo mentre canta, e le stelle sono
     // sulle cime e nelle valli, così il gioco misura anche dove la sua voce arriva comoda.
     { id: 'vola', phase: 0, title: 'L\u2019arcobaleno di Lu', icon: '🌈', mode: 'rainbow', tonic: 60, tol: 150,
+      hook: 'Lu vola sull\u2019arcobaleno con la tua voce: luuu!',
       points: [4, 4, 7, 2, 9, 0, 11, 4, 12, -1, 7, 4], spacing: 3, phrases: [] },
-    { id: 'eco', phase: 1, title: 'Eco', icon: '🐣', mode: 'note', tonic: 67, bpm: 90,
+    { id: 'eco', phase: 1, title: 'Pio pio', icon: '🐣', mode: 'note', tonic: 67, bpm: 90, syl: 'pio',
+      hook: 'Il pulcino canta \u00abpio\u00bb. Rifallo tu!',
       phrases: [[[0, 1], [0, 1], [0, 1]], [[0, 1], [0, 1], [0, 1]]] },
-    { id: 'eco-su-giu', phase: 1, title: 'Eco su e giù', icon: '🐥', mode: 'note', tonic: 67, bpm: 90,
+    { id: 'eco-su-giu', phase: 1, title: 'Pio pio, su e giù', icon: '🐥', mode: 'note', tonic: 67, bpm: 90, syl: 'pio',
+      hook: 'Tre pulcini: uno in mezzo, uno in alto, uno in basso. Pio!',
       phrases: [[[0, 1], [0, 1], [0, 1]], [[2, 1], [2, 1], [2, 1]], [[-3, 1], [-3, 1], [-3, 1]]] },
     { id: 'gatto', phase: 2, title: 'Il gatto', icon: '🐱', mode: 'note', tonic: 60, bpm: 96,
-      phrases: [[[7, 1], [4, 1], [7, 1], [4, 1]], [[7, 1], [7, 1], [4, 1], [4, 1]]] },
+      hook: 'Il gatto canta \u00abmi-ao\u00bb: prima in alto, poi in basso.',
+      phrases: [[[7, 1], [4, 1], [7, 1], [4, 1]], [[7, 1], [7, 1], [4, 1], [4, 1]]],
+      words: [['mi', 'ao', 'mi', 'ao'], ['mi', 'ao', 'mi', 'ao']] },
     { id: 'miao', phase: 2, title: 'Miao miao', icon: '🐈', mode: 'phrase', tonic: 60, bpm: 96,
-      phrases: [[[7, 1], [4, 1]], [[7, 1], [4, 1]], [[4, 1], [7, 1]], [[7, 1], [7, 1]], [[7, 1], [4, 1]]] },
+      hook: 'Due gatti si rispondono: mi-ao!',
+      phrases: [[[7, 1], [4, 1]], [[7, 1], [4, 1]], [[4, 1], [7, 1]], [[7, 1], [7, 1]], [[7, 1], [4, 1]]],
+      words: Array(5).fill(['mi', 'ao']) },
     { id: 'gattini', phase: 2, title: 'I gattini', icon: '😺', mode: 'phrase', tonic: 60, bpm: 100,
-      phrases: [[[7, 1], [7, 1], [4, 2]], [[7, 1], [4, 1], [4, 2]], [[7, .5], [7, .5], [4, .5], [4, .5], [7, 1]], [[4, 1], [7, 1], [7, 1], [4, 1]]] },
+      hook: 'I gattini chiamano la mamma: mi-a-o!',
+      phrases: [[[7, 1], [7, 1], [4, 2]], [[7, 1], [4, 1], [4, 2]], [[7, .5], [7, .5], [4, .5], [4, .5], [7, 1]], [[4, 1], [7, 1], [7, 1], [4, 1]]],
+      words: [['mi', 'a', 'o'], ['mi', 'a', 'o'], ['mi', 'ao', 'mi', 'ao', 'miao'], ['mi', 'ao', 'mi', 'ao']] },
     { id: 'campanella', phase: 3, title: 'La campanella', icon: '🛎️', mode: 'note', tonic: 60, bpm: 96,
-      phrases: [[[7, 1], [9, 1], [7, 1], [4, 1]], [[7, 1], [9, 1], [7, 1], [4, 1]]] },
-    { id: 'cucu', phase: 3, title: 'Cucù', icon: '🐦', mode: 'phrase', tonic: 60, bpm: 100, phrases: [
-      [[7, 1], [4, 1]],
-      [[7, 1], [4, 1]],
-      [[7, .5], [7, .5], [4, 1]],
-      [[7, 1], [9, 1], [7, 1], [4, 1]],
-      [[7, .5], [7, .5], [9, .5], [9, .5], [7, 1], [4, 1]],
-    ] },
+      hook: 'La campanella suona: din don!',
+      phrases: [[[7, 1], [9, 1], [7, 1], [4, 1]], [[7, 1], [9, 1], [7, 1], [4, 1]]],
+      words: [['din', 'don', 'din', 'don'], ['din', 'don', 'din', 'don']] },
+    { id: 'cucu', phase: 3, title: 'Cucù', icon: '🐦', mode: 'phrase', tonic: 60, bpm: 100,
+      hook: 'Il cuculo nel bosco canta \u00abcu-cù\u00bb.',
+      phrases: [
+        [[7, 1], [4, 1]],
+        [[7, 1], [4, 1]],
+        [[7, .5], [7, .5], [4, 1]],
+        [[7, 1], [9, 1], [7, 1], [4, 1]],
+        [[7, .5], [7, .5], [9, .5], [9, .5], [7, 1], [4, 1]],
+      ],
+      words: [['cu', 'cù'], ['cu', 'cù'], ['cu', 'cu', 'cù'], ['cu', 'cù', 'cu', 'cù'], ['cu', 'cu', 'cu', 'cu', 'cu', 'cù']] },
     { id: 'scale', phase: 4, title: 'Scendi le scale', icon: '🪜', mode: 'note', tonic: 62, bpm: 96,
-      phrases: [[[4, 1], [2, 1], [0, 2]], [[4, 1], [2, 1], [0, 2]], [[0, 1], [2, 1], [4, 2]]] },
-    { id: 'scale-canto', phase: 4, title: 'Su e giù per le scale', icon: '🏠', mode: 'phrase', tonic: 62, bpm: 104,
-      phrases: [[[4, 1], [2, 1], [0, 2]], [[4, 1], [2, 1], [0, 2]], [[0, .5], [0, .5], [0, .5], [0, .5]], [[2, .5], [2, .5], [2, .5], [2, .5]], [[4, 1], [2, 1], [0, 2]]] },
-    { id: 'trenino', phase: 5, title: 'Il trenino', icon: '🚂', mode: 'note', tonic: 62, bpm: 100,
+      hook: 'Un gradino alla volta: scen-di giù, sa-li su!',
+      phrases: [[[4, 1], [2, 1], [0, 2]], [[4, 1], [2, 1], [0, 2]], [[0, 1], [2, 1], [4, 2]]],
+      words: [['scen', 'di', 'giù'], ['scen', 'di', 'giù'], ['sa', 'li', 'su']] },
+    { id: 'scale-canto', phase: 4, title: 'Toc toc, le scale', icon: '🏠', mode: 'phrase', tonic: 62, bpm: 104,
+      hook: 'Scendi le scale e bussa alla porta: toc toc toc!',
+      phrases: [[[4, 1], [2, 1], [0, 2]], [[4, 1], [2, 1], [0, 2]], [[0, .5], [0, .5], [0, .5], [0, .5]], [[2, .5], [2, .5], [2, .5], [2, .5]], [[4, 1], [2, 1], [0, 2]]],
+      words: [['scen', 'di', 'giù'], ['scen', 'di', 'giù'], ['toc', 'toc', 'toc', 'toc'], ['toc', 'toc', 'toc', 'toc'], ['scen', 'di', 'giù']] },
+    { id: 'trenino', phase: 5, title: 'Il trenino', icon: '🚂', mode: 'note', tonic: 62, bpm: 100, syl: 'ciuf',
+      hook: 'Il trenino parte: ciuf ciuf, sempre più su.',
       phrases: [[[0, 1], [2, 1], [4, 1], [7, 1]], [[9, 1], [7, 1], [4, 1], [2, 1]], [[0, 1], [4, 1], [7, 1], [9, 1]]] },
-    { id: 'trenino-canto', phase: 5, title: 'Il trenino canta', icon: '🚃', mode: 'phrase', tonic: 62, bpm: 104,
+    { id: 'trenino-canto', phase: 5, title: 'Il trenino canta', icon: '🚃', mode: 'phrase', tonic: 62, bpm: 104, syl: 'ciuf',
+      hook: 'Il trenino canta mentre sale e scende: ciuf!',
       phrases: [[[0, 1], [2, 1], [4, 2]], [[4, 1], [7, 1], [9, 2]], [[9, 1], [7, 1], [4, 2]], [[4, 1], [2, 1], [0, 2]]] },
     { id: 'stellina-aiuto', phase: 6, title: 'Stellina, con aiuto', icon: '🌟', mode: 'note', tonic: 62, bpm: 108,
-      phrases: [STELLA_A, STELLA_B] },
+      hook: '\u00abBrilla brilla la stellina\u00bb, una nota alla volta.',
+      phrases: [STELLA_A, STELLA_B],
+      words: [['bril', 'la', 'bril', 'la', 'la', 'stel', 'li', 'na'], LA(7)] },
     { id: 'stellina', phase: 6, title: 'Brilla brilla la stellina', icon: '⭐', mode: 'phrase', tonic: 62, bpm: 108,
-      phrases: [STELLA_A, STELLA_B, STELLA_C, STELLA_C, STELLA_A, STELLA_B] },
+      hook: 'Ora tutta la canzone: \u00abBrilla brilla la stellina\u00bb!',
+      phrases: [STELLA_A, STELLA_B, STELLA_C, STELLA_C, STELLA_A, STELLA_B],
+      words: [['bril', 'la', 'bril', 'la', 'la', 'stel', 'li', 'na'], LA(7), LA(7), LA(7), ['bril', 'la', 'bril', 'la', 'la', 'stel', 'li', 'na'], LA(7)] },
     { id: 'fattoria-aiuto', phase: 6, title: 'Fattoria, con aiuto', icon: '🐔', mode: 'note', tonic: 67, bpm: 116,
-      phrases: FATTORIA },
+      hook: '\u00abNella vecchia fattoria\u00bb, una nota alla volta. I-a i-a o!',
+      phrases: FATTORIA,
+      words: [['nel', 'la', 'vec', 'chia'], ['fat', 'to', 'ria'], ['i', 'a', 'i', 'a', 'o']] },
     { id: 'fattoria', phase: 6, title: 'Nella vecchia fattoria', icon: '🐮', mode: 'phrase', tonic: 67, bpm: 116,
-      phrases: [...FATTORIA, [[-5, .5], [0, 1], [0, 1], [0, 1], [-5, 1]], FATTORIA[1], FATTORIA[2]] },
+      hook: 'Tutta la canzone: \u00abNella vecchia fattoria\u00bb!',
+      phrases: [...FATTORIA, [[-5, .5], [0, 1], [0, 1], [0, 1], [-5, 1]], FATTORIA[1], FATTORIA[2]],
+      words: [['nel', 'la', 'vec', 'chia'], ['fat', 'to', 'ria'], ['i', 'a', 'i', 'a', 'o'],
+        ['quan', 'te', 'be', 'stie', 'ha'], ['zio', 'to', 'bia'], ['i', 'a', 'i', 'a', 'o']] },
     { id: 'martino-aiuto', phase: 6, title: 'Fra Martino, con aiuto', icon: '😴', mode: 'note', tonic: 65, bpm: 112,
-      phrases: MARTINO },
+      hook: '\u00abFra Martino, campanaro\u00bb, una nota alla volta.',
+      phrases: MARTINO,
+      words: [['fra', 'mar', 'ti', 'no'], ['dor', 'mi', 'tu'], ['suo', 'na', 'le', 'cam', 'pa', 'ne'], ['din', 'don', 'dan']] },
     { id: 'martino', phase: 6, title: 'Fra Martino', icon: '🔔', mode: 'phrase', tonic: 65, bpm: 112,
-      phrases: MARTINO.flatMap((p) => [p, p]) },
+      hook: 'Tutta la canzone: \u00abFra Martino, dormi tu?\u00bb',
+      phrases: MARTINO.flatMap((p) => [p, p]),
+      words: [['fra', 'mar', 'ti', 'no'], ['cam', 'pa', 'na', 'ro'], ['dor', 'mi', 'tu'], ['dor', 'mi', 'tu'],
+        ['suo', 'na', 'le', 'cam', 'pa', 'ne'], ['suo', 'na', 'le', 'cam', 'pa', 'ne'], ['din', 'don', 'dan'], ['din', 'don', 'dan']] },
   ];
   const STICKERS = ['🐶', '🐱', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐷', '🐸', '🐵',
     '🐔', '🐧', '🦉', '🦋', '🐞', '🐢', '🐬', '🦄', '🐙', '🦒', '🐘', '🦔'];
@@ -586,17 +655,71 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     return { filter, amp };
   }
 
-  // Voce sintetica che canta "lu": dente di sega filtrato sulle formanti della "u",
-  // con una breve "l" iniziale, un piccolo scivolamento d'attacco e un vibrato leggero.
-  function singLu(midi, t, dur, vol = 0.9) {
+  // Voce sintetica che canta una sillaba: dente di sega filtrato sulle formanti della vocale
+  // (voce chiara, da bambino), con una consonante iniziale semplificata, un piccolo scivolamento
+  // d'attacco e un vibrato leggero. Le consonanti sono accennate: contano soprattutto le vocali.
+  const VOWELS = {
+    a: [[850, 1500, 2800], [1, 0.6, 0.14]],
+    e: [[550, 2100, 2900], [1, 0.45, 0.18]],
+    i: [[320, 2600, 3300], [1, 0.35, 0.18]],
+    o: [[520, 950, 2800], [1, 0.55, 0.08]],
+    u: [[400, 950, 2800], [1, 0.45, 0.08]],
+  };
+  function parseSyl(syl) {
+    const w = syl.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/^h/, '');
+    const m = w.match(/^([^aeiou]*)(.*)$/);
+    let onset = m[1], rest = m[2];
+    // ci, gi, sci davanti a vocale: la i non si sente (ciuf, giù)
+    if (['c', 'g', 'sc'].includes(onset) && rest.length > 1 && rest[0] === 'i' && 'aeou'.includes(rest[1])) { onset += 'i'; rest = rest.slice(1); }
+    const v = rest.match(/^([aeiou]+)(.*)$/);
+    return { onset, vowels: (v ? v[1] : 'u').split(''), coda: v ? v[2] : '' };
+  }
+  function onsetKind(o) {
+    if (!o) return null;
+    if (o === 'l' || o === 'r') return 'liquid';
+    if (o === 'm' || o === 'n') return 'nasal';
+    if (['b', 'd', 'g', 'br'].includes(o)) return 'voiced';
+    if (['ci', 'gi', 'z'].includes(o)) return 'affricate';
+    if (o === 'sc' || o === 'sci') return 'sh';
+    if (['f', 'fr', 'v', 's'].includes(o)) return 'fricative';
+    return 'stop'; // p, t, c, ch, q, st
+  }
+  let noiseBuf = null;
+  function noise(t, dur, freq, gain, q = 1.2) {
+    if (!noiseBuf) {
+      noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+      const d = noiseBuf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = noiseBuf;
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = freq;
+    bp.Q.value = q;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(gain, t + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.0005, t + dur);
+    src.connect(bp).connect(g).connect(master);
+    src.start(t);
+    src.stop(t + dur + 0.02);
+  }
+  function singSyl(midi, t, dur, syl = 'lu', vol = 0.9) {
+    const { onset, vowels, coda } = parseSyl(syl || 'lu');
+    const kind = onsetKind(onset);
     const f = mtof(midi);
+    const on = { stop: 0.03, voiced: 0.03, affricate: 0.07, sh: 0.08, fricative: 0.07, nasal: 0.07 }[kind] || 0;
+    const codaDur = /^[nm]/.test(coda) ? Math.min(0.12, dur * 0.25) : coda ? Math.min(0.08, dur * 0.2) : 0;
+    const vStart = t + on;
+    const vEnd = Math.max(vStart + 0.08, t + dur - codaDur);
+
     const out = ctx.createGain();
     out.gain.value = 0;
     const lp = ctx.createBiquadFilter();
     lp.type = 'lowpass';
     lp.frequency.value = 3400;
     out.connect(lp).connect(master);
-
     const saw = ctx.createOscillator();
     saw.type = 'sawtooth';
     saw.frequency.value = f;
@@ -613,23 +736,67 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
       o.detune.setValueAtTime(-35, t);
       o.detune.linearRampToValueAtTime(0, t + 0.08);
     }
-    // Le formanti seguono la nota, come in una voce chiara che canta acuto.
-    const f1 = Math.max(400, f * 1.08), f2 = Math.max(950, f * 2.1);
-    const bands = [bandpass(f1, 4, 1), bandpass(f2, 6, 0.45), bandpass(2800, 8, 0.08)];
-    bands[1].filter.frequency.setValueAtTime(1500, t);
-    bands[1].filter.frequency.exponentialRampToValueAtTime(f2, t + 0.09);
+    // formanti della vocale (o delle vocali, che scivolano una nell'altra: mi-ao, pio)
+    const tuned = (v) => {
+      const [fr, gn] = VOWELS[v] || VOWELS.u;
+      const f1 = Math.max(fr[0], f * 1.08);
+      return [[f1, Math.max(fr[1], f1 * 1.4), fr[2]], gn];
+    };
+    const first = tuned(vowels[0]);
+    const bands = [0, 1, 2].map((k) => bandpass(first[0][k], [4, 6, 8][k], first[1][k]));
     for (const b of bands) { saw.connect(b.filter); b.amp.connect(out); }
+    if (kind === 'liquid') { // la "l": seconda formante che parte alta e scende sulla vocale
+      bands[1].filter.frequency.setValueAtTime(1500, t);
+      bands[1].filter.frequency.exponentialRampToValueAtTime(first[0][1], vStart + 0.08);
+    }
+    const seg = (vEnd - vStart) / vowels.length;
+    let prev = first;
+    vowels.forEach((v, i) => {
+      if (!i) return;
+      const next = tuned(v);
+      const at = vStart + seg * i;
+      bands.forEach((b, k) => {
+        b.filter.frequency.setValueAtTime(prev[0][k], at - seg * 0.4);
+        b.filter.frequency.linearRampToValueAtTime(next[0][k], at);
+        b.amp.gain.setValueAtTime(prev[1][k], at - seg * 0.4);
+        b.amp.gain.linearRampToValueAtTime(next[1][k], at);
+      });
+      prev = next;
+    });
     const body = ctx.createGain();
     body.gain.value = 0.35;
     sine.connect(body).connect(out);
 
-    const rel = Math.max(t + 0.12, t + dur - 0.05);
+    // inviluppo: le consonanti sonore (l, m, n, b, d) partono già con un po' di voce
+    const voicedOnset = ['liquid', 'nasal', 'voiced'].includes(kind) || !kind;
     out.gain.setValueAtTime(0, t);
-    out.gain.linearRampToValueAtTime(vol * 0.55, t + 0.035);
-    out.gain.linearRampToValueAtTime(vol, t + 0.1);
-    out.gain.setValueAtTime(vol, rel);
-    out.gain.setTargetAtTime(0, rel, 0.05);
-    for (const o of [saw, sine, vib]) { o.start(t); o.stop(rel + 0.4); }
+    if (voicedOnset) {
+      out.gain.linearRampToValueAtTime(vol * (kind === 'nasal' ? 0.3 : 0.5), t + Math.max(0.03, on));
+      out.gain.linearRampToValueAtTime(vol, vStart + 0.06);
+    } else {
+      out.gain.setValueAtTime(0, vStart);
+      out.gain.linearRampToValueAtTime(vol, vStart + 0.03);
+    }
+    out.gain.setValueAtTime(vol, vEnd);
+    if (/^[nm]/.test(coda)) { // din, don, scen: la voce si chiude in un ronzio
+      out.gain.linearRampToValueAtTime(vol * 0.3, vEnd + 0.04);
+      out.gain.setValueAtTime(vol * 0.3, t + dur - 0.04);
+      out.gain.setTargetAtTime(0, t + dur - 0.04, 0.04);
+    } else if (coda) {
+      out.gain.setTargetAtTime(0, vEnd, 0.02);
+    } else {
+      out.gain.setTargetAtTime(0, Math.max(vEnd, t + dur - 0.05), 0.05);
+    }
+    // consonanti di rumore
+    if (kind === 'stop') noise(t, 0.03, /t/.test(onset) ? 3500 : onset === 'p' ? 1000 : 2200, 0.22);
+    else if (kind === 'voiced') noise(t, 0.025, 900, 0.12);
+    else if (kind === 'affricate') noise(t, 0.08, 3200, 0.16);
+    else if (kind === 'sh') noise(t, 0.09, 2600, 0.18);
+    else if (kind === 'fricative') noise(t, 0.08, onset === 's' ? 5500 : 1800, 0.1);
+    if (coda === 'f') noise(vEnd, 0.08, 1800, 0.1);
+    else if (coda === 'c') noise(vEnd + 0.02, 0.03, 2200, 0.15);
+    const end = t + dur + 0.4;
+    for (const o of [saw, sine, vib]) { o.start(t); o.stop(end); }
   }
 
   function chime(midi, t, vol = 0.12) {
@@ -766,8 +933,9 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     halos = [];
     // carillon di inizio tappa, poi si comincia
     const boxDur = musicBox(tonic, ctx.currentTime + 0.35);
-    run.until = now() + 0.35 + boxDur + 0.2;
-    muteUntil = Math.max(muteUntil, run.until);
+    muteUntil = Math.max(muteUntil, now() + 0.35 + boxDur + 0.2);
+    run.until = Math.max(muteUntil, now() + 3);
+    showTitleCard(song);
     lu.x = W * 0.5;
     lu.y = H + 40;
     $('starCount').textContent = '0';
@@ -776,11 +944,28 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     requestWakeLock();
   }
 
+  // Chi canta l'esempio è il personaggio della tappa (il gatto, il pulcino…); al suo turno, il microfono.
   function setCue(kind) {
     const c = $('cue');
     c.className = 'cue' + (kind === 'sing' ? ' sing' : kind ? '' : ' empty');
-    c.textContent = kind === 'listen' ? '👂' : kind === 'sing' ? '🎤' : kind === 'party' ? '🎉' : '';
+    c.textContent = kind === 'listen' ? (run ? run.song.icon : '👂') : kind === 'sing' ? '🎤' : kind === 'party' ? '🎉' : '';
   }
+  function wordAt(p, i) {
+    const s = run.song;
+    return (s.words && s.words[p] && s.words[p][i]) || s.syl || 'lu';
+  }
+
+  // Cartellino della tappa: compare mentre suona il carillon, sparisce da solo.
+  function showTitleCard(song) {
+    const idx = LEVELS.indexOf(song);
+    $('tcStep').textContent = `${PHASES[song.phase]} · tappa ${idx + 1} di ${LEVELS.length}`;
+    $('tcIco').textContent = song.icon;
+    $('tcTitle').textContent = song.title;
+    $('tcHook').textContent = song.hook || '';
+    $('tcDots').innerHTML = LEVELS.map((l, i) => `<i class="${i === idx ? 'here' : (best[l.id] || 0) > 0 ? 'done' : ''}"></i>`).join('');
+    $('titleCard').classList.add('show');
+  }
+  function hideTitleCard() { $('titleCard').classList.remove('show'); }
 
   // Inizio di una riga di stelle. In 'phrase' la voce canta tutta la frase; in 'note' la canta
   // solo se ha almeno tre note, per farne sentire la forma, poi ogni stella ridà la sua nota.
@@ -798,8 +983,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     run.sing = [];
     ph.forEach((n, i) => {
       const d = n.beats * spb;
-      singLu(n.midi, at + off, d * 0.92);
-      run.sing.push({ p: run.p, i, t0: pt + off, t1: pt + off + d * 0.92 });
+      singSyl(n.midi, at + off, d * 0.92, wordAt(run.p, i));
+      run.sing.push({ p: run.p, i, t0: pt + off, t1: pt + off + d * 0.92, syl: wordAt(run.p, i) });
       off += d;
     });
     run.until = pt + off + 0.45;
@@ -811,8 +996,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     const n = run.phrases[run.p][0];
     run.phase = 'cue';
     const at = ctx.currentTime + 0.05, pt = now() + 0.05;
-    singLu(n.midi, at, 0.7);
-    run.sing = [{ p: run.p, i: 0, t0: pt, t1: pt + 0.7 }];
+    singSyl(n.midi, at, 0.7, wordAt(run.p, 0));
+    run.sing = [{ p: run.p, i: 0, t0: pt, t1: pt + 0.7, syl: wordAt(run.p, 0) }];
     bloop(at + 0.85);
     run.until = pt + 1.05;
     muteUntil = Math.max(muteUntil, pt + 1.3);
@@ -839,8 +1024,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   function starSings(i) {
     const n = run.phrases[run.p][i];
     const at = ctx.currentTime + 0.05, pt = now() + 0.05;
-    singLu(n.midi, at, 0.75);
-    run.sing.push({ p: run.p, i, t0: pt, t1: pt + 0.75 });
+    singSyl(n.midi, at, 0.75, wordAt(run.p, i));
+    run.sing.push({ p: run.p, i, t0: pt, t1: pt + 0.75, syl: wordAt(run.p, i) });
     muteUntil = Math.max(muteUntil, pt + 1.05);
   }
 
@@ -933,8 +1118,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     run.sing = [];
     run.phrases.forEach((ph, p) => ph.forEach((n, i) => {
       const d = n.beats * spb;
-      singLu(n.midi, at + off, d * 0.92);
-      run.sing.push({ p, i, t0: pt + off, t1: pt + off + d * 0.92 });
+      singSyl(n.midi, at + off, d * 0.92, wordAt(p, i));
+      run.sing.push({ p, i, t0: pt + off, t1: pt + off + d * 0.92, syl: wordAt(p, i) });
       off += d;
     }));
     const tonic = run.song.tonic + settings.shift;
@@ -1060,6 +1245,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     muteUntil = 0;
     $('reward').hidden = true;
     $('pauseOv').hidden = true;
+    hideTitleCard();
     showScreen('home');
   }
 
@@ -1090,6 +1276,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     switch (run.phase) {
       case 'intro':
         if (t >= run.until) {
+          hideTitleCard();
           if (run.mode === 'rainbow') { run.phase = 'rainbow'; setCue('sing'); } else beginPhrase();
         }
         break;
@@ -1463,6 +1650,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
       if (st === 'gold' || isSinging) { g.fillStyle = col; g.fill(); g.strokeStyle = 'rgba(255,255,255,.95)'; g.lineWidth = 2; g.stroke(); }
       else if (st === 'helped') { g.fillStyle = '#ffffff'; g.fill(); g.strokeStyle = col; g.lineWidth = 2; g.stroke(); }
       else { g.fillStyle = 'rgba(255,255,255,.55)'; g.fill(); g.strokeStyle = col; g.lineWidth = 2.5; g.stroke(); }
+      drawWord(wordAt(dp, i), x, y - r - 9);
       if (settings.syll) drawSyl(n.midi, x, y + r + 14);
     });
 
@@ -1503,6 +1691,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
       g.strokeStyle = col;
       g.lineWidth = 4;
       g.stroke();
+      drawWord(wordAt(dp, activeK), active.x, active.y - R - 10);
       if (settings.syll) drawSyl(ph[activeK].midi, active.x, active.y + R + 16);
       if (a && a.holdStart != null) {
         const p = Math.min(1, (t - a.holdStart) / run.hold);
@@ -1531,7 +1720,43 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
       }
     }
 
+    if (sing && sing.syl) drawBubble(sing.syl);
     drawParticles(dt);
+  }
+
+  // parola cantata, sopra la stella (per l'adulto che legge e canta con lei)
+  function drawWord(w, x, y) {
+    if (!w || w === 'lu') return;
+    g.font = '700 15px ' + getComputedStyle(document.body).fontFamily;
+    g.textAlign = 'center';
+    g.lineWidth = 4;
+    g.strokeStyle = 'rgba(255,255,255,.95)';
+    g.strokeText(w, x, y);
+    g.fillStyle = '#22405a';
+    g.fillText(w, x, y);
+    g.textAlign = 'start';
+  }
+  // nuvoletta sotto il personaggio della tappa, con la sillaba che sta cantando
+  function drawBubble(w) {
+    const r = $('cue').getBoundingClientRect();
+    const cx = r.left + r.width / 2, top = r.bottom + 12;
+    g.font = '700 20px ' + getComputedStyle(document.body).fontFamily;
+    const tw = g.measureText(w).width + 28, th = 36;
+    g.fillStyle = '#ffffff';
+    g.beginPath();
+    g.moveTo(cx - 8, top);
+    g.lineTo(cx, top - 9);
+    g.lineTo(cx + 8, top);
+    g.fill();
+    g.beginPath();
+    if (g.roundRect) g.roundRect(cx - tw / 2, top, tw, th, 18); else g.rect(cx - tw / 2, top, tw, th);
+    g.fill();
+    g.fillStyle = '#22405a';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText(w, cx, top + th / 2 + 1);
+    g.textAlign = 'start';
+    g.textBaseline = 'alphabetic';
   }
 
   // sillaba sotto la stella (se l'adulto la vuole), con un bordo chiaro per leggerla sul cielo
@@ -1666,6 +1891,11 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {});
   });
   $('pauseGo').addEventListener('click', resumeRun);
+  // toccare il cartellino lo salta (si aspetta solo la fine del carillon)
+  $('titleCard').addEventListener('click', () => {
+    hideTitleCard();
+    if (run && run.phase === 'intro') run.until = Math.max(now(), muteUntil);
+  });
   $('pauseHome').addEventListener('click', leaveSong);
 
   // ---- Area adulti: tieni premuto l'ingranaggio ----
