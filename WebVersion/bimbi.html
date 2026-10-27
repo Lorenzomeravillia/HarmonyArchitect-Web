@@ -86,29 +86,41 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 .gear.pressing::after { animation: fillring 1.2s linear forwards; }
 @keyframes fillring { to { clip-path: inset(0 0 0 0); } }
 
-.songs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.song {
-  border: 0;
-  background: var(--card);
-  border-radius: 22px;
-  padding: 14px 10px 12px;
-  display: grid;
-  justify-items: center;
-  gap: 6px;
-  box-shadow: 0 4px 0 var(--line);
-  min-height: 150px;
-  text-align: center;
+.path { display: grid; gap: 2px; justify-items: center; padding-bottom: 6px; }
+.phase-title {
+  margin-top: 14px;
+  font-size: 13px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .06em;
+  color: var(--muted);
+  background: rgba(255,255,255,.6);
+  padding: 4px 14px; border-radius: 999px;
 }
-.song:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--line); }
-.song .ico { font-size: 54px; line-height: 1; }
-.song .ttl { font-size: 16px; font-weight: 600; text-wrap: balance; }
-.song .meta { display: flex; gap: 8px; align-items: center; font-size: 15px; }
-.dots { display: flex; gap: 3px; }
-.dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
-.dots i.on { background: var(--accent); }
-.best { color: var(--star-edge); letter-spacing: 1px; }
-.best .off { color: var(--line); }
-
+.node {
+  border: 0; background: none; padding: 4px;
+  width: 132px;
+  display: grid; justify-items: center; gap: 2px;
+  transform: translateX(var(--dx, 0px));
+}
+.node .bubble {
+  width: 78px; height: 78px; border-radius: 50%;
+  background: var(--card);
+  display: grid; place-items: center;
+  font-size: 40px;
+  box-shadow: 0 5px 0 var(--line);
+}
+.node:active .bubble { transform: translateY(3px); box-shadow: 0 2px 0 var(--line); }
+.node.locked .bubble { background: rgba(255,255,255,.45); box-shadow: none; font-size: 26px; }
+.node.next .bubble { box-shadow: 0 5px 0 var(--star-edge), 0 0 0 7px rgba(255,210,63,.55); animation: pulse 1.4s ease-in-out infinite; }
+.node .nstars { font-size: 15px; color: var(--star-edge); letter-spacing: 1px; }
+.node .nstars .off { color: rgba(255,255,255,.85); }
+.node .ntitle { font-size: 13px; font-weight: 600; text-align: center; line-height: 1.15; text-wrap: balance; }
+.node.locked .ntitle, .node.locked .nstars { opacity: .5; }
+.node.shake { animation: shake .4s; }
+@keyframes shake {
+  25% { transform: translateX(calc(var(--dx, 0px) - 7px)); }
+  75% { transform: translateX(calc(var(--dx, 0px) + 7px)); }
+}
+.unlock { margin: 0; font-size: 18px; font-weight: 600; color: var(--accent); }
 .album { background: rgba(255,255,255,.6); border-radius: 22px; padding: 14px; display: grid; gap: 10px; }
 .album h2 { margin: 0; font-size: 18px; display: flex; justify-content: space-between; align-items: baseline; }
 .album h2 span { font-size: 14px; color: var(--muted); font-weight: 500; }
@@ -224,7 +236,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 .actions button.danger { color: #b2402f; }
 #copyOut { width: 100%; height: 120px; font: 12px ui-monospace, Menlo, monospace; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); }
 @media (prefers-reduced-motion: reduce) {
-  .cue.sing, .sticker-big { animation: none; }
+  .cue.sing, .sticker-big, .node.next .bubble, .node.shake { animation: none; }
 }
 </style>
 </head>
@@ -238,7 +250,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
       <svg viewBox="0 0 24 24"><path d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.6 7.6 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.6 7.6 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.6 7.6 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.6 7.6 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg>
     </button>
   </header>
-  <div class="songs" id="songs"></div>
+  <div class="path" id="path"></div>
   <section class="album">
     <h2>Il tuo album <span id="albumCount"></span></h2>
     <div class="stickers" id="stickers"></div>
@@ -261,6 +273,12 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     <h2 id="rewardTitle">Un nuovo amico!</h2>
     <div class="sticker-big" id="rewardSticker"></div>
     <div class="reward-stars" id="rewardStars"></div>
+    <p class="unlock" id="rewardUnlock" hidden>🔓 Nuova tappa!</p>
+    <div class="row" id="nextRow" hidden>
+      <button class="big go" id="next" aria-label="Vai alla prossima tappa">
+        Avanti<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+      </button>
+    </div>
     <div class="row">
       <button class="big" id="toHome" aria-label="Torna a casa">
         <svg viewBox="0 0 24 24"><path d="M12 3 2 11.5h3V21h5.5v-6h3v6H19v-9.5h3z"/></svg>Casa
@@ -310,6 +328,14 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
       </div>
     </div>
     <div class="field">
+      <span>Tappe del percorso</span>
+      <div class="seg" id="unlockSeg">
+        <button data-v="0">Una dopo l'altra</button>
+        <button data-v="1">Tutte aperte</button>
+      </div>
+      <small>Una tappa si apre quando la precedente è finita con almeno 2 stelle.</small>
+    </div>
+    <div class="field">
       <span>Un'ottava sopra o sotto vale</span>
       <div class="seg" id="octSeg">
         <button data-v="1">Sì</button>
@@ -320,7 +346,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
       <span>Ultime partite</span>
       <div class="tbl">
         <table>
-          <thead><tr><th>Quando</th><th>Canzone</th><th>Senza aiuto</th><th>Aggancio</th><th>Scarto</th></tr></thead>
+          <thead><tr><th>Quando</th><th>Tappa</th><th>Senza aiuto</th><th>Aggancio</th><th>Scarto</th></tr></thead>
           <tbody id="sessRows"></tbody>
         </table>
       </div>
@@ -346,9 +372,14 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   const avg = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN);
   const fmtS = (s) => s.toFixed(1).replace('.', ',') + ' s';
 
-  // ---- Canzoni ----
-  // Ogni nota è [semitoni dalla tonica, durata in battiti]. Le frasi sono corte
-  // perché devono stare in una riga sullo schermo del telefono.
+  // ---- Percorso ----
+  // Tre modi di giocare, dal più guidato al più impegnativo:
+  //   'free'   Lu vola: nessuna nota da imitare, basta portare la voce in alto o in basso;
+  //   'note'   eco nota per nota: ogni stella canta la sua nota subito prima del turno;
+  //   'phrase' eco di frase: si ascolta la frase intera e poi la si canta stella per stella.
+  // L'ordine delle note segue il metodo Kodály: sol-mi, poi il la, poi mi-re-do,
+  // poi le cinque note (do re mi sol la) e solo alla fine le canzoni vere.
+  // Ogni nota è [semitoni dalla tonica, durata in battiti]; le righe sono corte per stare sullo schermo.
   const STELLA_A = [[0, 1], [0, 1], [7, 1], [7, 1], [9, 1], [9, 1], [7, 2]];
   const STELLA_B = [[5, 1], [5, 1], [4, 1], [4, 1], [2, 1], [2, 1], [0, 2]];
   const STELLA_C = [[7, 1], [7, 1], [5, 1], [5, 1], [4, 1], [4, 1], [2, 2]];
@@ -363,19 +394,48 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     [[-3, 1], [-3, 1], [-5, 2]],
     [[4, 1], [4, 1], [2, 1], [2, 1], [0, 2]],
   ];
-  const SONGS = [
-    { id: 'cucu', title: 'Cucù', icon: '🐦', level: 1, tonic: 60, bpm: 100, phrases: [
+  const PHASES = ['Scopri la voce', 'Una nota', 'Sol e mi', 'Arriva il la', 'Mi, re, do', 'Cinque note', 'Canzoni'];
+  const LEVELS = [
+    { id: 'vola', phase: 0, title: 'Lu vola', icon: '🎈', mode: 'free', tonic: 60, bpm: 100, tol: 150, hold: 0.3,
+      phrases: [[[12, 1], [2, 1], [9, 1]], [[0, 1], [11, 1], [4, 1]]] },
+    { id: 'eco', phase: 1, title: 'Eco', icon: '🐣', mode: 'note', tonic: 67, bpm: 90,
+      phrases: [[[0, 1], [0, 1], [0, 1]], [[0, 1], [0, 1], [0, 1]]] },
+    { id: 'eco-su-giu', phase: 1, title: 'Eco su e giù', icon: '🐥', mode: 'note', tonic: 67, bpm: 90,
+      phrases: [[[0, 1], [0, 1], [0, 1]], [[2, 1], [2, 1], [2, 1]], [[-3, 1], [-3, 1], [-3, 1]]] },
+    { id: 'gatto', phase: 2, title: 'Il gatto', icon: '🐱', mode: 'note', tonic: 60, bpm: 96,
+      phrases: [[[7, 1], [4, 1], [7, 1], [4, 1]], [[7, 1], [7, 1], [4, 1], [4, 1]]] },
+    { id: 'miao', phase: 2, title: 'Miao miao', icon: '🐈', mode: 'phrase', tonic: 60, bpm: 96,
+      phrases: [[[7, 1], [4, 1]], [[7, 1], [4, 1]], [[4, 1], [7, 1]], [[7, 1], [7, 1]], [[7, 1], [4, 1]]] },
+    { id: 'gattini', phase: 2, title: 'I gattini', icon: '😺', mode: 'phrase', tonic: 60, bpm: 100,
+      phrases: [[[7, 1], [7, 1], [4, 2]], [[7, 1], [4, 1], [4, 2]], [[7, .5], [7, .5], [4, .5], [4, .5], [7, 1]], [[4, 1], [7, 1], [7, 1], [4, 1]]] },
+    { id: 'campanella', phase: 3, title: 'La campanella', icon: '🛎️', mode: 'note', tonic: 60, bpm: 96,
+      phrases: [[[7, 1], [9, 1], [7, 1], [4, 1]], [[7, 1], [9, 1], [7, 1], [4, 1]]] },
+    { id: 'cucu', phase: 3, title: 'Cucù', icon: '🐦', mode: 'phrase', tonic: 60, bpm: 100, phrases: [
       [[7, 1], [4, 1]],
       [[7, 1], [4, 1]],
       [[7, .5], [7, .5], [4, 1]],
       [[7, 1], [9, 1], [7, 1], [4, 1]],
       [[7, .5], [7, .5], [9, .5], [9, .5], [7, 1], [4, 1]],
     ] },
-    { id: 'stellina', title: 'Brilla brilla la stellina', icon: '⭐', level: 2, tonic: 60, bpm: 108,
+    { id: 'scale', phase: 4, title: 'Scendi le scale', icon: '🪜', mode: 'note', tonic: 62, bpm: 96,
+      phrases: [[[4, 1], [2, 1], [0, 2]], [[4, 1], [2, 1], [0, 2]], [[0, 1], [2, 1], [4, 2]]] },
+    { id: 'scale-canto', phase: 4, title: 'Su e giù per le scale', icon: '🏠', mode: 'phrase', tonic: 62, bpm: 104,
+      phrases: [[[4, 1], [2, 1], [0, 2]], [[4, 1], [2, 1], [0, 2]], [[0, .5], [0, .5], [0, .5], [0, .5]], [[2, .5], [2, .5], [2, .5], [2, .5]], [[4, 1], [2, 1], [0, 2]]] },
+    { id: 'trenino', phase: 5, title: 'Il trenino', icon: '🚂', mode: 'note', tonic: 62, bpm: 100,
+      phrases: [[[0, 1], [2, 1], [4, 1], [7, 1]], [[9, 1], [7, 1], [4, 1], [2, 1]], [[0, 1], [4, 1], [7, 1], [9, 1]]] },
+    { id: 'trenino-canto', phase: 5, title: 'Il trenino canta', icon: '🚃', mode: 'phrase', tonic: 62, bpm: 104,
+      phrases: [[[0, 1], [2, 1], [4, 2]], [[4, 1], [7, 1], [9, 2]], [[9, 1], [7, 1], [4, 2]], [[4, 1], [2, 1], [0, 2]]] },
+    { id: 'stellina-aiuto', phase: 6, title: 'Stellina, con aiuto', icon: '🌟', mode: 'note', tonic: 62, bpm: 108,
+      phrases: [STELLA_A, STELLA_B] },
+    { id: 'stellina', phase: 6, title: 'Brilla brilla la stellina', icon: '⭐', mode: 'phrase', tonic: 62, bpm: 108,
       phrases: [STELLA_A, STELLA_B, STELLA_C, STELLA_C, STELLA_A, STELLA_B] },
-    { id: 'fattoria', title: 'Nella vecchia fattoria', icon: '🐮', level: 2, tonic: 65, bpm: 116,
+    { id: 'fattoria-aiuto', phase: 6, title: 'Fattoria, con aiuto', icon: '🐔', mode: 'note', tonic: 67, bpm: 116,
+      phrases: FATTORIA },
+    { id: 'fattoria', phase: 6, title: 'Nella vecchia fattoria', icon: '🐮', mode: 'phrase', tonic: 67, bpm: 116,
       phrases: [...FATTORIA, [[-5, .5], [0, 1], [0, 1], [0, 1], [-5, 1]], FATTORIA[1], FATTORIA[2]] },
-    { id: 'martino', title: 'Fra Martino', icon: '🔔', level: 3, tonic: 65, bpm: 112,
+    { id: 'martino-aiuto', phase: 6, title: 'Fra Martino, con aiuto', icon: '😴', mode: 'note', tonic: 65, bpm: 112,
+      phrases: MARTINO },
+    { id: 'martino', phase: 6, title: 'Fra Martino', icon: '🔔', mode: 'phrase', tonic: 65, bpm: 112,
       phrases: MARTINO.flatMap((p) => [p, p]) },
   ];
   const STICKERS = ['🐶', '🐱', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐷', '🐸', '🐵',
@@ -391,7 +451,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   const KEYS = { settings: 'lu.settings.v1', album: 'lu.album.v1', best: 'lu.best.v1', sessions: 'lu.sessions.v1' };
   function load(k, fallback) { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? fallback; } catch (e) { return fallback; } }
   function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
-  const settings = Object.assign({ shift: 0, tol: 50, hold: 0.5, octave: true }, load(KEYS.settings, {}));
+  const settings = Object.assign({ shift: 0, tol: 50, hold: 0.5, octave: true, unlockAll: false }, load(KEYS.settings, {}));
   let album = load(KEYS.album, []);
   let best = load(KEYS.best, {});
   let sessions = load(KEYS.sessions, []);
@@ -588,6 +648,9 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     const [lo, hi] = songRange(song);
     run = {
       song, phrases, lo, hi,
+      mode: song.mode || 'phrase',
+      tol: song.tol ?? settings.tol,
+      hold: song.hold ?? settings.hold,
       p: 0, k: 0,
       phase: 'intro', until: now() + 0.9,
       state: phrases.map((ph) => ph.map(() => 'todo')),
@@ -609,10 +672,14 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     c.textContent = kind === 'listen' ? '👂' : kind === 'sing' ? '🎤' : kind === 'party' ? '🎉' : '';
   }
 
-  // La frase intera, cantata dalla voce mentre le stelle si accendono.
+  // Inizio di una riga di stelle. In 'phrase' la voce canta tutta la frase; in 'note' la canta
+  // solo se ha almeno tre note, per farne sentire la forma, poi ogni stella ridà la sua nota.
   function beginPhrase() {
     const ph = run.phrases[run.p];
     run.k = 0;
+    run.sing = [];
+    if (run.mode === 'free') { activate(); return; }
+    if (run.mode === 'note' && ph.length < 3) { beginStarListen(); return; }
     run.phase = 'listen';
     setCue('listen');
     const spb = 60 / run.song.bpm;
@@ -642,6 +709,15 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     muteUntil = Math.max(muteUntil, pt + 1.3);
   }
 
+  // Eco nota per nota: la stella canta la sua nota, subito dopo tocca a lei.
+  function beginStarListen() {
+    run.phase = 'starListen';
+    run.state[run.p][run.k] = 'active';
+    setCue('listen');
+    starSings(run.k);
+    run.until = now() + 0.85;
+  }
+
   function activate() {
     // il tempo parte quando il microfono torna ad ascoltare, non durante la nota di riferimento
     const t = Math.max(now(), muteUntil);
@@ -664,17 +740,17 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     const target = run.phrases[run.p][run.k].midi;
     const c = Number.isNaN(voice.shown) ? NaN : (voice.shown - target) * 100;
     a.c = c;
-    if (!Number.isNaN(c) && Math.abs(c) <= settings.tol) {
+    if (!Number.isNaN(c) && Math.abs(c) <= run.tol) {
       if (a.holdStart == null) { a.holdStart = t; a.cents = []; }
       a.cents.push(Math.abs(c));
       a.lastIn = t;
-      if (t - a.holdStart >= settings.hold) { collect(false); return; }
+      if (t - a.holdStart >= run.hold) { collect(false); return; }
     } else if (a.holdStart != null && t - a.lastIn > GRACE) {
       a.holdStart = null;
     }
     if (a.holdStart == null) {
       if (t - a.start >= GIVE_UP) { collect(true); return; }
-      if (t >= a.nextHelp && a.helps < MAX_HELPS) {
+      if (t >= a.nextHelp && a.helps < MAX_HELPS && run.mode !== 'free') {
         a.helps++;
         a.nextHelp = t + HELP_EVERY;
         starSings(run.k);
@@ -705,7 +781,10 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 
   function nextStar() {
     run.k++;
-    if (run.k < run.phrases[run.p].length) { activate(); return; }
+    if (run.k < run.phrases[run.p].length) {
+      if (run.mode === 'note') beginStarListen(); else activate();
+      return;
+    }
     run.phase = 'phraseDone';
     run.until = now() + 0.9;
     setCue(null);
@@ -716,6 +795,15 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   function beginFinale() {
     run.phase = 'finale';
     setCue('party');
+    if (run.mode === 'free') { // niente melodia da ricantare: solo la fanfara
+      const tonic = run.song.tonic + settings.shift;
+      const at = ctx.currentTime + 0.1;
+      [0, 4, 7, 12].forEach((iv, j) => chime(tonic + iv - 12, at + j * 0.12, 0.25));
+      run.sing = [];
+      run.until = now() + 1.2;
+      muteUntil = Math.max(muteUntil, run.until);
+      return;
+    }
     const spb = 60 / run.song.bpm;
     const lead = 0.4;
     const at = ctx.currentTime + lead, pt = now() + lead;
@@ -744,8 +832,14 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     const gold = run.notes.filter((n) => !n.helped).length;
     const stars = rating(gold, run.total);
     saveSession(true);
+    const idx = LEVELS.indexOf(run.song);
+    const nextWasOpen = idx + 1 < LEVELS.length && unlocked(idx + 1);
     best[run.song.id] = Math.max(best[run.song.id] || 0, stars);
     save(KEYS.best, best);
+    const nextOpen = idx + 1 < LEVELS.length && unlocked(idx + 1);
+    $('rewardUnlock').hidden = !(nextOpen && !nextWasOpen);
+    $('nextRow').hidden = !nextOpen;
+    $('again').classList.toggle('go', !nextOpen);
     const free = STICKERS.filter((s) => !album.includes(s));
     const pick = free.length ? free[Math.floor(Math.random() * free.length)] : STICKERS[Math.floor(Math.random() * STICKERS.length)];
     const isNew = free.length > 0;
@@ -809,12 +903,13 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     if (run && !Number.isNaN(voice.m)) {
       const ph = run.phrases[Math.min(run.p, run.phrases.length - 1)];
       const target = ph[Math.min(run.k, ph.length - 1)].midi;
-      if (settings.octave) voice.shown = voice.m + 12 * Math.round((target - voice.m) / 12);
+      if (settings.octave && run.mode !== 'free') voice.shown = voice.m + 12 * Math.round((target - voice.m) / 12);
     }
     if (!run) return;
     switch (run.phase) {
       case 'intro': if (t >= run.until) beginPhrase(); break;
-      case 'listen': if (t >= run.until) beginCue(); break;
+      case 'listen': if (t >= run.until) { if (run.mode === 'note') beginStarListen(); else beginCue(); } break;
+      case 'starListen': if (t >= run.until) activate(); break;
       case 'cue': if (t >= run.until) activate(); break;
       case 'turn': stepTurn(t); break;
       case 'collected': if (t >= run.until) nextStar(); break;
@@ -960,6 +1055,13 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
       life: 3, age: 0, size: 5 + Math.random() * 5, color: colors[Math.floor(Math.random() * colors.length)], star: false });
   }
 
+  // L'ultima nota iniziata: fra una nota e l'altra resta valida, così la schermata non salta.
+  function lastSung(t) {
+    let last = null;
+    for (const s of run.sing) if (s.t0 <= t && (!last || s.t0 >= last.t0)) last = s;
+    return last;
+  }
+
   function singingNow(t) {
     return run ? run.sing.find((s) => t >= s.t0 && t <= s.t1) : null;
   }
@@ -984,7 +1086,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     if (!run) return;
 
     const sing = singingNow(t);
-    const dp = run.phase === 'finale' && sing ? sing.p : Math.min(run.p, run.phrases.length - 1);
+    const cur = run.phase === 'finale' ? lastSung(t) : null;
+    const dp = run.phase === 'finale' ? (cur ? cur.p : 0) : Math.min(run.p, run.phrases.length - 1);
     const ph = run.phrases[dp];
 
     // gradini: una riga leggera per ogni nota della canzone
@@ -998,7 +1101,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     g.setLineDash([]);
 
     // stelle
-    const activeK = run.phase === 'turn' || run.phase === 'collected' ? run.k : -1;
+    const activeK = ['turn', 'collected', 'starListen'].includes(run.phase) ? run.k : -1;
     ph.forEach((n, i) => {
       const { x, y, step } = starPos(dp, i);
       const st = run.phase === 'finale' ? 'gold' : run.state[dp][i];
@@ -1021,9 +1124,9 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     // Lu
     let tx, ty, flying = false, singing = false;
     const active = activeK >= 0 ? starPos(dp, activeK) : null;
-    if (run.phase === 'finale' && sing) {
-      const s = starPos(sing.p, sing.i);
-      tx = s.x; ty = s.y - lu.r * 1.2; flying = true; singing = true;
+    if (run.phase === 'finale' && cur) {
+      const s = starPos(cur.p, cur.i);
+      tx = s.x; ty = s.y - lu.r * 1.2; flying = true; singing = !!sing;
     } else {
       tx = active ? active.x : starPos(dp, 0).x;
       if (!Number.isNaN(voice.shown) && (run.phase === 'turn' || run.phase === 'collected')) {
@@ -1042,7 +1145,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 
     // stella attiva: grande contorno in cui Lu deve entrare, con l'anello di tenuta
     if (active && run.state[dp][activeK] === 'active') {
-      const a = run.active;
+      const a = run.phase === 'turn' ? run.active : null;
       const R = Math.max(lu.r * 1.55, 30);
       const isSinging = sing && sing.i === activeK;
       const glow = isSinging ? 0.6 : 0.25 + 0.15 * Math.sin(t * 4);
@@ -1052,8 +1155,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
       g.strokeStyle = '#f0a500';
       g.lineWidth = 4;
       g.stroke();
-      if (a.holdStart != null) {
-        const p = Math.min(1, (t - a.holdStart) / settings.hold);
+      if (a && a.holdStart != null) {
+        const p = Math.min(1, (t - a.holdStart) / run.hold);
         g.strokeStyle = '#ffd23f';
         g.lineWidth = 7;
         g.lineCap = 'round';
@@ -1062,7 +1165,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
         g.stroke();
       }
       // freccia: più su o più giù, se dopo un po' non ci arriva
-      if (run.phase === 'turn' && t - a.start > 3 && !Number.isNaN(a.c) && Math.abs(a.c) > settings.tol) {
+      if (a && t - a.start > 3 && !Number.isNaN(a.c) && Math.abs(a.c) > run.tol) {
         const up = a.c < 0;
         const bob = Math.sin(t * 6) * 4;
         const ax = lu.x, ay = up ? lu.y - lu.r * 2 + bob : lu.y + lu.r * 2 - bob;
@@ -1126,20 +1229,30 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     if (name === 'play') resize();
   }
 
+  function unlocked(i) {
+    return settings.unlockAll || i === 0 || (best[LEVELS[i - 1].id] || 0) >= 2;
+  }
+
   function renderHome() {
-    $('songs').innerHTML = SONGS.map((s) => {
-      const b = best[s.id] || 0;
-      return `<button class="song" data-id="${s.id}" aria-label="${s.title}">
-        <span class="ico">${s.icon}</span>
-        <span class="ttl">${s.title}</span>
-        <span class="meta">
-          <span class="dots" aria-hidden="true">${[1, 2, 3].map((i) => `<i class="${i <= s.level ? 'on' : ''}"></i>`).join('')}</span>
-          <span class="best" aria-hidden="true">${[1, 2, 3].map((i) => `<span class="${i <= b ? '' : 'off'}">★</span>`).join('')}</span>
-        </span>
+    // la tappa da fare adesso: la prima aperta che non ha ancora almeno 2 stelle
+    const next = LEVELS.findIndex((l, i) => unlocked(i) && (best[l.id] || 0) < 2);
+    let html = '', phase = -1;
+    LEVELS.forEach((l, i) => {
+      if (l.phase !== phase) { html += `<div class="phase-title">${PHASES[l.phase]}</div>`; phase = l.phase; }
+      const open = unlocked(i), b = best[l.id] || 0;
+      const dx = [0, 52, 0, -52][i % 4];
+      html += `<button class="node${open ? '' : ' locked'}${i === next ? ' next' : ''}" data-i="${i}" style="--dx:${dx}px"
+          aria-label="${l.title}${open ? '' : ', chiusa'}"${open ? '' : ' aria-disabled="true"'}>
+        <span class="bubble">${open ? l.icon : '🔒'}</span>
+        <span class="nstars" aria-hidden="true">${[1, 2, 3].map((k) => `<span class="${k <= b ? '' : 'off'}">★</span>`).join('')}</span>
+        <span class="ntitle">${l.title}</span>
       </button>`;
-    }).join('');
+    });
+    $('path').innerHTML = html;
     $('albumCount').textContent = `${album.length} su ${STICKERS.length}`;
     $('stickers').innerHTML = STICKERS.map((_, i) => album[i] ? `<div>${album[i]}</div>` : '<div class="empty"></div>').join('');
+    const n = $('path').querySelector('.next');
+    if (n) requestAnimationFrame(() => n.scrollIntoView({ block: 'center' }));
   }
 
   function showMsg(text) {
@@ -1147,10 +1260,17 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     $('msg').hidden = false;
   }
 
-  $('songs').addEventListener('click', async (e) => {
-    const btn = e.target.closest('.song');
+  $('path').addEventListener('click', async (e) => {
+    const btn = e.target.closest('.node');
     if (!btn) return;
-    const song = SONGS.find((s) => s.id === btn.dataset.id);
+    const i = +btn.dataset.i;
+    if (!unlocked(i)) {
+      btn.classList.remove('shake');
+      void btn.offsetWidth;
+      btn.classList.add('shake');
+      return;
+    }
+    const song = LEVELS[i];
     try {
       await startMic();
     } catch (err) {
@@ -1164,6 +1284,11 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   $('msgOk').addEventListener('click', () => { $('msg').hidden = true; });
   $('homeBtn').addEventListener('click', leaveSong);
   $('toHome').addEventListener('click', leaveSong);
+  $('next').addEventListener('click', () => {
+    const i = run ? LEVELS.indexOf(run.song) + 1 : -1;
+    $('reward').hidden = true;
+    if (i > 0 && i < LEVELS.length && unlocked(i)) startSong(LEVELS[i]); else leaveSong();
+  });
   $('again').addEventListener('click', () => {
     const song = run && run.song;
     $('reward').hidden = true;
@@ -1211,12 +1336,14 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     bindSeg('tolSeg', 'tol', Number),
     bindSeg('holdSeg', 'hold', Number),
     bindSeg('octSeg', 'octave', (v) => v === '1'),
+    bindSeg('unlockSeg', 'unlockAll', (v) => v === '1'),
   ];
   function syncShift() {
     const s = settings.shift;
     $('shiftOut').textContent = s === 0 ? 'Normale' : (s > 0 ? '+' : '−') + Math.abs(s) + (Math.abs(s) === 1 ? ' semitono' : ' semitoni');
-    const lows = SONGS.map((x) => songRange(x)[0]), highs = SONGS.map((x) => songRange(x)[1]);
-    $('rangeOut').textContent = `Le canzoni vanno da ${noteName(Math.min(...lows))} a ${noteName(Math.max(...highs))}.`;
+    const songs = LEVELS.filter((x) => x.mode !== 'free');
+    const lows = songs.map((x) => songRange(x)[0]), highs = songs.map((x) => songRange(x)[1]);
+    $('rangeOut').textContent = `Gli esercizi vanno da ${noteName(Math.min(...lows))} a ${noteName(Math.max(...highs))}.`;
   }
   $('shiftDown').addEventListener('click', () => { settings.shift = Math.max(-7, settings.shift - 1); save(KEYS.settings, settings); syncShift(); });
   $('shiftUp').addEventListener('click', () => { settings.shift = Math.min(7, settings.shift + 1); save(KEYS.settings, settings); syncShift(); });
@@ -1225,7 +1352,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     const gold = s.notes.filter((n) => !n.helped);
     return {
       when: new Date(s.at).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
-      title: (SONGS.find((x) => x.id === s.song) || { title: s.song }).title + (s.complete ? '' : ' (interrotta)'),
+      title: (LEVELS.find((x) => x.id === s.song) || { title: s.song }).title + (s.complete ? '' : ' (interrotta)'),
       solo: `${gold.length}/${s.notes.length}`,
       lock: gold.length ? fmtS(avg(gold.map((n) => n.lock))) : '–',
       cents: gold.length ? Math.round(avg(gold.map((n) => n.cents))) + ' c' : '–',
