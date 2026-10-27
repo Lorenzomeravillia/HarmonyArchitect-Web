@@ -248,8 +248,10 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 .play-big svg { width: 34px; height: 34px; fill: var(--ink); margin-left: auto; flex: none; }
 .range-box { background: #eef6fc; border-radius: 12px; padding: 10px 12px; display: grid; gap: 8px; }
 .range-box p { margin: 0; color: var(--ink); }
+.count.bump { animation: bump .4s cubic-bezier(.2,1.8,.4,1); }
+@keyframes bump { 40% { transform: scale(1.25); } }
 @media (prefers-reduced-motion: reduce) {
-  .cue.sing, .sticker-big, .node.next .bubble, .node.shake { animation: none; }
+  .cue.sing, .sticker-big, .node.next .bubble, .node.shake, .count.bump { animation: none; }
 }
 </style>
 </head>
@@ -760,6 +762,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
       };
     }
     newMaster();
+    flyers = [];
+    halos = [];
     // carillon di inizio tappa, poi si comincia
     const boxDur = musicBox(tonic, ctx.currentTime + 0.35);
     run.until = now() + 0.35 + boxDur + 0.2;
@@ -1000,9 +1004,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
       const midi = Math.round(tonic + st.v);
       run.notes.push({ midi, helped: !ok, helps: 0, lock: null, cents: null, iv: null, dir: null, first: null });
       const y = yOf(tonic + st.v);
-      burst(W * 0.28, y, ok ? 18 : 8, !ok, '#ffd23f');
-      if (ok) { chime(midi, ctx.currentTime + 0.01); muteUntil = Math.max(muteUntil, t + 0.3); }
-      $('starCount').textContent = run.notes.filter((n) => !n.helped).length;
+      // Nessun suono: il microfono lo sentirebbe e Lu salterebbe. La stella vola nel contatore.
+      if (ok) collectFx(W * 0.28, y); else burst(W * 0.28, y, 6, true);
     }
     if (rb.s >= rb.end) { saveRange(); beginFinale(); }
   }
@@ -1296,6 +1299,56 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     g.globalAlpha = 1;
   }
 
+  // Stella presa nell'arcobaleno: vola fino al contatore, che fa un piccolo salto,
+  // e intorno a Lu si allarga un anello dorato leggero.
+  let flyers = [], halos = [];
+  function collectFx(x, y) {
+    const t = now();
+    flyers.push({ x0: x, y0: y, t0: t, dur: reducedMotion ? 0.4 : 0.75 });
+    if (!reducedMotion) halos.push({ t0: t });
+    burst(x, y, 6, false, '#ffd23f');
+  }
+  function bumpCount() {
+    const el = document.querySelector('.count');
+    el.classList.remove('bump');
+    void el.offsetWidth;
+    el.classList.add('bump');
+  }
+  function drawCollectFx(t) {
+    const box = document.querySelector('.count').getBoundingClientRect();
+    const tx = box.left + box.width * 0.3, ty = box.top + box.height / 2;
+    flyers = flyers.filter((f) => {
+      const k = (t - f.t0) / f.dur;
+      if (k >= 1) {
+        run.shown = (run.shown || 0) + 1;
+        $('starCount').textContent = run.shown;
+        bumpCount();
+        return false;
+      }
+      const e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+      const cx = (f.x0 + tx) / 2, cy = Math.min(f.y0, ty) - 80;
+      const x = (1 - e) * (1 - e) * f.x0 + 2 * (1 - e) * e * cx + e * e * tx;
+      const y = (1 - e) * (1 - e) * f.y0 + 2 * (1 - e) * e * cy + e * e * ty;
+      g.drawImage(glow('#ffe066'), x - 22, y - 22, 44, 44);
+      starPath(x, y, 15 - 5 * e);
+      g.fillStyle = '#ffd23f'; g.fill();
+      g.strokeStyle = '#f0a500'; g.lineWidth = 2; g.stroke();
+      return true;
+    });
+    halos = halos.filter((h) => {
+      const k = (t - h.t0) / 0.6;
+      if (k >= 1) return false;
+      g.globalAlpha = 0.7 * (1 - k);
+      g.strokeStyle = '#ffd23f';
+      g.lineWidth = 1 + 4 * (1 - k);
+      g.beginPath();
+      g.arc(lu.x, lu.y, lu.r * (1.1 + 1.4 * k), 0, Math.PI * 2);
+      g.stroke();
+      g.globalAlpha = 1;
+      return true;
+    });
+  }
+
   // L'arcobaleno: la scia scorre da destra, Lu resta a sinistra e segue la voce.
   function drawRainbow(t, dt) {
     const rb = run.rb, tonic = run.song.tonic + settings.shift;
@@ -1334,12 +1387,15 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     }
     // Lu
     let ty = restY(), flying = false;
-    if (!Number.isNaN(voice.m)) { ty = clamp(yOf(voice.m), f.top - 30, restY()); flying = true; }
+    const voiced = !Number.isNaN(voice.m);
+    if (voiced) { ty = clamp(yOf(voice.m), f.top - 30, restY()); flying = true; rb.lastY = ty; rb.lastVoiced = t; }
+    else if (t - (rb.lastVoiced ?? -9) < 0.3) { ty = rb.lastY; flying = true; } // buco brevissimo: Lu resta dov'è
     lu.x += (luX - lu.x) * (1 - Math.exp(-dt / 0.18));
     lu.y += (ty - lu.y) * (1 - Math.exp(-dt / (flying ? 0.08 : 0.35)));
     trail(dt);
     drawParticles(dt);
-    drawLu(g, lu.x, lu.y + (flying ? 0 : Math.sin(t * 2) * 2), lu.r, { time: t, flying, singing: flying, ears: voice.loud });
+    drawLu(g, lu.x, lu.y + (flying ? 0 : Math.sin(t * 2) * 2), lu.r, { time: t, flying, singing: voiced, ears: voice.loud });
+    drawCollectFx(t);
   }
 
   // L'ultima nota iniziata: fra una nota e l'altra resta valida, così la schermata non salta.
