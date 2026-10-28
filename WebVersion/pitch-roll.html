@@ -104,6 +104,13 @@ button:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
 button.toggle[aria-pressed="false"] { color: var(--muted); }
 #play { width: 56px; height: 56px; border-radius: 50%; background: var(--rec); }
 #play.running { background: var(--row-white); }
+/* Etichette sotto le icone della barra: una parola sola, piccola e grigia; per i tasti che si
+   accendono e si spengono dice anche lo stato. */
+nav .mid { gap: 6px; }
+nav button:not(#play), nav a.navlink { width: 58px; height: 54px; align-content: center; gap: 4px; text-decoration: none; }
+nav .lbl { display: block; font-size: 10.5px; line-height: 1; font-weight: 500; color: var(--muted); white-space: nowrap; }
+nav button.toggle[aria-pressed="true"] .lbl { color: var(--fg); }
+nav .play-wrap { display: grid; justify-items: center; gap: 4px; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
 /* Gioco */
@@ -270,22 +277,27 @@ a.navlink:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
   <div class="mid">
     <button id="clear" aria-label="Cancella la traccia">
       <svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM19 5v14L9.5 12z"/></svg>
+      <span class="lbl" aria-hidden="true">Cancella</span>
     </button>
     <a class="navlink" href="/sirena" aria-label="Gioco Sirena">
       <svg viewBox="0 0 24 24"><path d="M2 12c2.5-6 5-6 7.5 0s5 6 7.5 0 3.5-4 5-2"/></svg>
+      <span class="lbl" aria-hidden="true">Sirena</span>
     </a>
   </div>
-  <div class="mid">
+  <div class="mid play-wrap">
     <button id="play" aria-label="Avvia ascolto">
       <svg viewBox="0 0 24 24" id="playIcon"><circle cx="12" cy="12" r="0"/></svg>
     </button>
+    <span class="lbl" id="playLbl" aria-hidden="true">Avvia</span>
   </div>
   <div class="mid">
     <button id="follow" class="toggle" aria-pressed="true" aria-label="Segui la voce">
       <svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm9 3h-2.07A7 7 0 0 0 13 5.07V3h-2v2.07A7 7 0 0 0 5.07 11H3v2h2.07A7 7 0 0 0 11 18.93V21h2v-2.07A7 7 0 0 0 18.93 13H21zm-9 6a5 5 0 1 1 0-10 5 5 0 0 1 0 10z"/></svg>
+      <span class="lbl" id="followLbl" aria-hidden="true">Segui: sì</span>
     </button>
     <button id="game" class="toggle" aria-pressed="false" aria-label="Gioco: prendi la nota">
       <svg viewBox="0 0 24 24"><path d="M18 3H6v2H2v3a4 4 0 0 0 4 4h.3A6 6 0 0 0 11 15.9V19H7v2h10v-2h-4v-3.1a6 6 0 0 0 4.7-3.9h.3a4 4 0 0 0 4-4V3h-4zM4 8V7h2v3a2 2 0 0 1-2-2zm16 0a2 2 0 0 1-2 2V7h2z"/></svg>
+      <span class="lbl" id="gameLbl" aria-hidden="true">Gioco</span>
     </button>
   </div>
 </nav>
@@ -608,6 +620,7 @@ a.navlink:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
     $('play').classList.toggle('running', on);
     $('play').setAttribute('aria-label', on ? 'Metti in pausa' : 'Avvia ascolto');
     $('playIcon').innerHTML = on ? ICON_PAUSE : ICON_REC;
+    $('playLbl').textContent = on ? 'Pausa' : 'Avvia';
     if (!on) hud(NaN);
   }
   function showOverlay(title, text) {
@@ -635,6 +648,7 @@ a.navlink:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
   $('follow').addEventListener('click', () => {
     follow = !follow;
     $('follow').setAttribute('aria-pressed', String(follow));
+    $('followLbl').textContent = follow ? 'Segui: sì' : 'Segui: no';
     manualUntil = 0;
   });
 
@@ -694,6 +708,7 @@ a.navlink:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
     $('hudGame').hidden = false;
     $('hud').classList.add('target');
     $('game').setAttribute('aria-pressed', 'true');
+    $('gameLbl').textContent = 'Esci';
     manualUntil = 0;
     nextNote();
   }
@@ -703,6 +718,7 @@ a.navlink:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
     $('hudGame').hidden = true;
     $('hud').classList.remove('target');
     $('game').setAttribute('aria-pressed', 'false');
+    $('gameLbl').textContent = 'Gioco';
     hud(NaN);
   }
   function nextNote() {
