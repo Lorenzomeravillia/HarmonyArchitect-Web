@@ -110,6 +110,17 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 }
 .node:active .bubble { transform: translateY(3px); box-shadow: 0 2px 0 var(--line); }
 .node.locked .bubble { background: rgba(255,255,255,.45); box-shadow: none; font-size: 26px; }
+/* lucchetto forzato: tenendo premuta una tappa chiusa, un anello si riempie in 10 secondi */
+.node .bubble { position: relative; }
+.node.forcing .bubble::after {
+  content: "";
+  position: absolute; inset: -7px;
+  border-radius: 50%;
+  background: conic-gradient(var(--accent) calc(var(--p, 0) * 360deg), rgba(47,134,212,.15) 0);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 5px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 5px));
+}
+.node.opened .bubble { animation: pop .6s cubic-bezier(.2,1.6,.4,1) both; }
 .node.next .bubble { box-shadow: 0 5px 0 var(--star-edge), 0 0 0 7px rgba(255,210,63,.55); animation: pulse 1.4s ease-in-out infinite; }
 .node .nstars { font-size: 15px; color: var(--star-edge); letter-spacing: 1px; }
 .node .nstars .off { color: rgba(255,255,255,.85); }
@@ -1848,7 +1859,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   }
 
   function unlocked(i) {
-    return settings.unlockAll || i === 0 || (best[LEVELS[i - 1].id] || 0) >= 2;
+    return settings.unlockAll || i === 0 || (settings.forced || []).includes(LEVELS[i].id)
+      || (best[LEVELS[i - 1].id] || 0) >= 2;
   }
 
   function renderHome() {
@@ -1885,7 +1897,46 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   }
 
   $('playNext').addEventListener('click', () => openLevel(+$('playNext').dataset.i));
+  // Lucchetto forzato, per l'adulto: tenere premuta per 10 secondi una tappa chiusa la apre.
+  // Si apre solo quella; le successive si aprono poi normalmente, finendola con 2 stelle.
+  const FORCE_MS = 10000;
+  let force = null, skipClick = false;
+  function cancelForce() {
+    if (!force) return;
+    force.btn.classList.remove('forcing');
+    force.btn.style.removeProperty('--p');
+    force = null;
+  }
+  $('path').addEventListener('pointerdown', (e) => {
+    skipClick = false;
+    const btn = e.target.closest('.node.locked');
+    if (!btn) return;
+    cancelForce();
+    force = { btn, t0: performance.now() };
+    btn.classList.add('forcing');
+    btn.addEventListener('pointerleave', cancelForce, { once: true });
+    const tick = () => {
+      if (!force || force.btn !== btn) return;
+      const p = Math.min(1, (performance.now() - force.t0) / FORCE_MS);
+      btn.style.setProperty('--p', p);
+      if (p < 1) { requestAnimationFrame(tick); return; }
+      const i = +btn.dataset.i;
+      settings.forced = [...new Set([...(settings.forced || []), LEVELS[i].id])];
+      save(KEYS.settings, settings);
+      force = null;
+      skipClick = true;
+      renderHome();
+      const opened = $('path').querySelector(`.node[data-i="${i}"]`);
+      if (opened) opened.classList.add('opened');
+    };
+    requestAnimationFrame(tick);
+  });
+  document.addEventListener('pointerup', cancelForce);
+  document.addEventListener('pointercancel', cancelForce);
+  $('path').addEventListener('contextmenu', (e) => e.preventDefault());
+
   $('path').addEventListener('click', (e) => {
+    if (skipClick) { skipClick = false; return; }
     const btn = e.target.closest('.node');
     if (!btn) return;
     const i = +btn.dataset.i;
@@ -2113,6 +2164,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     const b = $('resetAll');
     if (b.textContent !== 'Tocca ancora per confermare') { b.textContent = 'Tocca ancora per confermare'; return; }
     album = []; best = {}; sessions = [];
+    settings.forced = [];
+    save(KEYS.settings, settings);
     save(KEYS.album, album); save(KEYS.best, best); save(KEYS.sessions, sessions);
     b.textContent = 'Azzerato';
     openAdult();
