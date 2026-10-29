@@ -326,6 +326,16 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
       <p class="keynote" id="keyNote"></p>
       <button class="linkish" id="keyOriginal">Torna alla tonalità originale</button>
     </div>
+    <div class="field">
+      <span>Tempo</span>
+      <div class="seg" id="tempoSeg">
+        <button data-v="0.6"><span class="tq"></span><small>lento</small></button>
+        <button data-v="0.75"><span class="tq"></span><small>medio</small></button>
+        <button data-v="0.9"><span class="tq"></span><small>quasi</small></button>
+        <button data-v="1"><span class="tq"></span><small>originale</small></button>
+      </div>
+      <small>Prima di ogni riga senti 4 colpi; durante il canto le linee sulla scia e il cielo segnano i battiti.</small>
+    </div>
     <button class="btn" id="songListen">Ascolta l'inizio in questa tonalità</button>
     <div class="row">
       <button class="btn" id="songAllena">Allenati</button>
@@ -413,6 +423,8 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   const SONGBOOK = [
     {
       id: 'bella-ciao', title: 'Bella ciao', subtitle: 'Canto popolare italiano', bpm: 100, tonic: 67, minor: true,
+      // 4/4; `pickups`: battiti dall'inizio di ogni riga al primo tempo della battuta successiva (levare)
+      meter: 4, pickups: [1.5, 1.5, 1, 1.5],
       lines: [
         [[62, .5, 'u'], [67, .5, 'na'], [69, .5, 'mat'], [70, .5, 'ti'], [67, .5, 'na'], [null, 1.5],
           [62, .5, 'mi'], [67, .5, 'son'], [69, .5, 'sve'], [70, .5, 'glia'], [67, .5, 'to']],
@@ -461,7 +473,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   function load(k, fb) { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? fb; } catch (e) { return fb; } }
   function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
   const old = load('sirena.settings.v1', {});
-  const settings = Object.assign({ level: null, names: 'mobile', fx: old.fx || 'full', last: null, highRuns: null, voice: null, songKeys: {} }, load(KEYS.settings, {}));
+  const settings = Object.assign({ level: null, names: 'mobile', fx: old.fx || 'full', last: null, highRuns: null, voice: null, songKeys: {}, songTempo: {} }, load(KEYS.settings, {}));
   const saveSettings = () => save(KEYS.settings, settings);
   let best = load(KEYS.best, {});
   let history = load(KEYS.history, []);
@@ -770,9 +782,20 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     t += 1.2;
     return { ev, dur: t };
   }
-  function buildSongWorld(song, shift, mode) {
+  // Battiti di una riga: il primo tempo cade dopo il levare; si estende all'indietro per il conteggio.
+  function beatGrid(seg, song, li, spb) {
+    const meter = song.meter || 4;
+    const down0 = seg.t0 + (song.pickups ? song.pickups[li] : 0) * spb;
+    const first = Math.ceil((seg.t0 - 4 * spb - down0) / spb - 1e-6);
+    const beats = [];
+    for (let k = first; down0 + k * spb <= seg.t1 + 1e-6; k++) beats.push({ t: down0 + k * spb, down: ((k % meter) + meter) % meter === 0 });
+    seg.beats = beats;
+    seg.countIn = beats.filter((b) => b.t < seg.t0 - 1e-6).slice(-4).map((b) => b.t);
+  }
+  function buildSongWorld(song, shift, mode, factor = 1) {
     const lv = L(), allena = mode === 'allena';
-    const spb = (60 / song.bpm) * (allena ? 1.15 : 1); // in allenamento un po' più lento
+    const spb = 60 / (song.bpm * factor);
+    const lead = 4 * spb; // il viaggio della riga fino alla cometa dura 4 battiti: è il conteggio
     center = song.tonic + shift + (song.minor ? 3 : 0);  // il "do" del brano
     const segs = [], gates = [];
     let t = 0.4;
@@ -786,8 +809,9 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
       }
       const seg = { kind: 'song', steps, dur: u, fn: (x) => { const st = steps.find((q) => x >= q.t && x < q.t + q.dur); return st ? st.v : NaN; } };
       seg.plan = planSongPause(seg, song, shift, li, allena);
-      t += 0.6 + LEAD;
-      Object.assign(seg, { t0: t, t1: t + seg.dur, audioAt: t - LEAD, audioDone: false, marks: [], refWall: -9 });
+      t += 0.6 + lead;
+      Object.assign(seg, { t0: t, t1: t + seg.dur, audioAt: t - lead, audioDone: false, countDone: false, marks: [], refWall: -9 });
+      beatGrid(seg, song, li, spb);
       segs.push(seg);
       for (const st of steps) if (st.dur >= 0.55) gates.push({ t: seg.t0 + st.t + st.dur * 0.6, seg, state: 'todo', fade: 1 });
       t = seg.t1;
@@ -796,8 +820,34 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     return {
       ex: { id: `song-${song.id}`, name: song.title }, mode, segs, gates, end: t + 2.2, tol: lv.tol, freezeUntil: 0,
       score: 0, streak: 0, outFor: 0, combo: 1, bestCombo: 1, pathTime: 0, inTime: 0, lastIn: -9, gatesOk: 0,
-      mid: (lo + hi) / 2, spb,
+      mid: (lo + hi) / 2, spb, bpm: Math.round(song.bpm * factor),
     };
+  }
+
+  // Colpo del conteggio: un legnetto breve, più acuto sul primo tempo.
+  function click(t, down) {
+    const o = ctx.createOscillator();
+    o.frequency.value = down ? 1600 : 1150;
+    const g2 = ctx.createGain();
+    g2.gain.setValueAtTime(0, t);
+    g2.gain.linearRampToValueAtTime(down ? 0.5 : 0.35, t + 0.002);
+    g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+    o.connect(g2).connect(out);
+    o.start(t);
+    o.stop(t + 0.06);
+  }
+
+  // Dove siamo nella pulsazione: serve per far "respirare" cielo e cometa a ogni battito.
+  function beatNow() {
+    if (!world || !world.segs || state !== 'run' || world.spb == null) return null;
+    for (const s of world.segs) {
+      if (!s.beats || !s.beats.length || gt < s.beats[0].t - 1e-6 || gt > s.t1) continue;
+      let b = null;
+      for (const q of s.beats) { if (q.t <= gt) b = q; else break; }
+      if (!b) return null;
+      return { pulse: Math.exp(-((gt - b.t) / world.spb) * 5), down: b.down };
+    }
+    return null;
   }
 
   // Nel menu la cometa vola da sola su un'onda lunga: una "demo" come nelle sale giochi.
@@ -978,6 +1028,15 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
       g.globalCompositeOperation = 'source-over';
     }
 
+    // a ogni battito il cielo si schiarisce appena (un po' di più sul primo tempo)
+    const beat = beatNow();
+    if (beat) {
+      g.globalCompositeOperation = 'lighter';
+      g.fillStyle = `rgba(126,240,255,${(beat.down ? 0.07 : 0.04) * beat.pulse * fx})`;
+      g.fillRect(0, 0, W, H);
+      g.globalCompositeOperation = 'source-over';
+    }
+
     drawAxis();
 
     // montagne
@@ -1008,7 +1067,8 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     // cometa
     if (state !== 'end') {
       const cy = comet.y;
-      const pulse = 1 + 0.06 * Math.sin(now * 7) * fx;
+      const bt = beatNow();
+      const pulse = 1 + (bt ? (bt.down ? 0.14 : 0.09) * bt.pulse : 0.06 * Math.sin(now * 7)) * fx; // nei brani respira a tempo
       const size = (comet.inside ? 96 : 70) * (0.35 + 0.65 * comet.vis) * pulse;
       g.globalAlpha = 0.45 + 0.55 * comet.vis;
       g.drawImage(comet.inside ? SPR.gold : comet.vis > 0.5 ? SPR.cyan : SPR.dim, cometX - size / 2, cy - size / 2, size, size);
@@ -1100,6 +1160,27 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
       }
     }
     g.globalCompositeOperation = 'source-over';
+
+    // linee di battuta: una linea leggera a ogni battito, più marcata sul primo tempo
+    for (const s of world.segs) {
+      if (!s.beats) continue;
+      for (const b of s.beats) {
+        const x = xOfTime(b.t);
+        if (x < cometX - 40 || x > W + 4) continue;
+        g.fillStyle = b.down ? 'rgba(200,230,255,0.16)' : 'rgba(200,230,255,0.07)';
+        g.fillRect(Math.round(x), top - 20, b.down ? 2 : 1, bottom - top + 40);
+      }
+      // conteggio: 4 puntini sopra la cometa che si accendono a ogni colpo
+      if (s.countIn && s.countIn.length && gt >= s.countIn[0] - 0.4 && gt < s.t0) {
+        s.countIn.forEach((ct, i) => {
+          const on = gt >= ct;
+          g.fillStyle = on ? 'rgba(255,210,122,0.95)' : 'rgba(163,172,220,0.35)';
+          g.beginPath();
+          g.arc(cometX - 27 + i * 18, comet.y - 46, on ? 5 : 4, 0, Math.PI * 2);
+          g.fill();
+        });
+      }
+    }
 
     // nomi dei gradini, colorati, sopra la scia; si accendono quando l'anteprima li suona
     const big = L().atonal;
@@ -1231,7 +1312,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
 
   // Avvio di un brano: niente calibrazione, la tonalità l'ha scelta chi canta.
   function beginSongRun() {
-    world = buildSongWorld(song, songShift, mode);
+    world = buildSongWorld(song, songShift, mode, songTempoOf(song));
     speedFix = 72 / world.spb; // 72 px per battito: le note brevi restano leggibili
     resize();
     gt = 0;
@@ -1242,7 +1323,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     $('scoreLabel').textContent = mode === 'allena' ? 'allenamento' : 'sfida';
     setCombo(1, false);
     const hint = mode === 'allena' ? 'Prima di ogni riga la senti tutta, poi tocca a te.' : 'Prima di ogni riga senti solo la nota di partenza.';
-    setCenterMsg(`${song.title} · ${MODE_NAME[mode]}`, `${keyName(song, songShift)}. ${hint}`);
+    setCenterMsg(`${song.title} · ${MODE_NAME[mode]}`, `${keyName(song, songShift)}, ♩ ${world.bpm}. ${hint}`);
     msgTimer = wall() + 3;
   }
 
@@ -1269,6 +1350,13 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
         s.audioDone = true;
         playPlan(s);
         r.freezeUntil = wall() + s.plan.dur + 0.05;
+      }
+      // finita l'anteprima, mentre la riga arriva: 4 colpi a tempo (il microfono intanto è in pausa)
+      if (s.countIn && s.audioDone && !s.countDone && wall() >= r.freezeUntil && ctx) {
+        s.countDone = true;
+        const t0 = ctx.currentTime;
+        s.countIn.forEach((ct) => click(t0 + Math.max(0, ct - gt), s.beats.find((b) => b.t === ct).down));
+        muteUntil = Math.max(muteUntil, wall() + (s.countIn.at(-1) - gt) + 0.12);
       }
     }
     const here = pathAt(r, gt);
@@ -1354,7 +1442,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     const key = `${r.ex.id}|${settings.level}`;
     const prev = best[key] || 0;
     if (sfida && score > prev) { best[key] = score; save(KEYS.best, best); }
-    history.unshift({ at: Date.now(), ex: r.ex.id, name: r.ex.name, key: song ? keyName(song, songShift) : null, mode: r.mode, level: settings.level, center, score,
+    history.unshift({ at: Date.now(), ex: r.ex.id, name: r.ex.name, key: song ? `${keyName(song, songShift)}, ♩ ${world.bpm}` : null, mode: r.mode, level: settings.level, center, score,
       acc: +acc.toFixed(3), gates: `${r.gatesOk}/${r.gates.length}`, combo: r.bestCombo });
     history = history.slice(0, 60);
     save(KEYS.history, history);
@@ -1539,6 +1627,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   // Canzoniere: elenco dei brani e scheda del brano con voce e tonalità.
   let openSong = null;
   const songShiftOf = (sg) => settings.songKeys[sg.id] ?? (settings.voice ? fitShift(sg, settings.voice) : 0);
+  const songTempoOf = (sg) => settings.songTempo[sg.id] ?? 1;
   function renderBook() {
     $('songList').innerHTML = SONGBOOK.map((sg) => `<button class="song-row" data-song="${sg.id}">
         <span><b>${sg.title}</b><small>${sg.subtitle}</small></span>
@@ -1557,6 +1646,11 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     $('keyNote').textContent = `Da ${songNoteName(sg, sh, lo)} a ${songNoteName(sg, sh, hi)}`
       + (sh === 0 ? ' · tonalità originale' : '') + (fitsVoice ? ` · adatta a ${voiceName}` : '');
     $('keyOriginal').hidden = sh === 0;
+    const f = songTempoOf(sg);
+    $('tempoSeg').querySelectorAll('button').forEach((b) => {
+      b.setAttribute('aria-pressed', String(Number(b.dataset.v) === f));
+      b.querySelector('.tq').textContent = `♩ ${Math.round(sg.bpm * Number(b.dataset.v))}`;
+    });
   }
   function setSongShift(sh) {
     settings.songKeys[openSong.id] = clamp(sh, -24, 24);
@@ -1583,11 +1677,18 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   $('keyDown').addEventListener('click', () => setSongShift(songShiftOf(openSong) - 1));
   $('keyUp').addEventListener('click', () => setSongShift(songShiftOf(openSong) + 1));
   $('keyOriginal').addEventListener('click', () => setSongShift(0));
+  $('tempoSeg').addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    settings.songTempo[openSong.id] = Number(b.dataset.v);
+    saveSettings();
+    renderSong();
+  });
   // ascolta l'inizio: accordo di casa e prima riga, nella tonalità scelta
   $('songListen').addEventListener('click', () => {
     ensureCtx();
     if (ctx.state !== 'running') ctx.resume();
-    const sg = openSong, sh = songShiftOf(sg), spb = 60 / sg.bpm;
+    const sg = openSong, sh = songShiftOf(sg), spb = 60 / (sg.bpm * songTempoOf(sg));
     const t0 = ctx.currentTime + 0.1;
     let t = 0;
     for (const iv of sg.minor ? [0, 3, 7, 12] : [0, 4, 7, 12]) { tone(sg.tonic + sh + iv, t0 + t, 0.34, 0.75); t += 0.3; }
