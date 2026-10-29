@@ -10,7 +10,16 @@
   "background_color": "#e4f5ff",
   "theme_color": "#7ccaf5",
   "icons": [
-    { "src": "/assets/icons/lu-icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/assets/icons/lu-icon-512.png", "sizes": "512x512", "type": "image/png" }
-  ]
+    {
+      "src": "/bimbi/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/bimbi/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "id": "/bimbi"
 }

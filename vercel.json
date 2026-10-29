@@ -5,61 +5,180 @@
     }
   },
   "rewrites": [
-    { "source": "/", "destination": "/WebVersion/index.html" },
-    { "source": "/bimbi", "destination": "/WebVersion/bimbi.html" },
-    { "source": "/bimbi/", "destination": "/WebVersion/bimbi.html" },
-    { "source": "/sirena", "destination": "/WebVersion/sirena.html" },
-    { "source": "/sirena/", "destination": "/WebVersion/sirena.html" },
-    { "source": "/(.*)", "destination": "/WebVersion/$1" }
+    {
+      "source": "/",
+      "destination": "/WebVersion/index.html"
+    },
+    {
+      "source": "/rullo",
+      "destination": "/apps/rullo/index.html"
+    },
+    {
+      "source": "/rullo/",
+      "destination": "/apps/rullo/index.html"
+    },
+    {
+      "source": "/rullo/(.*)",
+      "destination": "/apps/rullo/$1"
+    },
+    {
+      "source": "/sirena",
+      "destination": "/apps/sirena/index.html"
+    },
+    {
+      "source": "/sirena/",
+      "destination": "/apps/sirena/index.html"
+    },
+    {
+      "source": "/sirena/(.*)",
+      "destination": "/apps/sirena/$1"
+    },
+    {
+      "source": "/bimbi",
+      "destination": "/apps/bimbi/index.html"
+    },
+    {
+      "source": "/bimbi/",
+      "destination": "/apps/bimbi/index.html"
+    },
+    {
+      "source": "/bimbi/(.*)",
+      "destination": "/apps/bimbi/$1"
+    },
+    {
+      "source": "/test-microfono",
+      "destination": "/apps/test-microfono/index.html"
+    },
+    {
+      "source": "/test-microfono/",
+      "destination": "/apps/test-microfono/index.html"
+    },
+    {
+      "source": "/test-microfono/(.*)",
+      "destination": "/apps/test-microfono/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/WebVersion/$1"
+    }
   ],
   "headers": [
     {
       "source": "/WebVersion/index.html",
       "headers": [
-        { "key": "Cache-Control", "value": "no-store, must-revalidate" }
+        {
+          "key": "Cache-Control",
+          "value": "no-store, must-revalidate"
+        }
       ]
     },
     {
       "source": "/",
       "headers": [
-        { "key": "Cache-Control", "value": "no-store, must-revalidate" }
+        {
+          "key": "Cache-Control",
+          "value": "no-store, must-revalidate"
+        }
       ]
     },
     {
-      "source": "/sirena",
+      "source": "/test-microfono",
       "headers": [
-        { "key": "Cache-Control", "value": "no-store, must-revalidate" }
+        {
+          "key": "Cache-Control",
+          "value": "no-store, must-revalidate"
+        }
       ]
     },
     {
       "source": "/bimbi",
       "headers": [
-        { "key": "Cache-Control", "value": "no-store, must-revalidate" }
+        {
+          "key": "Cache-Control",
+          "value": "no-store, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/sirena",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/rullo",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, must-revalidate"
+        }
       ]
     },
     {
       "source": "/WebVersion/sw.js",
       "headers": [
-        { "key": "Cache-Control", "value": "no-cache" }
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        }
       ]
     },
     {
       "source": "/WebVersion/js/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
       ]
     },
     {
       "source": "/WebVersion/css/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
       ]
     },
     {
       "source": "/WebVersion/assets/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
       ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/pitch-roll.html",
+      "destination": "/rullo",
+      "permanent": false
+    },
+    {
+      "source": "/sirena.html",
+      "destination": "/sirena",
+      "permanent": false
+    },
+    {
+      "source": "/bimbi.html",
+      "destination": "/bimbi",
+      "permanent": false
+    },
+    {
+      "source": "/mic-test.html",
+      "destination": "/test-microfono",
+      "permanent": false
+    },
+    {
+      "source": "/bimbi.webmanifest",
+      "destination": "/bimbi/manifest.webmanifest",
+      "permanent": false
     }
   ]
 }
