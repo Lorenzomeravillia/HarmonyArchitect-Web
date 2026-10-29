@@ -398,6 +398,15 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
       <small>Prima di ogni riga senti 4 colpi; durante il canto le linee sulla scia e il cielo segnano i battiti.</small>
     </div>
     <button class="btn" id="songListen">Ascolta l'inizio in questa tonalità</button>
+    <div class="field">
+      <span>Studio · ascolta e guarda</span>
+      <div class="seg" id="studioSeg">
+        <button data-v="1">Canta il testo</button>
+        <button data-v="0">Solo melodia</button>
+      </div>
+      <button class="btn" id="songStudio">Studio: ascolta tutto il brano</button>
+      <small>Il brano scorre dall'inizio alla fine e lo suona il programma, nella tonalità e al tempo scelti. Non serve il microfono.</small>
+    </div>
     <button class="linkish danger" id="songDelete" hidden>Elimina dal canzoniere</button>
     <div class="row">
       <button class="btn" id="songAllena">Allenati</button>
@@ -477,7 +486,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     { id: 'sirena', name: 'Sirena', desc: 'Grandi salite e discese.', icon: 'M2 26 C14 26 18 3 32 3 S50 27 62 27' },
     { id: 'tempesta', name: 'Tempesta', desc: 'Un po’ di tutto.', icon: 'M2 18 C8 6 12 6 16 16 H24 V8 H32 C40 8 44 28 52 24 L62 6' },
   ];
-  const MODE_NAME = { allena: 'Allenati', sfida: 'Sfida' };
+  const MODE_NAME = { allena: 'Allenati', sfida: 'Sfida', studio: 'Studio' };
 
   // ---- Canzoniere ----
   // Ogni brano ha le note assolute nella tonalità originale (come arriverebbero da un file ABC o MIDI),
@@ -536,7 +545,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   function load(k, fb) { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? fb; } catch (e) { return fb; } }
   function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
   const old = load('sirena.settings.v1', {});
-  const settings = Object.assign({ level: null, names: 'mobile', fx: old.fx || 'full', last: null, highRuns: null, voice: null, songKeys: {}, songTempo: {} }, load(KEYS.settings, {}));
+  const settings = Object.assign({ level: null, names: 'mobile', fx: old.fx || 'full', last: null, highRuns: null, voice: null, songKeys: {}, songTempo: {}, studioVoice: true }, load(KEYS.settings, {}));
   const saveSettings = () => save(KEYS.settings, settings);
   let best = load(KEYS.best, {});
   let history = load(KEYS.history, []);
@@ -614,6 +623,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     const AC = window.AudioContext || window.webkitAudioContext;
     ctx = new AC({ latencyHint: 'interactive' });
     for (const k in waves) delete waves[k]; // le forme d'onda appartengono al contesto
+    noiseBuf = null;
     // Spinta forte seguita da un limitatore: le note delle pause escono molto più alte senza distorcere.
     out = ctx.createGain();
     out.gain.value = 2.4;
@@ -706,6 +716,167 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     o.start(t);
     o.stop(t + dur + 0.3);
   }
+  function bandpass(freq, q, gain) {
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = freq;
+    filter.Q.value = q;
+    const amp = ctx.createGain();
+    amp.gain.value = gain;
+    filter.connect(amp);
+    return { filter, amp };
+  }
+  // Voce sintetica che canta una sillaba (la stessa di Canta con Lu): dente di sega filtrato sulle formanti
+  // della vocale (adulta per le note gravi, chiara per le acute), con una consonante iniziale semplificata, un piccolo scivolamento
+  // d'attacco e un vibrato leggero. Le consonanti sono accennate: contano soprattutto le vocali.
+  const VOWELS = {
+    a: [[850, 1500, 2800], [1, 0.6, 0.14]],
+    e: [[550, 2100, 2900], [1, 0.45, 0.18]],
+    i: [[320, 2600, 3300], [1, 0.35, 0.18]],
+    o: [[520, 950, 2800], [1, 0.55, 0.08]],
+    u: [[400, 950, 2800], [1, 0.45, 0.08]],
+  };
+  const VOWELS_ADULT = {
+    a: [[730, 1090, 2440], [1, 0.6, 0.14]],
+    e: [[530, 1840, 2480], [1, 0.45, 0.18]],
+    i: [[270, 2290, 3010], [1, 0.35, 0.18]],
+    o: [[570, 840, 2410], [1, 0.55, 0.08]],
+    u: [[300, 870, 2240], [1, 0.45, 0.08]],
+  };
+  function parseSyl(syl) {
+    const w = syl.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z]/g, '').replace(/^h/, '');
+    const m = w.match(/^([^aeiou]*)(.*)$/);
+    let onset = m[1], rest = m[2];
+    // ci, gi, sci davanti a vocale: la i non si sente (ciuf, giù)
+    if (['c', 'g', 'sc'].includes(onset) && rest.length > 1 && rest[0] === 'i' && 'aeou'.includes(rest[1])) { onset += 'i'; rest = rest.slice(1); }
+    const v = rest.match(/^([aeiou]+)(.*)$/);
+    return { onset, vowels: (v ? v[1] : 'u').split(''), coda: v ? v[2] : '' };
+  }
+  function onsetKind(o) {
+    if (!o) return null;
+    if (o === 'l' || o === 'r' || o === 'gl') return 'liquid';
+    if (o === 'm' || o === 'n') return 'nasal';
+    if (['b', 'd', 'g', 'br'].includes(o)) return 'voiced';
+    if (['ci', 'gi', 'z'].includes(o)) return 'affricate';
+    if (o === 'sc' || o === 'sci') return 'sh';
+    if (['f', 'fr', 'v', 's', 'sv'].includes(o)) return 'fricative';
+    return 'stop'; // p, t, c, ch, q, st
+  }
+  let noiseBuf = null;
+  function noise(t, dur, freq, gain, q = 1.2) {
+    if (!noiseBuf) {
+      noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+      const d = noiseBuf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = noiseBuf;
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = freq;
+    bp.Q.value = q;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(gain, t + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.0005, t + dur);
+    src.connect(bp).connect(g).connect(out);
+    src.start(t);
+    src.stop(t + dur + 0.02);
+  }
+  function singSyl(midi, t, dur, syl = 'lu', vol = 0.9) {
+    const { onset, vowels, coda } = parseSyl(syl || 'lu');
+    const kind = onsetKind(onset);
+    const f = mtof(midi);
+    const on = { stop: 0.03, voiced: 0.03, affricate: 0.07, sh: 0.08, fricative: 0.07, nasal: 0.07 }[kind] || 0;
+    const codaDur = /^[nm]/.test(coda) ? Math.min(0.12, dur * 0.25) : coda ? Math.min(0.08, dur * 0.2) : 0;
+    const vStart = t + on;
+    const vEnd = Math.max(vStart + 0.08, t + dur - codaDur);
+
+    const vo = ctx.createGain();
+    vo.gain.value = 0;
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 3400;
+    vo.connect(lp).connect(out);
+    const saw = ctx.createOscillator();
+    saw.type = 'sawtooth';
+    saw.frequency.value = f;
+    const sine = ctx.createOscillator();
+    sine.frequency.value = f;
+    const vib = ctx.createOscillator();
+    vib.frequency.value = 5.3;
+    const vibAmt = ctx.createGain();
+    vibAmt.gain.setValueAtTime(0, t);
+    vibAmt.gain.linearRampToValueAtTime(14, t + Math.min(0.45, dur * 0.6));
+    vib.connect(vibAmt);
+    for (const o of [saw, sine]) {
+      vibAmt.connect(o.detune);
+      o.detune.setValueAtTime(-35, t);
+      o.detune.linearRampToValueAtTime(0, t + 0.08);
+    }
+    // formanti della vocale (o delle vocali, che scivolano una nell'altra: mi-ao, pio)
+    const tuned = (v) => {
+      const [fr, gn] = (f < 260 ? VOWELS_ADULT : VOWELS)[v] || VOWELS.u;
+      const f1 = Math.max(fr[0], f * 1.08);
+      return [[f1, Math.max(fr[1], f1 * 1.4), fr[2]], gn];
+    };
+    const first = tuned(vowels[0]);
+    const bands = [0, 1, 2].map((k) => bandpass(first[0][k], [4, 6, 8][k], first[1][k]));
+    for (const b of bands) { saw.connect(b.filter); b.amp.connect(vo); }
+    if (kind === 'liquid') { // la "l": seconda formante che parte alta e scende sulla vocale
+      bands[1].filter.frequency.setValueAtTime(1500, t);
+      bands[1].filter.frequency.exponentialRampToValueAtTime(first[0][1], vStart + 0.08);
+    }
+    const seg = (vEnd - vStart) / vowels.length;
+    let prev = first;
+    vowels.forEach((v, i) => {
+      if (!i) return;
+      const next = tuned(v);
+      const at = vStart + seg * i;
+      bands.forEach((b, k) => {
+        b.filter.frequency.setValueAtTime(prev[0][k], at - seg * 0.4);
+        b.filter.frequency.linearRampToValueAtTime(next[0][k], at);
+        b.amp.gain.setValueAtTime(prev[1][k], at - seg * 0.4);
+        b.amp.gain.linearRampToValueAtTime(next[1][k], at);
+      });
+      prev = next;
+    });
+    const body = ctx.createGain();
+    body.gain.value = 0.35;
+    sine.connect(body).connect(vo);
+
+    // inviluppo: le consonanti sonore (l, m, n, b, d) partono già con un po' di voce
+    const voicedOnset = ['liquid', 'nasal', 'voiced'].includes(kind) || !kind;
+    vo.gain.setValueAtTime(0, t);
+    if (voicedOnset) {
+      vo.gain.linearRampToValueAtTime(vol * (kind === 'nasal' ? 0.3 : 0.5), t + Math.max(0.03, on));
+      vo.gain.linearRampToValueAtTime(vol, vStart + 0.06);
+    } else {
+      vo.gain.setValueAtTime(0, vStart);
+      vo.gain.linearRampToValueAtTime(vol, vStart + 0.03);
+    }
+    vo.gain.setValueAtTime(vol, vEnd);
+    if (/^[nm]/.test(coda)) { // din, don, scen: la voce si chiude in un ronzio
+      vo.gain.linearRampToValueAtTime(vol * 0.3, vEnd + 0.04);
+      vo.gain.setValueAtTime(vol * 0.3, t + dur - 0.04);
+      vo.gain.setTargetAtTime(0, t + dur - 0.04, 0.04);
+    } else if (coda) {
+      vo.gain.setTargetAtTime(0, vEnd, 0.02);
+    } else {
+      vo.gain.setTargetAtTime(0, Math.max(vEnd, t + dur - 0.05), 0.05);
+    }
+    // consonanti di rumore
+    if (kind === 'stop') noise(t, 0.03, /t/.test(onset) ? 3500 : onset === 'p' ? 1000 : 2200, 0.22);
+    else if (kind === 'voiced') noise(t, 0.025, 900, 0.12);
+    else if (kind === 'affricate') noise(t, 0.08, 3200, 0.16);
+    else if (kind === 'sh') noise(t, 0.09, 2600, 0.18);
+    else if (kind === 'fricative') noise(t, 0.08, onset === 's' ? 5500 : 1800, 0.1);
+    if (coda === 'f') noise(vEnd, 0.08, 1800, 0.1);
+    else if (coda === 'c') noise(vEnd + 0.02, 0.03, 2200, 0.15);
+    const end = t + dur + 0.4;
+    for (const o of [saw, sine, vib]) { o.start(t); o.stop(end); }
+  }
+
   function endChime(midi) {
     if (!ctx) return;
     const t = ctx.currentTime + 0.05;
@@ -949,6 +1120,90 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
       score: 0, streak: 0, outFor: 0, combo: 1, bestCombo: 1, pathTime: 0, inTime: 0, lastIn: -9, gatesOk: 0,
       mid: (lo + hi) / 2, spb, bpm: Math.round(song.bpm * factor),
     };
+  }
+
+  // Studio: tutto il brano di fila, che scorre come nel gioco ma lo suona (o lo canta) il programma.
+  // Le righe si rimettono al loro posto sulla griglia delle battute, così le pause fra una riga e l'altra
+  // tornano quelle vere: ogni riga comincia sulla prima battuta utile dopo la fine della precedente.
+  function buildStudioWorld(sg, shift, factor = 1) {
+    const spb = 60 / (sg.bpm * factor);
+    const meter = sg.meter || 4;
+    center = sg.tonic + shift + (sg.minor ? 3 : 0); // il "do" del brano
+    const steps = [];
+    let start = 0, down = 0, end = 0;
+    sg.lines.forEach((line, li) => {
+      const pk = (sg.pickups && sg.pickups[li]) || 0;
+      if (li > 0) {
+        let k = 0;
+        while (down + k * meter - pk < end - 1e-6) k++;
+        start = down + k * meter - pk;
+      }
+      down = start + pk;
+      let u = start;
+      for (const [m, beats, w] of line) {
+        if (m != null) steps.push({ t: u * spb, v: m + shift - center, dur: beats * spb, w });
+        u += beats;
+      }
+      end = u;
+    });
+    const lead = 4 * spb;
+    const seg = {
+      kind: 'song', steps, dur: end * spb,
+      fn: (x) => { const st = steps.find((q) => x >= q.t && x < q.t + q.dur); return st ? st.v : NaN; },
+    };
+    Object.assign(seg, { t0: 0.6 + lead, t1: 0.6 + lead + seg.dur, audioAt: -1, audioDone: true, countDone: false, marks: [], refWall: -9 });
+    beatGrid(seg, sg, 0, spb);
+    const [lo, hi] = songSpan(sg, shift);
+    return {
+      ex: { id: `song-${sg.id}`, name: sg.title }, mode: 'studio', studio: true, segs: [seg], gates: [], end: seg.t1 + 1.2,
+      tol: 50, freezeUntil: 0, score: 0, streak: 0, outFor: 0, combo: 1, bestCombo: 1, pathTime: 0, inTime: 0, lastIn: -9, gatesOk: 0,
+      mid: (lo + hi) / 2, spb, bpm: Math.round(sg.bpm * factor), nextNote: 0,
+    };
+  }
+  function stepStudio(dt) {
+    const r = world, s = r.segs[0];
+    gt += dt;
+    if (ctx && !s.countDone) { // 4 colpi di conteggio, poi si parte
+      s.countDone = true;
+      const t0 = ctx.currentTime;
+      s.countIn.forEach((ct) => click(t0 + Math.max(0, ct - gt), s.beats.find((b) => b.t === ct).down));
+    }
+    // le note si programmano con un piccolo anticipo: in pausa smettono di partire
+    while (ctx && r.nextNote < s.steps.length && s.t0 + s.steps[r.nextNote].t < gt + 0.25) {
+      const st = s.steps[r.nextNote++];
+      const at = ctx.currentTime + Math.max(0, s.t0 + st.t - gt);
+      if (settings.studioVoice && st.w) singSyl(center + st.v, at, st.dur * 0.95, st.w, 0.8);
+      else tone(center + st.v, at, st.dur * 0.92, 0.8);
+    }
+    const here = pathAt(r, gt);
+    voice.m = here ? center + here.v : NaN; // la cometa vola da sola sulle note
+    comet.inside = !!here;
+    if (gt >= r.end) endStudio();
+  }
+  function endStudio() {
+    state = 'end';
+    $('hud').hidden = true;
+    setCenterMsg(null);
+    $('quip').textContent = `Fine di «${song.title}». Ora prova a cantarla tu.`;
+    $('endPanel').querySelector('.big-score').hidden = true;
+    $('endPanel').querySelector('.stats').hidden = true;
+    $('suggest').hidden = true;
+    $('copyOut').hidden = true;
+    $('endMain').textContent = 'Allenati';
+    $('endSecond').textContent = 'Riascolta';
+    $('endPanel').hidden = false;
+    endChime(center);
+  }
+  function startStudio(id) {
+    const sg = SONGBOOK.find((x) => x.id === id);
+    if (!sg) return;
+    ensureCtx(); // niente microfono: basta l'audio, avviato in questo tocco
+    if (ctx.state !== 'running') ctx.resume().catch(() => {});
+    song = sg;
+    songShift = songShiftOf(sg);
+    exercise = null;
+    mode = 'studio';
+    beginRun();
   }
 
   // Colpo del conteggio: un legnetto breve, più acuto sul primo tempo.
@@ -1427,6 +1682,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     gt = 0;
     particles = particles.filter((p) => p.age < 0.2);
     $('hud').hidden = false;
+    $('combo').hidden = false;
     $('score').textContent = '0';
     $('scoreLabel').textContent = mode === 'allena' ? 'allenamento' : 'sfida';
     setCombo(1, false);
@@ -1439,17 +1695,19 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
 
   // Avvio di un brano: niente calibrazione, la tonalità l'ha scelta chi canta.
   function beginSongRun() {
-    world = buildSongWorld(song, songShift, mode, songTempoOf(song));
+    world = mode === 'studio' ? buildStudioWorld(song, songShift, songTempoOf(song)) : buildSongWorld(song, songShift, mode, songTempoOf(song));
     speedFix = 72 / world.spb; // 72 px per battito: le note brevi restano leggibili
     resize();
     gt = 0;
     particles = particles.filter((p) => p.age < 0.2);
     $('menu').hidden = true;
     $('hud').hidden = false;
-    $('score').textContent = '0';
-    $('scoreLabel').textContent = mode === 'allena' ? 'allenamento' : 'sfida';
+    $('score').textContent = mode === 'studio' ? '♪' : '0';
+    $('scoreLabel').textContent = mode === 'allena' ? 'allenamento' : mode === 'studio' ? 'studio' : 'sfida';
+    $('combo').hidden = mode === 'studio';
     setCombo(1, false);
-    const hint = mode === 'allena' ? 'Prima di ogni riga la senti tutta, poi tocca a te.' : 'Prima di ogni riga senti solo la nota di partenza.';
+    const hint = mode === 'studio' ? (settings.studioVoice && song.lines.flat().some((e) => e[2]) ? 'Ascolta e guarda: il programma canta il testo.' : 'Ascolta e guarda: il programma suona la melodia.')
+      : mode === 'allena' ? 'Prima di ogni riga la senti tutta, poi tocca a te.' : 'Prima di ogni riga senti solo la nota di partenza.';
     setCenterMsg(`${song.title} · ${MODE_NAME[mode]}`, `${keyName(song, songShift)}, ♩ ${world.bpm}. ${hint}`);
     msgTimer = wall() + 3;
   }
@@ -1469,6 +1727,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   }
 
   function stepRun(dt) {
+    if (world.studio) { stepStudio(dt); return; }
     const r = world;
     // mentre suonano le note della pausa il percorso aspetta
     if (wall() >= r.freezeUntil) gt += dt;
@@ -1561,6 +1820,8 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     [0, 'La cometa ha fatto un po’ di turismo. Si riparte?'],
   ];
   function endRun() {
+    $('endPanel').querySelector('.big-score').hidden = false; // lo Studio le nasconde
+    $('endPanel').querySelector('.stats').hidden = false;
     state = 'end';
     const r = world;
     const sfida = r.mode === 'sfida';
@@ -1638,7 +1899,8 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   }
   async function resume() {
     if (state !== 'paused') return;
-    if (!(await ensureMic())) return;
+    if (mode === 'studio') { ensureCtx(); resumeAudio(); } // lo Studio non usa il microfono
+    else if (!(await ensureMic())) return;
     $('pausePanel').hidden = true;
     state = 'run';
   }
@@ -1785,6 +2047,10 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     $('keyNote').textContent = `Da ${songNoteName(sg, sh, lo)} a ${songNoteName(sg, sh, hi)}`
       + (sh === 0 ? ' · tonalità originale' : '') + (fitsVoice ? ` · adatta a ${voiceName}` : '');
     $('keyOriginal').hidden = sh === 0;
+    // la voce che canta si può scegliere solo se il brano ha un testo
+    const words = sg.lines.flat().some((e) => e[2]);
+    $('studioSeg').hidden = !words;
+    $('studioSeg').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String((b.dataset.v === '1') === !!settings.studioVoice)));
     const f = songTempoOf(sg);
     $('tempoSeg').querySelectorAll('button').forEach((b) => {
       b.setAttribute('aria-pressed', String(Number(b.dataset.v) === f));
@@ -2047,6 +2313,14 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   });
   $('songAllena').addEventListener('click', () => { $('songPanel').hidden = true; startSong(openSong.id, 'allena'); });
   $('songSfida').addEventListener('click', () => { $('songPanel').hidden = true; startSong(openSong.id, 'sfida'); });
+  $('songStudio').addEventListener('click', () => { stopPreview(); $('songPanel').hidden = true; startStudio(openSong.id); });
+  $('studioSeg').addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    settings.studioVoice = b.dataset.v === '1';
+    saveSettings();
+    renderSong();
+  });
 
   async function startSong(id, md) {
     const sg = SONGBOOK.find((x) => x.id === id);
@@ -2077,16 +2351,21 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   $('msgOk').addEventListener('click', () => { $('msgPanel').hidden = true; $('msgTitle').textContent = 'Serve il microfono'; });
   $('pauseBtn').addEventListener('click', pause);
   $('resume').addEventListener('click', resume);
-  $('restart').addEventListener('click', async () => { if (!(await ensureMic())) return; $('pausePanel').hidden = true; beginRun(); });
+  $('restart').addEventListener('click', async () => {
+    if (mode === 'studio') { $('pausePanel').hidden = true; startStudio(song.id); return; }
+    if (!(await ensureMic())) return; $('pausePanel').hidden = true; beginRun();
+  });
   $('quit').addEventListener('click', toMenu);
   $('toMenu').addEventListener('click', toMenu);
   $('endMain').addEventListener('click', async () => {
+    if (mode === 'studio') { $('endPanel').hidden = true; startSong(song.id, 'allena'); return; } // dallo Studio ad Allenati
     if (!(await ensureMic())) return;
     $('endPanel').hidden = true;
     if (mode === 'allena') { mode = 'sfida'; settings.last = song ? { song: song.id, mode } : { ex: exercise.id, mode }; saveSettings(); }
     beginRun();
   });
   $('endSecond').addEventListener('click', async () => {
+    if (mode === 'studio') { $('endPanel').hidden = true; startStudio(song.id); return; } // riascolta
     if (mode === 'allena') { if (!(await ensureMic())) return; $('endPanel').hidden = true; beginRun(); return; }
     const lines = ['Sirena – ultime partite'];
     for (const h of history.slice(0, 15)) {
