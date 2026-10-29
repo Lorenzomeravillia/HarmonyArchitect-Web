@@ -175,6 +175,31 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   border-radius: 14px; padding: 12px; display: grid; gap: 10px;
 }
 .suggest p { margin: 0; text-wrap: balance; }
+.book-entry {
+  border: 1px solid rgba(255,210,122,.4); background: rgba(255,210,122,.07);
+  border-radius: 16px; padding: 12px 14px;
+  display: grid; grid-template-columns: 40px 1fr auto; align-items: center; gap: 12px; text-align: left;
+}
+.book-entry svg { width: 30px; height: 30px; fill: var(--gold); }
+.book-entry .chev { width: 18px; height: 18px; fill: var(--muted); }
+.book-entry b { display: block; font-size: 18px; font-weight: 500; }
+.book-entry small { color: var(--muted); font-size: 13px; }
+.song-row {
+  border: 1px solid var(--line); background: rgba(255,255,255,.04);
+  border-radius: 16px; padding: 12px 14px; text-align: left;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+}
+.song-row b { display: block; font-size: 18px; font-weight: 500; }
+.song-row small { color: var(--muted); font-size: 13px; }
+.song-row .key { color: var(--gold); font-size: 13px; white-space: nowrap; }
+.voices { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; background: rgba(255,255,255,.05); border-radius: 12px; padding: 4px; }
+.voices button { border: 0; background: transparent; border-radius: 9px; padding: 9px 2px; color: var(--muted); font-weight: 500; font-size: 13px; }
+.voices button[aria-pressed="true"] { background: rgba(255,210,122,.18); color: var(--ink); }
+.keybox { display: flex; align-items: center; gap: 8px; }
+.keybox button { width: 46px; height: 46px; border-radius: 12px; border: 1px solid var(--line); background: rgba(255,255,255,.05); font-size: 22px; font-weight: 700; }
+.keybox output { flex: 1; text-align: center; font-size: 20px; font-weight: 500; }
+.keynote { color: var(--muted); font-size: 13px; text-align: center; margin: 0; }
+.linkish { border: 0; background: none; color: var(--cyan); font-size: 14px; padding: 4px; justify-self: center; }
 #copyOut { width: 100%; height: 110px; font: 12px ui-monospace, Menlo, monospace; background: rgba(0,0,0,.3); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; }
 @media (prefers-reduced-motion: reduce) { .combo.pop { animation: none; } }
 </style>
@@ -211,6 +236,11 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
       <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
     </button>
     <div class="list" id="exercises"></div>
+    <button class="book-entry" id="openBook">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3z"/></svg>
+      <span><b>Canzoniere</b><small>Canta brani veri, nella tonalità della tua voce</small></span>
+      <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6-1.4-1.4L12.2 12 7.6 7.4z"/></svg>
+    </button>
     <div class="row">
       <button class="btn" id="openSettings">Impostazioni</button>
       <a class="btn" href="/rullo">Rullo delle note</a>
@@ -257,6 +287,51 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
       <button class="btn" id="endSecond"></button>
       <button class="btn go" id="endMain"></button>
     </div>
+  </div>
+</section>
+
+<section class="sheet middle" id="bookPanel" hidden>
+  <div class="panel">
+    <h2 class="quip">Canzoniere</h2>
+    <p class="lead">Scegli un brano, poi la tonalità. Presto si potranno aggiungere brani da file ABC e MIDI.</p>
+    <div class="list" id="songList"></div>
+    <div class="row"><button class="btn" id="bookClose">Chiudi</button></div>
+  </div>
+</section>
+
+<section class="sheet middle" id="songPanel" hidden>
+  <div class="panel">
+    <div>
+      <h2 class="quip" id="songTitle"></h2>
+      <p class="lead" id="songSub"></p>
+    </div>
+    <div class="field">
+      <span>La tua voce</span>
+      <div class="voices" id="voiceSeg">
+        <button data-v="basso">Basso</button>
+        <button data-v="baritono">Baritono</button>
+        <button data-v="tenore">Tenore</button>
+        <button data-v="contralto">Contralto</button>
+        <button data-v="soprano">Soprano</button>
+      </div>
+      <small>Toccando la tua voce, la tonalità si sistema da sola. Poi puoi aggiustarla a mano.</small>
+    </div>
+    <div class="field">
+      <span>Tonalità</span>
+      <div class="keybox">
+        <button id="keyDown" aria-label="Mezzo tono più grave">−</button>
+        <output id="keyOut"></output>
+        <button id="keyUp" aria-label="Mezzo tono più acuta">+</button>
+      </div>
+      <p class="keynote" id="keyNote"></p>
+      <button class="linkish" id="keyOriginal">Torna alla tonalità originale</button>
+    </div>
+    <button class="btn" id="songListen">Ascolta l'inizio in questa tonalità</button>
+    <div class="row">
+      <button class="btn" id="songAllena">Allenati</button>
+      <button class="btn go" id="songSfida">Sfida</button>
+    </div>
+    <div class="row"><button class="btn" id="songBack">Indietro</button></div>
   </div>
 </section>
 
@@ -331,12 +406,62 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   ];
   const MODE_NAME = { allena: 'Allenati', sfida: 'Sfida' };
 
+  // ---- Canzoniere ----
+  // Ogni brano ha le note assolute nella tonalità originale (come arriverebbero da un file ABC o MIDI),
+  // divise in righe. Ogni evento è [nota MIDI, battiti, sillaba] oppure [null, battiti] per una pausa.
+  // `tonic` è la tonica originale; nei brani in minore il "do" del do mobile è la relativa maggiore.
+  const SONGBOOK = [
+    {
+      id: 'bella-ciao', title: 'Bella ciao', subtitle: 'Canto popolare italiano', bpm: 100, tonic: 67, minor: true,
+      lines: [
+        [[62, .5, 'u'], [67, .5, 'na'], [69, .5, 'mat'], [70, .5, 'ti'], [67, .5, 'na'], [null, 1.5],
+          [62, .5, 'mi'], [67, .5, 'son'], [69, .5, 'sve'], [70, .5, 'glia'], [67, .5, 'to']],
+        [[62, .5, 'o'], [67, .5, 'bel'], [69, .5, 'la'], [70, 1, 'ciao'], [69, .5, 'bel'], [67, .5, 'la'], [70, 1, 'ciao'],
+          [69, .5, 'bel'], [67, .5, 'la'], [74, 1, 'ciao'], [74, 1, 'ciao'], [74, 1, 'ciao']],
+        // in questa riga la partitura ha una nota in meno di "una mattina mi son svegliato": resta su "la"
+        [[72, .5, 'la'], [74, .5, 'la'], [75, .5, 'la'], [75, .5, 'la'], [null, 1.5],
+          [75, .5, 'la'], [74, .5, 'la'], [72, .5, 'la'], [75, .5, 'la'], [74, .5, 'la']],
+        [[74, .5, 'e'], [72, .5, 'ho'], [70, .5, 'tro'], [69, 1, 'va'], [74, 1, 'to'], [70, 1, 'l\u2019in'], [69, 1, 'va'], [67, 2, 'sor']],
+      ],
+    },
+  ];
+  // Estensioni comode delle voci, come nei cori: la tonalità consigliata centra il brano qui dentro.
+  const VOICES = [
+    { id: 'basso', name: 'Basso', lo: 41, hi: 62 },         // Fa2 – Re4
+    { id: 'baritono', name: 'Baritono', lo: 45, hi: 65 },   // La2 – Fa4
+    { id: 'tenore', name: 'Tenore', lo: 48, hi: 69 },       // Do3 – La4
+    { id: 'contralto', name: 'Contralto', lo: 53, hi: 74 }, // Fa3 – Re5
+    { id: 'soprano', name: 'Soprano', lo: 60, hi: 81 },     // Do4 – La5
+  ];
+  const KEY_MAJ = ['Do', 'Re♭', 'Re', 'Mi♭', 'Mi', 'Fa', 'Fa♯', 'Sol', 'La♭', 'La', 'Si♭', 'Si'];
+  const KEY_MIN = ['Do', 'Do♯', 'Re', 'Mi♭', 'Mi', 'Fa', 'Fa♯', 'Sol', 'Sol♯', 'La', 'Si♭', 'Si'];
+  const IT_FLAT = ['Do', 'Re♭', 'Re', 'Mi♭', 'Mi', 'Fa', 'Sol♭', 'Sol', 'La♭', 'La', 'Si♭', 'Si'];
+  const pcOf = (n) => ((n % 12) + 12) % 12;
+  function songNotes(song) { return song.lines.flat().filter((e) => e[0] != null).map((e) => e[0]); }
+  function songSpan(song, shift = 0) { const n = songNotes(song); return [Math.min(...n) + shift, Math.max(...n) + shift]; }
+  function keyName(song, shift) {
+    const pc = pcOf(song.tonic + shift);
+    return song.minor ? `${KEY_MIN[pc]} minore` : `${KEY_MAJ[pc]} maggiore`;
+  }
+  // nelle tonalità con i bemolle (Fa, Si♭, Mi♭, La♭, Re♭ maggiore e relative minori) le note si scrivono coi bemolle
+  function songNoteName(song, shift, n) {
+    const major = pcOf(song.tonic + shift + (song.minor ? 3 : 0));
+    const flats = [5, 10, 3, 8, 1].includes(major);
+    return (flats ? IT_FLAT : IT)[pcOf(n)] + (Math.floor(n / 12) - 1);
+  }
+  function fitShift(song, voiceId) {
+    const v = VOICES.find((x) => x.id === voiceId);
+    if (!v) return 0;
+    const [lo, hi] = songSpan(song);
+    return clamp(Math.round((v.lo + v.hi) / 2 - (lo + hi) / 2), -24, 24);
+  }
+
   // ---- Memoria locale ----
   const KEYS = { settings: 'sirena.settings.v2', best: 'sirena.best.v2', history: 'sirena.history.v2', center: 'sirena.center.v1' };
   function load(k, fb) { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? fb; } catch (e) { return fb; } }
   function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
   const old = load('sirena.settings.v1', {});
-  const settings = Object.assign({ level: null, names: 'mobile', fx: old.fx || 'full', last: null, highRuns: null }, load(KEYS.settings, {}));
+  const settings = Object.assign({ level: null, names: 'mobile', fx: old.fx || 'full', last: null, highRuns: null, voice: null, songKeys: {} }, load(KEYS.settings, {}));
   const saveSettings = () => save(KEYS.settings, settings);
   let best = load(KEYS.best, {});
   let history = load(KEYS.history, []);
@@ -627,13 +752,65 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
       pathTime: 0, inTime: 0, lastIn: -9, gatesOk: 0,
     };
   }
+  // Un brano del canzoniere: ogni riga è un'onda a gradini, con la durata vera di ogni nota e le pause
+  // come interruzioni della scia. Le note si misurano rispetto al "do" del brano trasportato.
+  function planSongPause(seg, song, shift, li, allena) {
+    const ev = [];
+    let t = 0;
+    if (li === 0) { // la tonalità del brano, una volta all'inizio: l'accordo di casa
+      const root = song.tonic + shift;
+      for (const iv of song.minor ? [0, 3, 7, 12] : [0, 4, 7, 12]) { ev.push({ type: 'tone', midi: root + iv, at: t, dur: 0.34, vol: 0.75 }); t += 0.3; }
+      t += 0.45;
+    }
+    if (allena) { // tutta la riga, col suo ritmo
+      seg.steps.forEach((st, i) => ev.push({ type: 'tone', midi: center + st.v, at: t + st.t, dur: st.dur * 0.9, vol: 0.8, mark: i }));
+      t += seg.dur + 0.45;
+    }
+    ev.push({ type: 'tone', midi: center + seg.steps[0].v, at: t, dur: 1.2, vol: 0.95, mark: 0 });
+    t += 1.2;
+    return { ev, dur: t };
+  }
+  function buildSongWorld(song, shift, mode) {
+    const lv = L(), allena = mode === 'allena';
+    const spb = (60 / song.bpm) * (allena ? 1.15 : 1); // in allenamento un po' più lento
+    center = song.tonic + shift + (song.minor ? 3 : 0);  // il "do" del brano
+    const segs = [], gates = [];
+    let t = 0.4;
+    song.lines.forEach((line, li) => {
+      const steps = [];
+      let u = 0;
+      for (const [m, beats, w] of line) {
+        const d = beats * spb;
+        if (m != null) steps.push({ t: u, v: m + shift - center, dur: d, w });
+        u += d;
+      }
+      const seg = { kind: 'song', steps, dur: u, fn: (x) => { const st = steps.find((q) => x >= q.t && x < q.t + q.dur); return st ? st.v : NaN; } };
+      seg.plan = planSongPause(seg, song, shift, li, allena);
+      t += 0.6 + LEAD;
+      Object.assign(seg, { t0: t, t1: t + seg.dur, audioAt: t - LEAD, audioDone: false, marks: [], refWall: -9 });
+      segs.push(seg);
+      for (const st of steps) if (st.dur >= 0.55) gates.push({ t: seg.t0 + st.t + st.dur * 0.6, seg, state: 'todo', fade: 1 });
+      t = seg.t1;
+    });
+    const [lo, hi] = songSpan(song, shift);
+    return {
+      ex: { id: `song-${song.id}`, name: song.title }, mode, segs, gates, end: t + 2.2, tol: lv.tol, freezeUntil: 0,
+      score: 0, streak: 0, outFor: 0, combo: 1, bestCombo: 1, pathTime: 0, inTime: 0, lastIn: -9, gatesOk: 0,
+      mid: (lo + hi) / 2, spb,
+    };
+  }
+
   // Nel menu la cometa vola da sola su un'onda lunga: una "demo" come nelle sale giochi.
   function buildDemo() {
     const o = makeOnde(LEVELS[1], 1e6);
     return { segs: [{ t0: -1e6, t1: 1e6, fn: (u) => o.fn(u), refWall: -9, marks: [] }], gates: [], tol: 40 };
   }
   function pathAt(w, time) {
-    for (const s of w.segs) if (time >= s.t0 && time <= s.t1) return { v: s.fn(time - s.t0), s };
+    for (const s of w.segs) {
+      if (time < s.t0 || time > s.t1) continue;
+      const v = s.fn(time - s.t0);
+      return Number.isNaN(v) ? null : { v, s }; // NaN: pausa dentro la riga
+    }
     return null;
   }
 
@@ -653,6 +830,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   // ---- Stato ----
   let state = 'menu'; // menu | calib | run | paused | end
   let exercise = null, mode = 'sfida';
+  let song = null, songShift = 0; // brano del canzoniere in corso (null negli esercizi)
   let world = buildDemo();
   let gt = 0;              // tempo del percorso: si ferma in pausa e durante l'anteprima
   let center = lastCenter ?? 55;
@@ -666,7 +844,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   const canvas = $('sky');
   const g = canvas.getContext('2d');
   let W = 0, H = 0, dpr = 1;
-  let SPEED = 60, speedK = 0.16, cometX = 100, top = 80, bottom = 600, pxSemi = 30;
+  let SPEED = 60, speedK = 0.16, speedFix = 0, cometX = 100, top = 80, bottom = 600, pxSemi = 30;
   const SPAN = 17;
   let FONT = 'sans-serif';
   let bgT = 0; // tempo dello sfondo: scorre sempre
@@ -701,7 +879,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     H = window.innerHeight;
     canvas.width = Math.round(W * dpr);
     canvas.height = Math.round(H * dpr);
-    SPEED = Math.max(60, W * speedK);
+    SPEED = speedFix || Math.max(60, W * speedK);
     cometX = W * 0.28;
     const sat = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sat')) || 0;
     top = 92 + sat;
@@ -747,7 +925,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
         continue;
       }
       // livelli tonali: le note della scala appena più chiare, la tonica come "casa" luminosa
-      const tonic = relPc(n) === 0, sc = inScale(n);
+      const tonic = relPc(n) === (song && song.minor ? 9 : 0), sc = inScale(n); // nei brani in minore la casa è il "la"
       if (tonic && labels) {
         g.fillStyle = 'rgba(255,210,122,0.045)';
         g.fillRect(0, y - pxSemi * 0.45, W, pxSemi * 0.9);
@@ -932,8 +1110,16 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
         const x = xOfTime(s.t0 + st.t);
         if (x < cometX - 30 || x > W + 10) return;
         const lab = labelFor(center + st.v);
-        if (!lab) return;
         const y = yOf(center + st.v);
+        if (st.w) { // sillaba del testo, sotto la scia
+          g.font = `500 13px ${FONT}`;
+          g.fillStyle = 'rgba(238,241,255,0.85)';
+          g.shadowColor = 'rgba(7,10,31,0.95)';
+          g.shadowBlur = 6;
+          g.fillText(st.w, x + 2, y + tolPx + 20);
+          g.shadowBlur = 0;
+        }
+        if (!lab) return;
         const lit = s.marks.some((m) => m.i === k && now >= m.w0 && now <= m.w1);
         if (lit) {
           g.globalCompositeOperation = 'lighter';
@@ -987,6 +1173,8 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
 
   function beginCalib(ex, md) {
     exercise = ex;
+    song = null;
+    speedFix = 0;
     mode = md;
     settings.last = { ex: ex.id, mode: md };
     saveSettings();
@@ -1024,6 +1212,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
 
   function beginRun() {
     state = 'run';
+    if (song) { beginSongRun(); return; }
     speedK = mode === 'allena' ? 0.12 : 0.16; // in allenamento la scia scorre più piano e se ne vede di più
     resize();
     world = buildWorld(exercise, mode);
@@ -1037,6 +1226,23 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     const casa = labelFor(center);
     const hint = mode === 'allena' ? 'Prima di ogni onda la senti tutta, poi tocca a te.' : 'Prima di ogni onda senti solo la nota di partenza.';
     setCenterMsg(`${exercise.name} · ${MODE_NAME[mode]}`, `${lv.name}. Casa: ${casa ? casa.text : noteName(center)}${nameStyle() === 'reali' ? '' : ` (${noteName(center)})`}. ${hint}`);
+    msgTimer = wall() + 3;
+  }
+
+  // Avvio di un brano: niente calibrazione, la tonalità l'ha scelta chi canta.
+  function beginSongRun() {
+    world = buildSongWorld(song, songShift, mode);
+    speedFix = 72 / world.spb; // 72 px per battito: le note brevi restano leggibili
+    resize();
+    gt = 0;
+    particles = particles.filter((p) => p.age < 0.2);
+    $('menu').hidden = true;
+    $('hud').hidden = false;
+    $('score').textContent = '0';
+    $('scoreLabel').textContent = mode === 'allena' ? 'allenamento' : 'sfida';
+    setCombo(1, false);
+    const hint = mode === 'allena' ? 'Prima di ogni riga la senti tutta, poi tocca a te.' : 'Prima di ogni riga senti solo la nota di partenza.';
+    setCenterMsg(`${song.title} · ${MODE_NAME[mode]}`, `${keyName(song, songShift)}. ${hint}`);
     msgTimer = wall() + 3;
   }
 
@@ -1073,7 +1279,11 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
       inside = !Number.isNaN(c) && Math.abs(c) <= r.tol;
       const u = gt - here.s.t0;
       let settled = u > 0.6; // un attimo per entrare nella scia
-      if (here.s.steps && u > here.s.hold) {
+      if (here.s.kind === 'song') {
+        // brani: un attimo per arrivare a ogni nota nuova, e niente conti negli ultimi istanti della nota
+        const st = here.s.steps.find((q) => u >= q.t && u < q.t + q.dur);
+        settled = st && (st === here.s.steps[0] ? u - st.t > 0.3 : u - st.t > 0.25) && st.t + st.dur - u > 0.06;
+      } else if (here.s.steps && u > here.s.hold) {
         // ad ogni cambio di gradino c'è un attimo per arrivare alla nota nuova
         const since = u - Math.floor(u / here.s.hold) * here.s.hold;
         if (since < 0.4 || since > here.s.hold - 0.2) settled = false;
@@ -1144,7 +1354,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     const key = `${r.ex.id}|${settings.level}`;
     const prev = best[key] || 0;
     if (sfida && score > prev) { best[key] = score; save(KEYS.best, best); }
-    history.unshift({ at: Date.now(), ex: r.ex.id, mode: r.mode, level: settings.level, center, score,
+    history.unshift({ at: Date.now(), ex: r.ex.id, name: r.ex.name, key: song ? keyName(song, songShift) : null, mode: r.mode, level: settings.level, center, score,
       acc: +acc.toFixed(3), gates: `${r.gatesOk}/${r.gates.length}`, combo: r.bestCombo });
     history = history.slice(0, 60);
     save(KEYS.history, history);
@@ -1185,6 +1395,8 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   function toMenu() {
     state = 'menu';
     speedK = 0.16;
+    speedFix = 0;
+    center = lastCenter ?? 55; // dopo un brano si torna alla nota comoda degli esercizi
     resize();
     world = buildDemo();
     gt = 0;
@@ -1234,7 +1446,8 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     if (msgTimer && now > msgTimer && state === 'run') { setCenterMsg(null); msgTimer = 0; }
 
     // la vista si centra dolcemente; nel menu la demo vola nella parte alta, sopra il pannello
-    const wantMid = state === 'calib' ? viewMid : state === 'menu' ? center - 5 : center + 2;
+    const wantMid = state === 'calib' ? viewMid : state === 'menu' ? center - 5
+      : world && world.mid != null ? world.mid : center + 2;
     viewMid += (wantMid - viewMid) * (1 - Math.exp(-dt / 0.6));
 
     // posizione e luce della cometa
@@ -1259,9 +1472,11 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   // ---- Menu e pannelli ----
   function renderMenu() {
     $('levelChipText').textContent = L().name;
+    const lastSong = settings.last && settings.last.song && SONGBOOK.find((x) => x.id === settings.last.song);
     const lastEx = settings.last && EXERCISES.find((e) => e.id === settings.last.ex);
-    $('continueBtn').hidden = !lastEx;
-    if (lastEx) $('continueText').textContent = `${lastEx.name} · ${MODE_NAME[settings.last.mode]}`;
+    const lastItem = lastSong || lastEx;
+    $('continueBtn').hidden = !lastItem;
+    if (lastItem) $('continueText').textContent = `${lastItem.name || lastItem.title} · ${MODE_NAME[settings.last.mode]}`;
     $('exercises').innerHTML = EXERCISES.map((ex) => {
       const rec = best[`${ex.id}|${settings.level}`];
       return `<div class="ex">
@@ -1315,7 +1530,95 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     const b = e.target.closest('button[data-ex]');
     if (b) start(b.dataset.ex, b.dataset.mode);
   });
-  $('continueBtn').addEventListener('click', () => { if (settings.last) start(settings.last.ex, settings.last.mode); });
+  $('continueBtn').addEventListener('click', () => {
+    if (!settings.last) return;
+    if (settings.last.song) startSong(settings.last.song, settings.last.mode);
+    else start(settings.last.ex, settings.last.mode);
+  });
+
+  // Canzoniere: elenco dei brani e scheda del brano con voce e tonalità.
+  let openSong = null;
+  const songShiftOf = (sg) => settings.songKeys[sg.id] ?? (settings.voice ? fitShift(sg, settings.voice) : 0);
+  function renderBook() {
+    $('songList').innerHTML = SONGBOOK.map((sg) => `<button class="song-row" data-song="${sg.id}">
+        <span><b>${sg.title}</b><small>${sg.subtitle}</small></span>
+        <span class="key">${keyName(sg, songShiftOf(sg))}</span>
+      </button>`).join('');
+  }
+  function renderSong() {
+    const sg = openSong, sh = songShiftOf(sg);
+    $('songTitle').textContent = sg.title;
+    $('songSub').textContent = `${sg.subtitle} · originale in ${keyName(sg, 0)}`;
+    $('voiceSeg').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === settings.voice)));
+    $('keyOut').textContent = keyName(sg, sh);
+    const [lo, hi] = songSpan(sg, sh);
+    const fitsVoice = settings.voice && fitShift(sg, settings.voice) === sh;
+    const voiceName = settings.voice && VOICES.find((v) => v.id === settings.voice).name;
+    $('keyNote').textContent = `Da ${songNoteName(sg, sh, lo)} a ${songNoteName(sg, sh, hi)}`
+      + (sh === 0 ? ' · tonalità originale' : '') + (fitsVoice ? ` · adatta a ${voiceName}` : '');
+    $('keyOriginal').hidden = sh === 0;
+  }
+  function setSongShift(sh) {
+    settings.songKeys[openSong.id] = clamp(sh, -24, 24);
+    saveSettings();
+    renderSong();
+  }
+  $('openBook').addEventListener('click', () => { renderBook(); $('bookPanel').hidden = false; });
+  $('bookClose').addEventListener('click', () => { $('bookPanel').hidden = true; renderMenu(); });
+  $('songList').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-song]');
+    if (!b) return;
+    openSong = SONGBOOK.find((x) => x.id === b.dataset.song);
+    renderSong();
+    $('bookPanel').hidden = true;
+    $('songPanel').hidden = false;
+  });
+  $('songBack').addEventListener('click', () => { $('songPanel').hidden = true; renderBook(); $('bookPanel').hidden = false; });
+  $('voiceSeg').addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    settings.voice = b.dataset.v;
+    setSongShift(fitShift(openSong, settings.voice));
+  });
+  $('keyDown').addEventListener('click', () => setSongShift(songShiftOf(openSong) - 1));
+  $('keyUp').addEventListener('click', () => setSongShift(songShiftOf(openSong) + 1));
+  $('keyOriginal').addEventListener('click', () => setSongShift(0));
+  // ascolta l'inizio: accordo di casa e prima riga, nella tonalità scelta
+  $('songListen').addEventListener('click', () => {
+    ensureCtx();
+    if (ctx.state !== 'running') ctx.resume();
+    const sg = openSong, sh = songShiftOf(sg), spb = 60 / sg.bpm;
+    const t0 = ctx.currentTime + 0.1;
+    let t = 0;
+    for (const iv of sg.minor ? [0, 3, 7, 12] : [0, 4, 7, 12]) { tone(sg.tonic + sh + iv, t0 + t, 0.34, 0.75); t += 0.3; }
+    t += 0.5;
+    for (const [m, beats] of sg.lines[0]) {
+      if (m != null) tone(m + sh, t0 + t, beats * spb * 0.9, 0.85);
+      t += beats * spb;
+    }
+  });
+  $('songAllena').addEventListener('click', () => { $('songPanel').hidden = true; startSong(openSong.id, 'allena'); });
+  $('songSfida').addEventListener('click', () => { $('songPanel').hidden = true; startSong(openSong.id, 'sfida'); });
+
+  async function startSong(id, md) {
+    const sg = SONGBOOK.find((x) => x.id === id);
+    if (!sg) return;
+    try { await startMic(); }
+    catch (err) {
+      $('msgText').textContent = err.name === 'NotAllowedError'
+        ? 'Il microfono è bloccato per questo sito. Riattivalo dalle impostazioni del browser (aA nella barra degli indirizzi su Safari) e riprova.'
+        : `Non riesco ad aprire il microfono (${err.name}). Chiudi le altre app che lo usano e riprova.`;
+      $('msgPanel').hidden = false;
+      return;
+    }
+    song = sg;
+    songShift = songShiftOf(sg);
+    exercise = null;
+    mode = md;
+    settings.last = { song: sg.id, mode: md };
+    saveSettings();
+    beginRun();
+  }
   $('skipCalib').addEventListener('click', () => {
     if (state !== 'calib' || lastCenter == null) return;
     center = lastCenter;
@@ -1329,7 +1632,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   $('toMenu').addEventListener('click', toMenu);
   $('endMain').addEventListener('click', () => {
     $('endPanel').hidden = true;
-    if (mode === 'allena') { mode = 'sfida'; settings.last = { ex: exercise.id, mode }; saveSettings(); }
+    if (mode === 'allena') { mode = 'sfida'; settings.last = song ? { song: song.id, mode } : { ex: exercise.id, mode }; saveSettings(); }
     beginRun();
   });
   $('endSecond').addEventListener('click', async () => {
@@ -1337,7 +1640,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     const lines = ['Sirena – ultime partite'];
     for (const h of history.slice(0, 15)) {
       const ex = EXERCISES.find((x) => x.id === h.ex), lv = LEVELS.find((x) => x.id === h.level);
-      lines.push(`${new Date(h.at).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} · ${ex ? ex.name : h.ex} · ${MODE_NAME[h.mode] || h.mode} · ${lv ? lv.name : h.level} · casa ${noteName(h.center)} · ${h.score} punti · nella scia ${Math.round(h.acc * 100)}% · porte ${h.gates} · combo ×${h.combo}`);
+      lines.push(`${new Date(h.at).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} · ${h.name || (ex ? ex.name : h.ex)} · ${MODE_NAME[h.mode] || h.mode} · ${lv ? lv.name : h.level} · ${h.key ? h.key : `casa ${noteName(h.center)}`} · ${h.score} punti · nella scia ${Math.round(h.acc * 100)}% · porte ${h.gates} · combo ×${h.combo}`);
     }
     const text = lines.join('\n');
     try {
