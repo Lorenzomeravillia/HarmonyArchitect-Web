@@ -200,6 +200,28 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
 .keybox output { flex: 1; text-align: center; font-size: 20px; font-weight: 500; }
 .keynote { color: var(--muted); font-size: 13px; text-align: center; margin: 0; }
 .linkish { border: 0; background: none; color: var(--cyan); font-size: 14px; padding: 4px; justify-self: center; }
+.linkish.danger { color: #ff8a8a; }
+.part-row {
+  border: 1px solid var(--line); background: rgba(255,255,255,.04);
+  border-radius: 14px; padding: 10px 12px;
+  display: grid; grid-template-columns: 40px 1fr auto; align-items: center; gap: 10px;
+}
+.part-row.sug { border-color: rgba(255,210,122,.55); background: rgba(255,210,122,.07); }
+.part-row.off { opacity: .45; }
+.part-row b { display: block; font-size: 16px; font-weight: 500; overflow-wrap: anywhere; }
+.part-row small { color: var(--muted); font-size: 12px; }
+.part-row em { display: block; font-style: normal; color: var(--gold); font-size: 12px; margin-top: 2px; }
+.pplay { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); background: rgba(255,255,255,.06); display: grid; place-items: center; }
+.pplay svg { width: 16px; height: 16px; fill: var(--ink); }
+.pplay.on { border-color: var(--cyan); background: rgba(126,240,255,.15); }
+.txt, #abcText {
+  width: 100%; border-radius: 12px; border: 1px solid var(--line); background: rgba(0,0,0,.25); color: var(--ink);
+  font: 16px var(--font); padding: 10px 12px;
+}
+#abcText { font: 13px ui-monospace, Menlo, monospace; min-height: 200px; -webkit-user-select: text; user-select: text; }
+.sum { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0; font-size: 14px; }
+.sum dt { color: var(--muted); }
+.sum dd { margin: 0; }
 #copyOut { width: 100%; height: 110px; font: 12px ui-monospace, Menlo, monospace; background: rgba(0,0,0,.3); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; }
 @media (prefers-reduced-motion: reduce) { .combo.pop { animation: none; } }
 </style>
@@ -293,9 +315,48 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
 <section class="sheet middle" id="bookPanel" hidden>
   <div class="panel">
     <h2 class="quip">Canzoniere</h2>
-    <p class="lead">Scegli un brano, poi la tonalità. Presto si potranno aggiungere brani da file ABC e MIDI.</p>
+    <p class="lead">Scegli un brano, poi la tonalità. Puoi anche aggiungere brani da file ABC o MIDI.</p>
     <div class="list" id="songList"></div>
+    <div class="row">
+      <button class="btn" id="importFile">Importa un file</button>
+      <button class="btn" id="importPaste">Incolla ABC</button>
+    </div>
+    <input type="file" id="importInput" accept=".abc,.txt,.mid,.midi,.kar,.rmi,audio/midi,audio/x-midi,text/plain" hidden>
     <div class="row"><button class="btn" id="bookClose">Chiudi</button></div>
+  </div>
+</section>
+
+<section class="sheet middle" id="pastePanel" hidden>
+  <div class="panel">
+    <h2 class="quip">Incolla un brano in ABC</h2>
+    <p class="lead">Copia il testo ABC da un sito o da un programma di notazione e incollalo qui.</p>
+    <textarea id="abcText" spellcheck="false" placeholder="X:1&#10;T:Titolo&#10;M:4/4&#10;L:1/4&#10;K:F&#10;F G A F | F G A F |&#10;w: Fra Mar-ti-no cam-pa-na-ro"></textarea>
+    <div class="row">
+      <button class="btn" id="pasteCancel">Annulla</button>
+      <button class="btn go" id="pasteGo">Importa</button>
+    </div>
+  </div>
+</section>
+
+<section class="sheet middle" id="mixerPanel" hidden>
+  <div class="panel">
+    <h2 class="quip" id="mixTitle">Scegli la parte da cantare</h2>
+    <p class="lead" id="mixInfo"></p>
+    <div class="list" id="mixList"></div>
+    <div class="row"><button class="btn" id="mixCancel">Annulla</button></div>
+  </div>
+</section>
+
+<section class="sheet middle" id="impPanel" hidden>
+  <div class="panel">
+    <h2 class="quip">Aggiungi al canzoniere</h2>
+    <div class="field"><span>Titolo</span><input class="txt" id="impTitle" maxlength="80"></div>
+    <dl class="sum" id="impSum"></dl>
+    <button class="btn" id="impListen">Ascolta l'inizio</button>
+    <div class="row">
+      <button class="btn" id="impBack">Indietro</button>
+      <button class="btn go" id="impAdd">Aggiungi</button>
+    </div>
   </div>
 </section>
 
@@ -337,6 +398,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
       <small>Prima di ogni riga senti 4 colpi; durante il canto le linee sulla scia e il cielo segnano i battiti.</small>
     </div>
     <button class="btn" id="songListen">Ascolta l'inizio in questa tonalità</button>
+    <button class="linkish danger" id="songDelete" hidden>Elimina dal canzoniere</button>
     <div class="row">
       <button class="btn" id="songAllena">Allenati</button>
       <button class="btn go" id="songSfida">Sfida</button>
@@ -373,12 +435,13 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
 
 <section class="sheet middle" id="msgPanel" hidden>
   <div class="panel">
-    <h2 class="quip">Serve il microfono</h2>
+    <h2 class="quip" id="msgTitle">Serve il microfono</h2>
     <p class="lead" id="msgText"></p>
     <div class="row"><button class="btn go" id="msgOk">Ho capito</button></div>
   </div>
 </section>
 
+<script src="/sirena/import.js"></script>
 <script>
 (() => {
   'use strict';
@@ -469,7 +532,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   }
 
   // ---- Memoria locale ----
-  const KEYS = { settings: 'sirena.settings.v2', best: 'sirena.best.v2', history: 'sirena.history.v2', center: 'sirena.center.v1' };
+  const KEYS = { settings: 'sirena.settings.v2', best: 'sirena.best.v2', history: 'sirena.history.v2', center: 'sirena.center.v1', songs: 'sirena.songs.v1' };
   function load(k, fb) { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? fb; } catch (e) { return fb; } }
   function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
   const old = load('sirena.settings.v1', {});
@@ -478,6 +541,9 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   let best = load(KEYS.best, {});
   let history = load(KEYS.history, []);
   let lastCenter = load(KEYS.center, null);
+  // brani importati: si aggiungono al canzoniere
+  const validSong = (x) => x && x.id && Array.isArray(x.lines) && x.lines.length && typeof x.tonic === 'number';
+  SONGBOOK.push(...load(KEYS.songs, []).filter(validSong));
   const L = () => LEVELS.find((l) => l.id === settings.level) || LEVELS[0];
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const fxK = () => (settings.fx === 'soft' || reducedMotion ? 0.35 : 1);
@@ -595,7 +661,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     o.connect(lp);
     return { o, node: lp };
   }
-  function tone(midi, t, dur, vol) {
+  function tone(midi, t, dur, vol, dest = out) {
     const { o, node } = voiceOsc(mtof(midi));
     const g = ctx.createGain();
     const rel = Math.max(t + 0.06, t + dur - 0.06);
@@ -603,7 +669,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     g.gain.linearRampToValueAtTime(vol, t + 0.025);
     g.gain.setValueAtTime(vol, rel);
     g.gain.setTargetAtTime(0, rel, 0.06);
-    node.connect(g).connect(out);
+    node.connect(g).connect(dest);
     o.start(t);
     o.stop(rel + 0.5);
   }
@@ -1683,15 +1749,19 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   let openSong = null;
   const songShiftOf = (sg) => settings.songKeys[sg.id] ?? (settings.voice ? fitShift(sg, settings.voice) : 0);
   const songTempoOf = (sg) => settings.songTempo[sg.id] ?? 1;
+  // i testi che arrivano dai file vanno in pagina come testo, mai come HTML
+  const esc = (x) => String(x ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   function renderBook() {
-    $('songList').innerHTML = SONGBOOK.map((sg) => `<button class="song-row" data-song="${sg.id}">
-        <span><b>${sg.title}</b><small>${sg.subtitle}</small></span>
+    $('songList').innerHTML = SONGBOOK.map((sg) => `<button class="song-row" data-song="${esc(sg.id)}">
+        <span><b>${esc(sg.title)}</b><small>${esc(sg.subtitle)}</small></span>
         <span class="key">${keyName(sg, songShiftOf(sg))}</span>
       </button>`).join('');
   }
   function renderSong() {
     const sg = openSong, sh = songShiftOf(sg);
     $('songTitle').textContent = sg.title;
+    $('songDelete').hidden = !sg.imported;
+    $('songDelete').textContent = 'Elimina dal canzoniere';
     $('songSub').textContent = `${sg.subtitle} · originale in ${keyName(sg, 0)}`;
     $('voiceSeg').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === settings.voice)));
     $('keyOut').textContent = keyName(sg, sh);
@@ -1723,6 +1793,214 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     $('songPanel').hidden = false;
   });
   $('songBack').addEventListener('click', () => { $('songPanel').hidden = true; renderBook(); $('bookPanel').hidden = false; });
+
+  // ---- Importazione di brani (ABC e MIDI) ----
+  // Un file MIDI mostra un mixer delle parti: ognuna si può ascoltare da sola e si sceglie quella da cantare.
+  // Un file ABC con più brani o più voci mostra lo stesso elenco. Poi un riepilogo e "Aggiungi".
+  let imp = null;   // { kind, file, midi, parts, tunes, tune, song }
+  let prevBus = null, prevId = null;
+  function stopPreview() {
+    if (prevBus) { try { prevBus.gain.setTargetAtTime(0, ctx.currentTime, 0.02); const b = prevBus; setTimeout(() => b.disconnect(), 120); } catch (e) {} }
+    prevBus = null;
+    prevId = null;
+    document.querySelectorAll('.pplay.on').forEach((b) => b.classList.remove('on'));
+  }
+  // suona delle note (in battiti) per al massimo 20 secondi
+  function playNotes(notes, bpm, maxSec = 20) {
+    ensureCtx();
+    resumeAudio();
+    stopPreview();
+    if (!notes.length) return;
+    prevBus = ctx.createGain();
+    prevBus.connect(out);
+    const spb = 60 / bpm, t0 = ctx.currentTime + 0.1, first = notes[0].start;
+    for (const n of notes) {
+      const t = (n.start - first) * spb;
+      if (t > maxSec) break;
+      tone(n.pitch, t0 + t, Math.max(0.08, n.dur * spb * 0.92), 0.8, prevBus);
+    }
+  }
+  function songNotesBeats(sg, maxLines = 2) {
+    const out2 = [];
+    let t = 0;
+    for (const line of sg.lines.slice(0, maxLines)) {
+      for (const [m, b] of line) { if (m != null) out2.push({ start: t, dur: b, pitch: m }); t += b; }
+      t += 1;
+    }
+    return out2;
+  }
+  function importError(text) {
+    $('msgTitle').textContent = 'Non riesco a importare';
+    $('msgText').textContent = text;
+    $('msgPanel').hidden = false;
+  }
+  const PLAY_ICON = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+  function partRow(id, title, info, opts = {}) {
+    return `<div class="part-row${opts.sug ? ' sug' : ''}${opts.off ? ' off' : ''}">
+      <button class="pplay" data-play="${esc(id)}" aria-label="Ascolta ${esc(title)}"${opts.off ? ' disabled' : ''}>${PLAY_ICON}</button>
+      <span><b>${esc(title)}</b><small>${esc(info)}</small>${opts.sug ? '<em>probabile melodia</em>' : ''}</span>
+      ${opts.off ? '<small>esclusa</small>' : `<button class="btn small go" data-pick="${esc(id)}">Scegli</button>`}
+    </div>`;
+  }
+  function showMixer(title, info, rowsHtml) {
+    $('mixTitle').textContent = title;
+    $('mixInfo').textContent = info;
+    $('mixList').innerHTML = rowsHtml;
+    $('bookPanel').hidden = true;
+    $('pastePanel').hidden = true;
+    $('mixerPanel').hidden = false;
+  }
+  function describe(x) {
+    return [x.instrument, `${x.count} note`, x.range, x.poly ? 'più note insieme' : '', x.hasLyrics ? 'con testo' : ''].filter(Boolean).join(' · ');
+  }
+
+  function openMidi(buffer, file) {
+    const m = SongImport.parseMidi(buffer);
+    const parts = SongImport.midiParts(m);
+    if (!parts.some((x) => !x.drums && x.count)) throw new Error('Nel file non ci sono note da cantare.');
+    imp = { kind: 'midi', file, midi: m, parts };
+    const tipo = m.format === 1 ? `File MIDI di tipo 1: ${m.tracks.length} tracce separate.`
+      : m.format === 0 ? 'File MIDI di tipo 0: tutte le parti stanno in una sola traccia, le separo per canale.'
+        : 'File MIDI di tipo 2: tratto ogni traccia come una parte.';
+    const testo = m.lyricCount ? ` Testo trovato (${m.lyricCount} sillabe): lo aggancio alla parte che scegli.` : '';
+    showMixer('Scegli la parte da cantare', tipo + testo,
+      parts.filter((x) => x.count).map((x) => partRow(x.id, x.name, describe(x), { sug: x.suggested, off: x.drums })).join(''));
+  }
+  function openAbc(text, file) {
+    const tunes = SongImport.parseAbc(text);
+    if (!tunes.length) throw new Error('Non trovo note in questo testo ABC. Controlla che ci siano almeno le righe K: e la musica.');
+    imp = { kind: 'abc', file, tunes };
+    if (tunes.length > 1) {
+      showMixer('Scegli il brano', `Nel file ci sono ${tunes.length} brani.`,
+        tunes.map((t, i) => partRow('t' + i, t.title || `Brano ${i + 1}`, describe(t.voiceList[0]))).join(''));
+    } else pickTune(0);
+  }
+  function pickTune(i) {
+    imp.tune = imp.tunes[i];
+    const vs = imp.tune.voiceList;
+    if (vs.length > 1) {
+      const best = [...vs].sort((a, b) => (b.hasLyrics - a.hasLyrics) || (b.avg - a.avg))[0];
+      showMixer('Scegli la voce da cantare', `«${imp.tune.title || 'Brano'}» ha ${vs.length} voci.`,
+        vs.map((v) => partRow('v' + v.id, v.name || `Voce ${v.id}`, describe(v), { sug: v === best })).join(''));
+    } else confirmImport(SongImport.abcToSong(imp.tune, vs[0], imp.file));
+  }
+  function confirmImport(sg) {
+    stopPreview();
+    imp.song = sg;
+    $('impTitle').value = sg.title;
+    const [lo, hi] = songSpan(sg);
+    const nNotes = sg.lines.flat().filter((e) => e[0] != null).length;
+    const hasWords = sg.lines.flat().some((e) => e[2]);
+    const rows = [
+      ['Tonalità', `${keyName(sg, 0)}${sg.keyFromFile ? '' : ' (stimata dalle note)'}`],
+      ['Tempo', `♩ ${sg.bpm}`],
+      ['Battuta', `${sg.meter} battiti`],
+      ['Estensione', `${songNoteName(sg, 0, lo)} – ${songNoteName(sg, 0, hi)}`],
+      ['Note', `${nNotes}, in ${sg.lines.length} righe`],
+      ['Testo', hasWords ? 'sì' : 'no'],
+    ];
+    $('impSum').innerHTML = rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('');
+    $('mixerPanel').hidden = true;
+    $('pastePanel').hidden = true;
+    $('bookPanel').hidden = true;
+    $('impPanel').hidden = false;
+  }
+  function closeImport() {
+    stopPreview();
+    for (const id of ['mixerPanel', 'impPanel', 'pastePanel']) $(id).hidden = true;
+    imp = null;
+    renderBook();
+    $('bookPanel').hidden = false;
+  }
+
+  $('importFile').addEventListener('click', () => { $('importInput').value = ''; $('importInput').click(); });
+  $('importInput').addEventListener('change', async () => {
+    const file = $('importInput').files[0];
+    if (!file) return;
+    try {
+      const buf = await file.arrayBuffer();
+      const head = new Uint8Array(buf.slice(0, 4));
+      const magic = String.fromCharCode(...head);
+      if (magic === 'MThd' || magic === 'RIFF') openMidi(buf, file.name);
+      else openAbc(new TextDecoder('utf-8').decode(buf), file.name);
+    } catch (err) {
+      importError(`${err.message || err} (${file.name})`);
+    }
+  });
+  $('importPaste').addEventListener('click', () => { $('bookPanel').hidden = true; $('pastePanel').hidden = false; });
+  $('pasteCancel').addEventListener('click', closeImport);
+  $('pasteGo').addEventListener('click', () => {
+    try { openAbc($('abcText').value, ''); } catch (err) { importError(err.message || String(err)); }
+  });
+  $('mixCancel').addEventListener('click', closeImport);
+  $('mixList').addEventListener('click', (e) => {
+    const play = e.target.closest('[data-play]');
+    const pick = e.target.closest('[data-pick]');
+    if (play) {
+      const id = play.dataset.play;
+      if (prevId === id) { stopPreview(); return; }
+      let notes = [], bpm = 100;
+      if (imp.kind === 'midi') {
+        const part = imp.parts.find((x) => x.id === id);
+        notes = SongImport.midiPartMelody(imp.midi, part);
+        bpm = imp.midi.bpm;
+      } else if (id[0] === 't') {
+        const t = imp.tunes[+id.slice(1)];
+        notes = t.voiceList[0].notes; bpm = SongImport.abcTempo(t);
+      } else {
+        const v = imp.tune.voiceList.find((x) => 'v' + x.id === id);
+        notes = v.notes; bpm = SongImport.abcTempo(imp.tune);
+      }
+      playNotes(notes, bpm);
+      prevId = id;
+      play.classList.add('on');
+      return;
+    }
+    if (!pick) return;
+    const id = pick.dataset.pick;
+    try {
+      if (imp.kind === 'midi') confirmImport(SongImport.midiToSong(imp.midi, imp.parts.find((x) => x.id === id), imp.file));
+      else if (id[0] === 't') pickTune(+id.slice(1));
+      else confirmImport(SongImport.abcToSong(imp.tune, imp.tune.voiceList.find((x) => 'v' + x.id === id), imp.file));
+    } catch (err) { importError(err.message || String(err)); }
+  });
+  $('impListen').addEventListener('click', () => { if (imp && imp.song) playNotes(songNotesBeats(imp.song), imp.song.bpm); });
+  $('impBack').addEventListener('click', () => {
+    stopPreview();
+    $('impPanel').hidden = true;
+    if (imp && (imp.kind === 'midi' || (imp.tune && imp.tune.voiceList.length > 1) || imp.tunes.length > 1)) $('mixerPanel').hidden = false;
+    else closeImport();
+  });
+  $('impAdd').addEventListener('click', () => {
+    const sg = imp.song;
+    sg.title = $('impTitle').value.trim() || sg.title;
+    const stored = load(KEYS.songs, []);
+    stored.push(sg);
+    save(KEYS.songs, stored);
+    SONGBOOK.push(sg);
+    stopPreview();
+    imp = null;
+    $('impPanel').hidden = true;
+    openSong = sg;
+    renderSong();
+    $('songPanel').hidden = false;
+  });
+  // i brani importati si possono togliere (con un secondo tocco di conferma)
+  $('songDelete').addEventListener('click', () => {
+    const b = $('songDelete');
+    if (b.textContent !== 'Tocca ancora per eliminare') { b.textContent = 'Tocca ancora per eliminare'; return; }
+    const id = openSong.id;
+    save(KEYS.songs, load(KEYS.songs, []).filter((x) => x.id !== id));
+    const i = SONGBOOK.findIndex((x) => x.id === id);
+    if (i >= 0) SONGBOOK.splice(i, 1);
+    delete settings.songKeys[id];
+    delete settings.songTempo[id];
+    if (settings.last && settings.last.song === id) settings.last = null;
+    saveSettings();
+    $('songPanel').hidden = true;
+    renderBook();
+    $('bookPanel').hidden = false;
+  });
   $('voiceSeg').addEventListener('click', (e) => {
     const b = e.target.closest('button');
     if (!b) return;
@@ -1784,7 +2062,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     center = lastCenter;
     beginRun();
   });
-  $('msgOk').addEventListener('click', () => { $('msgPanel').hidden = true; });
+  $('msgOk').addEventListener('click', () => { $('msgPanel').hidden = true; $('msgTitle').textContent = 'Serve il microfono'; });
   $('pauseBtn').addEventListener('click', pause);
   $('resume').addEventListener('click', resume);
   $('restart').addEventListener('click', async () => { if (!(await ensureMic())) return; $('pausePanel').hidden = true; beginRun(); });
