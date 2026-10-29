@@ -375,6 +375,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
         <button id="shiftUp" aria-label="Più acuta">+</button>
       </div>
       <small id="rangeOut"></small>
+      <small id="fitOut"></small>
       <div class="range-box" id="rangeBox" hidden>
         <p id="rangeText"></p>
         <div class="actions"><button id="rangeApply" class="primary">Applica la tonalità consigliata</button></div>
@@ -448,6 +449,9 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
   const IT = ['Do', 'Do♯', 'Re', 'Re♯', 'Mi', 'Fa', 'Fa♯', 'Sol', 'Sol♯', 'La', 'La♯', 'Si'];
   const noteName = (n) => IT[((n % 12) + 12) % 12] + (Math.floor(n / 12) - 1);
+  // con i bemolle, per le tonalità come Bella ciao (Sol minore, Fa minore, Mi♭ minore…)
+  const IT_FLAT = ['Do', 'Re♭', 'Re', 'Mi♭', 'Mi', 'Fa', 'Sol♭', 'Sol', 'La♭', 'La', 'Si♭', 'Si'];
+  const noteNameFlat = (n) => IT_FLAT[((n % 12) + 12) % 12] + (Math.floor(n / 12) - 1);
   const avg = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN);
   const fmtS = (s) => s.toFixed(1).replace('.', ',') + ' s';
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -483,6 +487,21 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     [[-3, 1], [-3, 1], [-5, 2]],
     [[4, 1], [4, 1], [2, 1], [2, 1], [0, 2]],
   ];
+  const BELLA = [
+    [[-8, .5], [-3, .5], [-1, .5], [0, .5], [-3, .5, 1.5]],          // u-na mat-ti-na
+    [[-8, .5], [-3, .5], [-1, .5], [0, .5], [-3, .5, 1.5]],          // mi son sve-glia-to
+    [[-8, .5], [-3, .5], [-1, .5], [0, 1]],                          // o bel-la ciao
+    [[-1, .5], [-3, .5], [0, 1]],                                    // bel-la ciao
+    [[-1, .5], [-3, .5], [4, 1], [4, 1], [4, 1]],                    // bel-la ciao ciao ciao
+    [[2, .5], [4, .5], [5, .5], [5, .5, 1.5]],
+    [[5, .5], [4, .5], [2, .5], [5, .5], [4, .5, 1.5]],
+    [[4, .5], [2, .5], [0, .5], [-1, 1], [4, 1], [0, 1], [-1, 1], [-3, 2]], // e ho tro-va-to l'in-va-sor
+  ];
+  // Nella terza riga la partitura ha una nota in meno prima di "mattina": senza sapere come si
+  // canta in classe, quelle due frasi restano su "la".
+  const BELLA_WORDS = [['u', 'na', 'mat', 'ti', 'na'], ['mi', 'son', 'sve', 'glia', 'to'], ['o', 'bel', 'la', 'ciao'],
+    ['bel', 'la', 'ciao'], ['bel', 'la', 'ciao', 'ciao', 'ciao'], ['la', 'la', 'la', 'la'], ['la', 'la', 'la', 'la', 'la'],
+    ['e', 'ho', 'tro', 'va', 'to', 'l\u2019in', 'va', 'sor']];
   const PHASES = ['Scopri la voce', 'Una nota', 'Sol e mi', 'Arriva il la', 'Mi, re, do', 'Cinque note', 'Canzoni'];
   // Ogni tappa ha il suo personaggio e le sue parole: la voce canta quelle sillabe, così il titolo
   // ("Il gatto", "La campanella") si sente nell'esercizio. `syl` vale per tutte le note,
@@ -566,6 +585,16 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
       phrases: MARTINO.flatMap((p) => [p, p]),
       words: [['fra', 'mar', 'ti', 'no'], ['cam', 'pa', 'na', 'ro'], ['dor', 'mi', 'tu'], ['dor', 'mi', 'tu'],
         ['suo', 'na', 'le', 'cam', 'pa', 'ne'], ['suo', 'na', 'le', 'cam', 'pa', 'ne'], ['din', 'don', 'dan'], ['din', 'don', 'dan']] },
+    // Bella ciao, dalla partitura (Sol minore, ♩ = 100). È in minore: le note sono scritte rispetto al
+    // "do" della relativa maggiore (la tonica minore è il "la", come nel do mobile), così colori e
+    // sillabe tornano. `fit`: la tonalità si centra da sola sull'estensione misurata con l'arcobaleno.
+    // Il terzo numero di una nota è la pausa che la segue, in battiti.
+    { id: 'bellaciao-aiuto', phase: 6, title: 'Bella ciao, con aiuto', icon: '🌅', mode: 'note', tonic: 68, bpm: 96, minor: true, fit: true,
+      hook: '\u00abUna mattina mi son svegliato\u2026\u00bb, una nota alla volta.',
+      phrases: BELLA.slice(0, 5), words: BELLA_WORDS.slice(0, 5) },
+    { id: 'bellaciao', phase: 6, title: 'Bella ciao', icon: '👋', mode: 'phrase', tonic: 68, bpm: 96, minor: true, fit: true,
+      hook: 'L\u2019ultima canzone, \u00abO bella ciao\u00bb, nella tonalità della tua voce!',
+      phrases: BELLA, words: BELLA_WORDS },
   ];
   const STICKERS = ['🐶', '🐱', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐷', '🐸', '🐵',
     '🐔', '🐧', '🦉', '🦋', '🐞', '🐢', '🐬', '🦄', '🐙', '🦒', '🐘', '🦔'];
@@ -666,7 +695,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     u: [[400, 950, 2800], [1, 0.45, 0.08]],
   };
   function parseSyl(syl) {
-    const w = syl.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/^h/, '');
+    const w = syl.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z]/g, '').replace(/^h/, '');
     const m = w.match(/^([^aeiou]*)(.*)$/);
     let onset = m[1], rest = m[2];
     // ci, gi, sci davanti a vocale: la i non si sente (ciuf, giù)
@@ -676,12 +705,12 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   }
   function onsetKind(o) {
     if (!o) return null;
-    if (o === 'l' || o === 'r') return 'liquid';
+    if (o === 'l' || o === 'r' || o === 'gl') return 'liquid';
     if (o === 'm' || o === 'n') return 'nasal';
     if (['b', 'd', 'g', 'br'].includes(o)) return 'voiced';
     if (['ci', 'gi', 'z'].includes(o)) return 'affricate';
     if (o === 'sc' || o === 'sci') return 'sh';
-    if (['f', 'fr', 'v', 's'].includes(o)) return 'fricative';
+    if (['f', 'fr', 'v', 's', 'sv'].includes(o)) return 'fricative';
     return 'stop'; // p, t, c, ch, q, st
   }
   let noiseBuf = null;
@@ -827,9 +856,12 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     o.stop(t + 0.2);
   }
 
-  // Carillon di inizio tappa: do-mi-sol-do nella tonalità della tappa, per sentire la "casa".
-  function musicBox(tonic, t) {
-    [0, 4, 7, 12].forEach((iv, j) => {
+  // Carillon di inizio tappa: l'accordo di casa (do-mi-sol-do, o la-do-mi-la nelle canzoni in minore).
+  function homeChord(song, tonic) {
+    return song.minor ? { root: tonic - 3, ivs: [0, 3, 7, 12] } : { root: tonic, ivs: [0, 4, 7, 12] };
+  }
+  function musicBox(tonic, t, ivs = [0, 4, 7, 12]) {
+    ivs.forEach((iv, j) => {
       const s = t + j * 0.22;
       for (const [mul, a] of [[1, 0.16], [3, 0.03], [4.2, 0.012]]) {
         const o = ctx.createOscillator();
@@ -888,9 +920,17 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   const voice = { m: NaN, shown: NaN, db: -120, loudSince: null, loud: false };
   let run = null;
 
+  // Spostamento di tonalità di una tappa: quello scelto dall'adulto, oppure, per le canzoni "fit",
+  // quello che centra la canzone sull'estensione comoda misurata con l'arcobaleno.
+  function levelShift(song) {
+    if (!song.fit || !settings.range) return settings.shift;
+    const notes = song.phrases.flat().map(([v]) => song.tonic + v);
+    const mid = (Math.min(...notes) + Math.max(...notes)) / 2;
+    return clamp(Math.round((settings.range.lo + settings.range.hi) / 2 - mid), -9, 9);
+  }
   function songPhrases(song) {
-    const base = song.tonic + settings.shift;
-    return song.phrases.map((ph) => ph.map(([s, beats]) => ({ midi: base + s, beats })));
+    const base = song.tonic + levelShift(song);
+    return song.phrases.map((ph) => ph.map(([v, beats, rest]) => ({ midi: base + v, beats, rest: rest || 0 })));
   }
   function songRange(song) {
     const all = songPhrases(song).flat().map((n) => n.midi);
@@ -906,7 +946,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 
   function startSong(song) {
     const phrases = songPhrases(song);
-    const tonic = song.tonic + settings.shift;
+    const tonic = song.tonic + levelShift(song);
     const [lo, hi] = song.mode === 'rainbow'
       ? [tonic + Math.min(...song.points), tonic + Math.max(...song.points)]
       : songRange(song);
@@ -932,7 +972,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     flyers = [];
     halos = [];
     // carillon di inizio tappa, poi si comincia
-    const boxDur = musicBox(tonic, ctx.currentTime + 0.35);
+    const hc = homeChord(song, tonic);
+    const boxDur = musicBox(hc.root, ctx.currentTime + 0.35, hc.ivs);
     muteUntil = Math.max(muteUntil, now() + 0.35 + boxDur + 0.2);
     run.until = Math.max(muteUntil, now() + 3);
     showTitleCard(song);
@@ -985,7 +1026,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
       const d = n.beats * spb;
       singSyl(n.midi, at + off, d * 0.92, wordAt(run.p, i));
       run.sing.push({ p: run.p, i, t0: pt + off, t1: pt + off + d * 0.92, syl: wordAt(run.p, i) });
-      off += d;
+      off += d + (i < ph.length - 1 ? n.rest * spb : 0);
     });
     run.until = pt + off + 0.45;
     muteUntil = Math.max(muteUntil, run.until);
@@ -1103,7 +1144,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     run.phase = 'finale';
     setCue('party');
     if (run.mode === 'rainbow') { // niente melodia da ricantare: solo la fanfara
-      const tonic = run.song.tonic + settings.shift;
+      const tonic = run.song.tonic + levelShift(run.song);
       const at = ctx.currentTime + 0.1;
       [0, 4, 7, 12].forEach((iv, j) => chime(tonic + iv - 12, at + j * 0.12, 0.25));
       run.sing = [];
@@ -1120,10 +1161,10 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
       const d = n.beats * spb;
       singSyl(n.midi, at + off, d * 0.92, wordAt(p, i));
       run.sing.push({ p, i, t0: pt + off, t1: pt + off + d * 0.92, syl: wordAt(p, i) });
-      off += d;
+      off += d + n.rest * spb;
     }));
-    const tonic = run.song.tonic + settings.shift;
-    [0, 4, 7, 12].forEach((iv, j) => chime(tonic + iv - 12, at + off + 0.15 + j * 0.12, 0.25));
+    const hc = homeChord(run.song, run.song.tonic + levelShift(run.song));
+    hc.ivs.forEach((iv, j) => chime(hc.root + iv - 12, at + off + 0.15 + j * 0.12, 0.25));
     run.until = pt + off + 1.3;
     muteUntil = Math.max(muteUntil, run.until);
   }
@@ -1175,7 +1216,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   }
 
   function stepRainbow(t, dt) {
-    const rb = run.rb, tonic = run.song.tonic + settings.shift;
+    const rb = run.rb, tonic = run.song.tonic + levelShift(run.song);
     const voiced = !Number.isNaN(voice.m);
     if (voiced) rb.s += dt; // l'arcobaleno avanza solo mentre canta: le stelle aspettano lei
     const target = tonic + rbFn(run.song, rb.s);
@@ -1226,7 +1267,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
       at: Date.now(),
       song: run.song.id,
       complete,
-      settings: { tol: settings.tol, hold: settings.hold, shift: settings.shift, octave: settings.octave },
+      settings: { tol: settings.tol, hold: settings.hold, shift: levelShift(run.song), octave: settings.octave },
       notes: run.notes.map((n) => ({
         midi: n.midi, helped: n.helped, helps: n.helps,
         lock: n.lock == null ? null : +n.lock.toFixed(2),
@@ -1306,7 +1347,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 
   // colore della nota: per grado della scala rispetto alla tonica della tappa (do mobile)
   function degreeOf(midi) {
-    const rel = ((Math.round(midi - (run.song.tonic + settings.shift)) % 12) + 12) % 12;
+    const rel = ((Math.round(midi - (run.song.tonic + levelShift(run.song))) % 12) + 12) % 12;
     return MAJOR.indexOf(rel);
   }
   function noteColor(midi) { const d = degreeOf(midi); return d < 0 ? '#ffffff' : DEG_COLORS[d]; }
@@ -1538,7 +1579,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 
   // L'arcobaleno: la scia scorre da destra, Lu resta a sinistra e segue la voce.
   function drawRainbow(t, dt) {
-    const rb = run.rb, tonic = run.song.tonic + settings.shift;
+    const rb = run.rb, tonic = run.song.tonic + levelShift(run.song);
     const luX = W * 0.28, PPS = W * 0.13;
     const f = field(), [lo, hi] = span();
     const pxSemi = (f.bottom - f.top) / (hi - lo);
@@ -1935,9 +1976,18 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   function syncShift() {
     const s = settings.shift;
     $('shiftOut').textContent = s === 0 ? 'Normale' : (s > 0 ? '+' : '−') + Math.abs(s) + (Math.abs(s) === 1 ? ' semitono' : ' semitoni');
-    const songs = LEVELS.filter((x) => x.mode !== 'rainbow');
+    const songs = LEVELS.filter((x) => x.mode !== 'rainbow' && !x.fit);
     const lows = songs.map((x) => songRange(x)[0]), highs = songs.map((x) => songRange(x)[1]);
     $('rangeOut').textContent = `Gli esercizi vanno da ${noteName(Math.min(...lows))} a ${noteName(Math.max(...highs))}.`;
+    const fit = LEVELS.find((x) => x.fit && x.mode === 'phrase');
+    if (fit) {
+      const [lo, hi] = songRange(fit);
+      const root = fit.tonic + levelShift(fit) - (fit.minor ? 3 : 0);
+      const key = noteNameFlat(root).replace(/-?\d+$/, '') + (fit.minor ? ' minore' : ' maggiore');
+      $('fitOut').textContent = settings.range
+        ? `${fit.title} si centra da sola sulla sua voce: ora è in ${key}, da ${noteNameFlat(lo)} a ${noteNameFlat(hi)}.`
+        : `${fit.title} si centrerà da sola sulla sua voce dopo un arcobaleno; per ora segue la tonalità delle altre (${key}, da ${noteNameFlat(lo)} a ${noteNameFlat(hi)}).`;
+    }
     // tonalità consigliata dall'estensione misurata con l'arcobaleno
     const r = settings.range;
     $('rangeBox').hidden = !r;
