@@ -454,8 +454,22 @@ a.navlink:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
   let ctx = null, stream = null, track = null, analyser = null, buf = null;
   let listening = false, started = false;
 
+  // Su iPhone l'audio va preparato per "microfono + altoparlante" PRIMA di creare il contesto audio:
+  // così si sente anche col telefono in silenzioso, e accendere il microfono dopo non interrompe l'audio.
+  function setPlayAndRecord() {
+    if ('audioSession' in navigator) { try { navigator.audioSession.type = 'play-and-record'; } catch (e) {} }
+  }
+  // Riprende l'audio senza mai restare appesi: su iPhone, dopo aver acceso il microfono, resume() può non tornare più.
+  function resumeAudio(ms = 1500) {
+    if (!ctx || ctx.state === 'running') return Promise.resolve();
+    return Promise.race([ctx.resume().catch(() => {}), new Promise((r) => setTimeout(r, ms))]);
+  }
+  // Qualsiasi tocco riattiva l'audio, se iOS l'ha sospeso.
+  document.addEventListener('pointerdown', () => { if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {}); }, true);
+
   function ensureCtx() {
     if (ctx && ctx.state !== 'closed') return ctx;
+    setPlayAndRecord();
     const AC = window.AudioContext || window.webkitAudioContext;
     ctx = new AC({ latencyHint: 'interactive' });
     // Spinta forte seguita da un limitatore: le note di riferimento escono molto più alte senza distorcere.
@@ -492,13 +506,13 @@ a.navlink:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
   async function startMic() {
     if ('audioSession' in navigator) { try { navigator.audioSession.type = 'play-and-record'; } catch (e) {} }
     ensureCtx();
-    if (ctx.state !== 'running') await ctx.resume();
+    await resumeAudio();
     stream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 },
     });
     track = stream.getAudioTracks()[0];
     track.onended = () => { started = false; setListening(false); showOverlay('Il microfono si è interrotto', 'Tocca il pulsante rosso per riprenderlo.'); };
-    if (ctx.state !== 'running') await ctx.resume();
+    await resumeAudio();
     const src = ctx.createMediaStreamSource(stream);
     analyser = ctx.createAnalyser();
     analyser.fftSize = 2048;

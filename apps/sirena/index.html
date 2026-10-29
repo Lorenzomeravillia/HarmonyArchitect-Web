@@ -485,8 +485,22 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   // ---- Audio ----
   let ctx = null, out = null, analyser = null, buf = null, track = null, micReady = false;
   let muteUntil = 0;
+  // Su iPhone l'audio va preparato per "microfono + altoparlante" PRIMA di creare il contesto audio:
+  // così si sente anche col telefono in silenzioso, e accendere il microfono dopo non interrompe l'audio.
+  function setPlayAndRecord() {
+    if ('audioSession' in navigator) { try { navigator.audioSession.type = 'play-and-record'; } catch (e) {} }
+  }
+  // Riprende l'audio senza mai restare appesi: su iPhone, dopo aver acceso il microfono, resume() può non tornare più.
+  function resumeAudio(ms = 1500) {
+    if (!ctx || ctx.state === 'running') return Promise.resolve();
+    return Promise.race([ctx.resume().catch(() => {}), new Promise((r) => setTimeout(r, ms))]);
+  }
+  // Qualsiasi tocco riattiva l'audio, se iOS l'ha sospeso.
+  document.addEventListener('pointerdown', () => { if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {}); }, true);
+
   function ensureCtx() {
     if (ctx && ctx.state !== 'closed') return;
+    setPlayAndRecord();
     const AC = window.AudioContext || window.webkitAudioContext;
     ctx = new AC({ latencyHint: 'interactive' });
     // Spinta forte seguita da un limitatore: le note delle pause escono molto più alte senza distorcere.
@@ -503,14 +517,14 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   async function startMic() {
     if ('audioSession' in navigator) { try { navigator.audioSession.type = 'play-and-record'; } catch (e) {} }
     ensureCtx();
-    if (ctx.state !== 'running') await ctx.resume();
+    await resumeAudio();
     if (micReady && track && track.readyState === 'live') return;
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 },
     });
     track = stream.getAudioTracks()[0];
     track.onended = () => { micReady = false; };
-    if (ctx.state !== 'running') await ctx.resume();
+    await resumeAudio();
     const src = ctx.createMediaStreamSource(stream);
     analyser = ctx.createAnalyser();
     analyser.fftSize = 2048;
@@ -1687,7 +1701,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   // ascolta l'inizio: accordo di casa e prima riga, nella tonalità scelta
   $('songListen').addEventListener('click', () => {
     ensureCtx();
-    if (ctx.state !== 'running') ctx.resume();
+    resumeAudio();
     const sg = openSong, sh = songShiftOf(sg), spb = 60 / (sg.bpm * songTempoOf(sg));
     const t0 = ctx.currentTime + 0.1;
     let t = 0;
@@ -1718,7 +1732,11 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     mode = md;
     settings.last = { song: sg.id, mode: md };
     saveSettings();
-    beginRun();
+    try { beginRun(); }
+    catch (err) {
+      $('msgText').textContent = `Il brano non è partito (${err.message}). Riprova; se succede ancora, scrivimi questo messaggio.`;
+      $('msgPanel').hidden = false;
+    }
   }
   $('skipCalib').addEventListener('click', () => {
     if (state !== 'calib' || lastCenter == null) return;
