@@ -1118,7 +1118,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     return {
       ex: { id: `song-${song.id}`, name: song.title }, mode, segs, gates, end: t + 2.2, tol: lv.tol, freezeUntil: 0,
       score: 0, streak: 0, outFor: 0, combo: 1, bestCombo: 1, pathTime: 0, inTime: 0, lastIn: -9, gatesOk: 0,
-      mid: (lo + hi) / 2, spb, bpm: Math.round(song.bpm * factor),
+      lo, hi, mid: (lo + hi) / 2, pan: null, spb, bpm: Math.round(song.bpm * factor),
     };
   }
 
@@ -1157,7 +1157,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     return {
       ex: { id: `song-${sg.id}`, name: sg.title }, mode: 'studio', studio: true, segs: [seg], gates: [], end: seg.t1 + 1.2,
       tol: 50, freezeUntil: 0, score: 0, streak: 0, outFor: 0, combo: 1, bestCombo: 1, pathTime: 0, inTime: 0, lastIn: -9, gatesOk: 0,
-      mid: (lo + hi) / 2, spb, bpm: Math.round(sg.bpm * factor), nextNote: 0,
+      lo, hi, mid: (lo + hi) / 2, pan: null, spb, bpm: Math.round(sg.bpm * factor), nextNote: 0,
     };
   }
   function stepStudio(dt) {
@@ -1245,6 +1245,34 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     }
     return null;
   }
+  // Nei brani con un'estensione ampia la vista segue le note: guarda quelle in arrivo, dalla cometa
+  // a poco oltre il bordo destro, e si sposta solo quanto basta per tenerle dentro. Se non ci stanno, si allarga,
+  // ma senza rimpicciolire troppo: allora contano le note più vicine alla cometa (le altre entrano avvicinandosi).
+  // Le note del prossimo secondo abbondante (almeno la nota sotto la cometa e la successiva) si vedono sempre
+  // insieme, così ogni salto si vede per intero prima di arrivarci.
+  function songView(w) {
+    const pad = 1.5; // margine sopra e sotto, per i nomi delle note e le sillabe
+    if (w.hi - w.lo + 2 * pad <= SPAN_MIN) return { mid: w.mid, span: SPAN_MIN }; // il brano ci sta tutto: vista ferma
+    const t0 = gt, t1 = gt + (W - cometX) / SPEED + 0.8; // si muove prima che la nota entri dal bordo
+    const most = clamp((bottom - top) / 13, SPAN_MIN, SPAN_MAX); // almeno 13 px per semitono: i nomi restano leggibili
+    let lo = Infinity, hi = -Infinity, n = 0;
+    scan: for (const s of w.segs) {
+      if (s.t1 < t0 || s.t0 > t1) continue;
+      for (const st of s.steps) {
+        const a = s.t0 + st.t;
+        if (a + st.dur < t0) continue;
+        if (a > t1) break scan;
+        const m = center + st.v;
+        if (Math.max(hi, m) - Math.min(lo, m) + 2 * pad > (n++ < 2 || a < gt + 1.2 ? SPAN_MAX : most)) break scan;
+        lo = Math.min(lo, m);
+        hi = Math.max(hi, m);
+      }
+    }
+    if (lo > hi) return { mid: w.pan ?? w.mid, span: SPAN_MIN }; // nessuna nota in vista: resta dov'è
+    const want = Math.max(SPAN_MIN, hi - lo + 2 * pad);
+    w.pan = clamp(w.pan ?? (lo + hi) / 2, hi + pad - want / 2, lo - pad + want / 2);
+    return { mid: w.pan, span: want };
+  }
 
   // ---- Nomi delle note ----
   const nameStyle = () => (L().atonal ? 'reali' : settings.names);
@@ -1277,7 +1305,8 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   const g = canvas.getContext('2d');
   let W = 0, H = 0, dpr = 1;
   let SPEED = 60, speedK = 0.16, speedFix = 0, cometX = 100, top = 80, bottom = 600, pxSemi = 30;
-  const SPAN = 17;
+  const SPAN_MIN = 17, SPAN_MAX = 28; // semitoni visibili: la vista si allarga solo nei salti grandi dei brani
+  let span = SPAN_MIN;
   let FONT = 'sans-serif';
   let bgT = 0; // tempo dello sfondo: scorre sempre
 
@@ -1316,7 +1345,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     const sat = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sat')) || 0;
     top = 92 + sat;
     bottom = H - Math.max(60, H * 0.09);
-    pxSemi = (bottom - top) / SPAN;
+    pxSemi = (bottom - top) / span;
     FONT = getComputedStyle(document.body).fontFamily;
   }
   window.addEventListener('resize', resize);
@@ -1337,7 +1366,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   }
 
   function drawAxis() {
-    const lo = Math.floor(viewMid - SPAN / 2) - 1, hi = Math.ceil(viewMid + SPAN / 2) + 1;
+    const lo = Math.floor(viewMid - span / 2) - 1, hi = Math.ceil(viewMid + span / 2) + 1;
     const atonal = L().atonal, labels = state !== 'menu';
     g.textBaseline = 'middle';
     for (let n = lo; n <= hi; n++) {
@@ -1932,10 +1961,19 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     }
     if (msgTimer && now > msgTimer && state === 'run') { setCenterMsg(null); msgTimer = 0; }
 
-    // la vista si centra dolcemente; nel menu la demo vola nella parte alta, sopra il pannello
-    const wantMid = state === 'calib' ? viewMid : state === 'menu' ? center - 5
-      : world && world.mid != null ? world.mid : center + 2;
-    viewMid += (wantMid - viewMid) * (1 - Math.exp(-dt / 0.6));
+    // la vista si centra dolcemente; nel menu la demo vola nella parte alta, sopra il pannello;
+    // nei brani segue le note in arrivo
+    const view = state !== 'menu' && world && world.lo != null ? songView(world) : null;
+    const wantMid = state === 'calib' ? viewMid : state === 'menu' ? center - 5 : view ? view.mid : center + 2;
+    const oldMid = viewMid, oldPx = pxSemi;
+    const ease = 1 - Math.exp(-dt / 0.4);
+    viewMid += (wantMid - viewMid) * ease;
+    span += ((view ? view.span : SPAN_MIN) - span) * ease;
+    pxSemi = (bottom - top) / span;
+    if (viewMid !== oldMid || pxSemi !== oldPx) { // la scia già lasciata si sposta con la vista
+      const c = (top + bottom) / 2;
+      for (const p of particles) p.y = c - (oldMid - (p.y - c) / oldPx - viewMid) * pxSemi;
+    }
 
     // posizione e luce della cometa
     if (!Number.isNaN(voice.m)) {
