@@ -467,11 +467,36 @@ a.navlink:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
   // Qualsiasi tocco riattiva l'audio, se iOS l'ha sospeso.
   document.addEventListener('pointerdown', () => { if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {}); }, true);
 
+  // Contesto audio nuovo, creato dentro il tocco: chiude quello vecchio (e ciò che dipende da lui).
+  function freshCtx() {
+    if (ctx && ctx.state !== 'closed') { try { ctx.close(); } catch (e) {} }
+    ctx = null;
+    ensureCtx();
+  }
+  // Se iOS tiene fermo l'audio anche col microfono acceso, serve un tocco vero: lo chiediamo con un pulsante,
+  // invece di collegare il microfono a un audio fermo (che non riceverebbe niente).
+  function waitForTap() {
+    return new Promise((resolve) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = '🔊 Tocca per attivare il suono';
+      b.style.cssText = 'position:fixed;inset:0;z-index:9999;border:0;background:rgba(0,0,0,.6);color:#fff;font:600 22px system-ui,sans-serif;';
+      b.addEventListener('click', () => {
+        freshCtx(); // dentro il tocco un contesto nuovo parte sempre
+        ctx.resume().catch(() => {});
+        b.remove();
+        setTimeout(resolve, 150);
+      });
+      document.body.appendChild(b);
+    });
+  }
+
   function ensureCtx() {
     if (ctx && ctx.state !== 'closed') return ctx;
     setPlayAndRecord();
     const AC = window.AudioContext || window.webkitAudioContext;
     ctx = new AC({ latencyHint: 'interactive' });
+    for (const k in waves) delete waves[k]; // le forme d'onda appartengono al contesto
     // Spinta forte seguita da un limitatore: le note di riferimento escono molto più alte senza distorcere.
     out = ctx.createGain();
     out.gain.value = 2.4;
@@ -504,15 +529,19 @@ a.navlink:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
   }
 
   async function startMic() {
-    if ('audioSession' in navigator) { try { navigator.audioSession.type = 'play-and-record'; } catch (e) {} }
-    ensureCtx();
+    setPlayAndRecord();
+    // Microfono ancora spento: il contesto audio si crea nuovo in questo stesso tocco, come nel primo test
+    // che su iPhone funzionava. Un contesto creato in un tocco precedente (per esempio da "Ascolta" o da un
+    // tasto del rullo) verrebbe fermato da iOS all'accensione del microfono, e il microfono resterebbe muto.
+    freshCtx();
     await resumeAudio();
     stream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 },
     });
     track = stream.getAudioTracks()[0];
     track.onended = () => { started = false; setListening(false); showOverlay('Il microfono si è interrotto', 'Tocca il pulsante rosso per riprenderlo.'); };
-    await resumeAudio();
+    await resumeAudio(3000);
+    if (ctx.state !== 'running') await waitForTap();
     const src = ctx.createMediaStreamSource(stream);
     analyser = ctx.createAnalyser();
     analyser.fftSize = 2048;
@@ -673,8 +702,37 @@ a.navlink:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
   });
 
   document.addEventListener('visibilitychange', () => {
+    if (document.hidden && listening) setListening(false); // in background si mette in pausa
     if (!document.hidden && ctx && ctx.state !== 'running') ctx.resume().catch(() => {});
   });
+
+  // ---- Ciclo di vita: quando l'app va in background si rilascia l'audio ----
+  // Su iPhone, se l'app viene chiusa o scartata mentre microfono e audio sono attivi, la sessione audio
+  // di iOS resta "orfana": da lì in poi ogni pagina nasce muta e sorda finché non si riavvia il telefono
+  // (l'abbiamo già visto in HarmonyArchitect). Quindi: appena l'app è nascosta si sospende l'audio; se
+  // resta nascosta 2,5 secondi si spengono microfono e audio; se la pagina viene chiusa, subito.
+  // Al ritorno si riparte con un tocco, che crea audio e microfono nuovi.
+  function releaseAudio() {
+    try { if (stream) stream.getTracks().forEach((t) => t.stop()); } catch (e) {}
+    stream = track = null;
+    analyser = null;
+    started = false; // il pulsante rosso riaccende microfono e audio
+    if (listening) setListening(false);
+    if (ctx && ctx.state !== 'closed') { try { ctx.close(); } catch (e) {} }
+    ctx = null;
+    if ('audioSession' in navigator) { try { navigator.audioSession.type = 'auto'; } catch (e) {} }
+  }
+  let hiddenTimer = 0;
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      if (ctx && ctx.state === 'running') ctx.suspend().catch(() => {});
+      clearTimeout(hiddenTimer);
+      hiddenTimer = setTimeout(() => { if (document.hidden) releaseAudio(); }, 2500);
+    } else {
+      clearTimeout(hiddenTimer);
+    }
+  });
+  window.addEventListener('pagehide', releaseAudio);
 
   // ---- Gioco: prendi la nota ----
   // Per ogni nota: (eventuale) nota di riferimento, poi il cronometro parte.

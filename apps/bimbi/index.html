@@ -642,11 +642,37 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   // Qualsiasi tocco riattiva l'audio, se iOS l'ha sospeso.
   document.addEventListener('pointerdown', () => { if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {}); }, true);
 
+  // Contesto audio nuovo, creato dentro il tocco: chiude quello vecchio (e ciò che dipende da lui).
+  function freshCtx() {
+    if (ctx && ctx.state !== 'closed') { try { ctx.close(); } catch (e) {} }
+    ctx = null;
+    ensureCtx();
+  }
+  // Se iOS tiene fermo l'audio anche col microfono acceso, serve un tocco vero: lo chiediamo con un pulsante,
+  // invece di collegare il microfono a un audio fermo (che non riceverebbe niente).
+  function waitForTap() {
+    return new Promise((resolve) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = '🔊 Tocca per attivare il suono';
+      b.style.cssText = 'position:fixed;inset:0;z-index:9999;border:0;background:rgba(0,0,0,.6);color:#fff;font:600 22px system-ui,sans-serif;';
+      b.addEventListener('click', () => {
+        freshCtx(); // dentro il tocco un contesto nuovo parte sempre
+        ctx.resume().catch(() => {});
+        b.remove();
+        setTimeout(resolve, 150);
+      });
+      document.body.appendChild(b);
+    });
+  }
+
   function ensureCtx() {
     if (ctx && ctx.state !== 'closed') return ctx;
     setPlayAndRecord();
     const AC = window.AudioContext || window.webkitAudioContext;
     ctx = new AC({ latencyHint: 'interactive' });
+    noiseBuf = null; // il rumore e il volume generale appartengono al contesto
+    master = null;
     // Spinta forte seguita da un limitatore: la voce di Lu esce molto più alta senza distorcere.
     bus = ctx.createGain();
     bus.gain.value = 2.2;
@@ -675,8 +701,11 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   }
 
   async function startMic() {
-    if ('audioSession' in navigator) { try { navigator.audioSession.type = 'play-and-record'; } catch (e) {} }
-    ensureCtx();
+    setPlayAndRecord();
+    // Microfono ancora spento: il contesto audio si crea nuovo in questo stesso tocco, come nel primo test
+    // che su iPhone funzionava. Un contesto creato in un tocco precedente (per esempio da "Ascolta" o da un
+    // tasto del rullo) verrebbe fermato da iOS all'accensione del microfono, e il microfono resterebbe muto.
+    if (!micReady) freshCtx(); else ensureCtx();
     await resumeAudio();
     if (micReady && track && track.readyState === 'live') return;
     const stream = await navigator.mediaDevices.getUserMedia({
@@ -684,7 +713,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     });
     track = stream.getAudioTracks()[0];
     track.onended = () => { micReady = false; };
-    await resumeAudio();
+    await resumeAudio(3000);
+    if (ctx.state !== 'running') await waitForTap();
     const src = ctx.createMediaStreamSource(stream);
     analyser = ctx.createAnalyser();
     analyser.fftSize = 2048;
@@ -1268,8 +1298,12 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     if (ctx) newMaster();
     $('pauseOv').hidden = false;
   }
-  function resumeRun() {
+  async function resumeRun() {
     if (!run || !run.paused) return;
+    // se l'audio è stato rilasciato in background, lo si ricrea in questo tocco
+    if (!micReady || !ctx) {
+      try { await startMic(); } catch (err) { leaveSong(); showMsg('Non riesco a riaccendere il microfono. Riprova dalla casa.'); return; }
+    }
     const d = now() - run.paused;
     run.paused = 0;
     $('pauseOv').hidden = true;
@@ -1980,12 +2014,12 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   $('next').addEventListener('click', () => {
     const i = run ? LEVELS.indexOf(run.song) + 1 : -1;
     $('reward').hidden = true;
-    if (i > 0 && i < LEVELS.length && unlocked(i)) startSong(LEVELS[i]); else leaveSong();
+    if (i > 0 && i < LEVELS.length && unlocked(i)) openLevel(i); else leaveSong();
   });
   $('again').addEventListener('click', () => {
     const song = run && run.song;
     $('reward').hidden = true;
-    if (song) startSong(song); else leaveSong();
+    if (song) openLevel(LEVELS.indexOf(song)); else leaveSong();
   });
 
   let wakeLock = null;
@@ -1996,6 +2030,34 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     if (document.hidden) { pauseRun(); return; }
     if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {});
   });
+
+  // ---- Ciclo di vita: quando l'app va in background si rilascia l'audio ----
+  // Su iPhone, se l'app viene chiusa o scartata mentre microfono e audio sono attivi, la sessione audio
+  // di iOS resta "orfana": da lì in poi ogni pagina nasce muta e sorda finché non si riavvia il telefono
+  // (l'abbiamo già visto in HarmonyArchitect). Quindi: appena l'app è nascosta si sospende l'audio; se
+  // resta nascosta 2,5 secondi si spengono microfono e audio; se la pagina viene chiusa, subito.
+  // Al ritorno si riparte con un tocco, che crea audio e microfono nuovi.
+  function releaseAudio() {
+    try { if (track) track.stop(); } catch (e) {}
+    track = null;
+    analyser = null;
+    micReady = false;
+    if (ctx && ctx.state !== 'closed') { try { ctx.close(); } catch (e) {} }
+    ctx = null;
+    if ('audioSession' in navigator) { try { navigator.audioSession.type = 'auto'; } catch (e) {} }
+  }
+  let hiddenTimer = 0;
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      if (ctx && ctx.state === 'running') ctx.suspend().catch(() => {});
+      clearTimeout(hiddenTimer);
+      hiddenTimer = setTimeout(() => { if (document.hidden) releaseAudio(); }, 2500);
+    } else {
+      clearTimeout(hiddenTimer);
+    }
+  });
+  window.addEventListener('pagehide', releaseAudio);
+
   $('pauseGo').addEventListener('click', resumeRun);
   // toccare il cartellino lo salta (si aspetta solo la fine del carillon)
   $('titleCard').addEventListener('click', () => {
