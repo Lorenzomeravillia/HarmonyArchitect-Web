@@ -81,6 +81,21 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   text-wrap: balance;
 }
 .overlay strong { display: block; color: var(--fg); font-size: 17px; margin-bottom: 4px; }
+/* Si vede solo mentre si rivede il passato: riporta la vista al presente. */
+.now-btn {
+  position: absolute;
+  right: 12px; bottom: 12px;
+  width: auto; height: 44px;
+  display: flex; align-items: center; gap: 8px;
+  padding-inline: 14px 16px;
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--bg) 96%, transparent);
+  border: 1px solid var(--line);
+  font: 600 15px var(--sans);
+  font-variant-numeric: tabular-nums;
+}
+.now-btn small { color: var(--muted); font-weight: 500; font-size: 14px; }
+.now-btn svg { width: 18px; height: 18px; }
 
 nav {
   display: flex;
@@ -203,8 +218,13 @@ a.navlink:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
   </div>
   <div class="overlay" id="overlay">
     <strong>Tocca il pulsante rosso per iniziare</strong>
-    Tocca un tasto a sinistra per sentire la nota. Trascina in su o in giù per spostarti, pizzica per ingrandire.
+    Tocca un tasto a sinistra per sentire la nota. Trascina in su o in giù per spostarti, pizzica per ingrandire,
+    trascina verso destra per rivedere gli ultimi minuti.
   </div>
+  <button class="now-btn" id="nowBtn" hidden aria-label="Torna al presente">
+    <small id="nowAgo"></small> Adesso
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+  </button>
 
   <div class="sheet" id="setup" hidden>
     <div class="card">
@@ -347,6 +367,8 @@ a.navlink:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
 
   // ---- Dati ----
   let clock = 0;            // secondi, avanza solo durante l'ascolto
+  const HISTORY = 300;      // secondi di traccia che si possono rivedere trascinando verso destra
+  let viewEnd = null;       // istante sulla linea di lettura quando si rivede il passato; null = il presente
   let samples = [];         // {t, m} m = midi decimale o NaN
   let blocks = [];          // {n, t0, t1, open}
   let lastVoiced = NaN;
@@ -365,10 +387,23 @@ a.navlink:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
     blocks.push({ n: Math.round(m), t0, t1: t, open: true });
   }
   function trim() {
-    const keep = clock - 120;
+    const keep = clock - HISTORY;
     if (samples.length && samples[0].t < keep) samples = samples.filter((s) => s.t >= keep);
     if (blocks.length && blocks[0].t1 < keep) blocks = blocks.filter((b) => b.t1 >= keep);
   }
+
+  // Rivedere il passato: la vista resta ferma su quell'istante anche mentre si continua a cantare.
+  function setViewEnd(t) {
+    const oldest = samples.length ? samples[0].t : clock;
+    viewEnd = t == null || t >= clock - 0.05 ? null : Math.max(Math.min(oldest + 1, clock), t);
+    $('nowBtn').hidden = viewEnd == null;
+  }
+  function showAgo() {
+    if (viewEnd == null) return;
+    const s = Math.round(clock - viewEnd);
+    $('nowAgo').textContent = `−${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  }
+  $('nowBtn').addEventListener('click', () => setViewEnd(null));
 
   // ---- Disegno ----
   const yOf = (m) => (viewTop - m) * rowH;
@@ -400,12 +435,14 @@ a.navlink:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
     g.beginPath();
     g.rect(KEYW, 0, W - KEYW, H);
     g.clip();
-    const xOf = (t) => playX - (clock - t) * PPS;
-    const tMin = clock - (playX - KEYW) / PPS - 0.5;
+    const tEnd = viewEnd ?? clock;
+    const xOf = (t) => playX - (tEnd - t) * PPS;
+    const tMin = tEnd - (playX - KEYW) / PPS - 0.5, tMax = tEnd + (W - playX) / PPS + 0.5;
     drawTargets(xOf, tMin, playX);
     g.fillStyle = C.note;
     for (const b of blocks) {
       if (b.t1 < tMin) continue;
+      if (b.t0 > tMax) break;
       const x0 = xOf(b.t0), x1 = Math.max(xOf(b.t1), x0 + 2);
       g.fillRect(x0, yOf(b.n + 0.5) + 1, x1 - x0, rowH - 2);
     }
@@ -414,8 +451,11 @@ a.navlink:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
     g.lineJoin = 'round';
     g.beginPath();
     let pen = false, prevT = -1;
-    for (const s of samples) {
-      if (s.t < tMin) continue;
+    let i0 = 0, i1 = samples.length; // primo campione visibile, cercato a metà: 5 minuti sono tanti campioni
+    while (i0 < i1) { const k = (i0 + i1) >> 1; if (samples[k].t < tMin) i0 = k + 1; else i1 = k; }
+    for (let i = i0; i < samples.length; i++) {
+      const s = samples[i];
+      if (s.t > tMax) break;
       if (Number.isNaN(s.m) || s.t - prevT > 0.12) pen = false;
       if (!Number.isNaN(s.m)) {
         const x = xOf(s.t), y = yOf(s.m);
@@ -509,7 +549,7 @@ a.navlink:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
       trim();
       // In gioco, senza voce, il rullo si porta sulla nota bersaglio.
       const focus = Number.isNaN(m) && game && game.phase !== 'done' ? game.targets[game.i] : m;
-      if (follow && now > manualUntil && !Number.isNaN(focus)) {
+      if (follow && viewEnd == null && now > manualUntil && !Number.isNaN(focus)) {
         const rows = H / rowH, margin = Math.min(4, rows / 4);
         let target = viewTop;
         if (focus > viewTop - margin) target = focus + margin;
@@ -518,6 +558,7 @@ a.navlink:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
         clampView();
       }
     }
+    if (viewEnd != null) { setViewEnd(viewEnd); showAgo(); } // la traccia più vecchia di 5 minuti si scarta: la vista la segue
     draw();
     requestAnimationFrame(frame);
   }
@@ -550,7 +591,7 @@ a.navlink:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
     showOverlay(null);
     setListening(true);
   });
-  $('clear').addEventListener('click', () => { samples = []; blocks = []; });
+  $('clear').addEventListener('click', () => { samples = []; blocks = []; setViewEnd(null); });
   $('follow').addEventListener('click', () => {
     follow = !follow;
     $('follow').setAttribute('aria-pressed', String(follow));
@@ -617,6 +658,7 @@ a.navlink:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
     $('game').setAttribute('aria-pressed', 'true');
     $('gameLbl').textContent = 'Esci';
     manualUntil = 0;
+    setViewEnd(null); // il gioco si guarda nel presente
     nextNote();
   }
   function stopGame() {
@@ -880,7 +922,7 @@ a.navlink:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
   canvas.addEventListener('pointerdown', (e) => {
     canvas.setPointerCapture(e.pointerId);
     pts.set(e.pointerId, { x: e.offsetX, y: e.offsetY });
-    if (pts.size === 1) drag = { y: e.offsetY, x0: e.offsetX, y0: e.offsetY, moved: false };
+    if (pts.size === 1) drag = { x: e.offsetX, y: e.offsetY, x0: e.offsetX, y0: e.offsetY, moved: false };
     if (pts.size === 2) {
       const [a, b] = [...pts.values()];
       pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), rowH, mid: (a.y + b.y) / 2 };
@@ -898,13 +940,15 @@ a.navlink:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
       clampView();
       manualUntil = performance.now() + 4000;
     } else if (drag) {
-      const dy = e.offsetY - drag.y;
+      const dx = e.offsetX - drag.x, dy = e.offsetY - drag.y;
+      drag.x = e.offsetX;
       drag.y = e.offsetY;
       if (Math.abs(e.offsetY - drag.y0) > 6 || Math.abs(e.offsetX - drag.x0) > 6) drag.moved = true;
       if (drag.moved) {
         viewTop += dy / rowH;
         clampView();
         manualUntil = performance.now() + 4000;
+        if (dx && !game) setViewEnd((viewEnd ?? clock) - dx / PPS); // verso destra si torna indietro nel tempo
       }
     }
   });
