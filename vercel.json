@@ -58,6 +58,10 @@
       "destination": "/apps/test-microfono/$1"
     },
     {
+      "source": "/shared/(.*)",
+      "destination": "/apps/shared/$1"
+    },
+    {
       "source": "/(.*)",
       "destination": "/WebVersion/$1"
     }
@@ -114,6 +118,15 @@
         {
           "key": "Cache-Control",
           "value": "no-store, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/shared/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
         }
       ]
     },

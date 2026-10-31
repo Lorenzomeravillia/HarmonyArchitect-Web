@@ -452,6 +452,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   </div>
 </div>
 
+<script src="/shared/voce.js"></script>
 <script>
 (() => {
   'use strict';
@@ -644,286 +645,34 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   let sessions = load(KEYS.sessions, []);
 
   // ---- Audio ----
-  let ctx = null, bus = null, master = null, analyser = null, buf = null, track = null, micReady = false;
+  // Contesto audio, microfono, rilevamento della nota, voce cantata e gestione dell'iPhone sono nel file
+  // condiviso dalle tre app (/shared/voce.js). Qui restano i suoni propri di Lu.
+  const V = window.Voce;
+  V.gain = 2.2; // spinta dell'uscita, prima del limitatore
+  let master = null;
   let muteUntil = 0;
-
-  // Su iPhone l'audio va preparato per "microfono + altoparlante" PRIMA di creare il contesto audio:
-  // così si sente anche col telefono in silenzioso, e accendere il microfono dopo non interrompe l'audio.
-  function setPlayAndRecord() {
-    if ('audioSession' in navigator) { try { navigator.audioSession.type = 'play-and-record'; } catch (e) {} }
-  }
-  // Riprende l'audio senza mai restare appesi: su iPhone, dopo aver acceso il microfono, resume() può non tornare più.
-  function resumeAudio(ms = 1500) {
-    if (!ctx || ctx.state === 'running') return Promise.resolve();
-    return Promise.race([ctx.resume().catch(() => {}), new Promise((r) => setTimeout(r, ms))]);
-  }
-  // Qualsiasi tocco riattiva l'audio, se iOS l'ha sospeso.
-  document.addEventListener('pointerdown', () => { if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {}); }, true);
-
-  // Stato dell'audio in una riga, da mandare se qualcosa non va.
-  function audioStateText() {
-    const sess = 'audioSession' in navigator ? navigator.audioSession.state : 'n/d';
-    return `audio: ${ctx ? ctx.state : 'nessuno'} · sessione: ${sess}`;
-  }
-  // Se iOS tiene fermo l'audio anche col microfono acceso, chiediamo un tocco con una scheda chiara.
-  // Il tocco riavvia lo stesso contesto audio: crearne e chiuderne di continuo confonde iOS.
-  // Se nemmeno il tocco basta, l'audio del telefono è bloccato e lo diciamo (vedi micErrorText).
-  function waitForTap() {
-    return new Promise((resolve, reject) => {
-      const wrap = document.createElement('div');
-      wrap.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.72);display:grid;place-items:center;padding:24px;';
-      wrap.innerHTML = '<div style="background:#fff;color:#1c2126;border-radius:22px;padding:22px 20px;max-width:340px;width:100%;'
-        + 'text-align:center;font:500 16px system-ui,sans-serif;display:grid;gap:12px">'
-        + '<div style="font-size:44px;line-height:1">🔊</div>'
-        + '<b style="font-size:20px">Manca un tocco per il suono</b>'
-        + '<span style="color:#555">Il microfono è acceso, ma l\u2019iPhone tiene fermo l\u2019audio. Tocca il pulsante qui sotto.</span>'
-        + '<button type="button" style="border:0;border-radius:14px;background:#2f86d4;color:#fff;font:700 18px system-ui,sans-serif;padding:16px">Attiva il suono</button>'
-        + '</div>';
-      const btn = wrap.querySelector('button');
-      btn.addEventListener('click', async () => {
-        btn.disabled = true;
-        btn.textContent = 'Avvio\u2026';
-        try { ctx.resume().catch(() => {}); } catch (e) {} // dentro il tocco
-        for (let i = 0; i < 12 && ctx.state !== 'running'; i++) await new Promise((r) => setTimeout(r, 100));
-        wrap.remove();
-        if (ctx.state === 'running') resolve();
-        else reject(Object.assign(new Error('audio fermo'), { name: 'AudioBlocked' }));
-      });
-      document.body.appendChild(wrap);
-    });
-  }
-  function micErrorText(err) {
-    const name = err && err.name;
-    if (name === 'NotAllowedError') return 'Il microfono è bloccato per questo sito. Riattivalo dalle impostazioni del browser (aA nella barra degli indirizzi su Safari) e riprova.';
-    if (name === 'NotReadableError' || name === 'AbortError') return 'Il microfono è occupato da un\u2019altra app (Chrome, una chiamata, un registratore\u2026). Chiudila e riprova.';
-    if (name === 'AudioBlocked') {
-      return 'L\u2019iPhone non riesce ad avviare l\u2019audio. Succede quando la sessione audio del telefono resta bloccata, '
-        + 'per esempio dopo aver chiuso un\u2019app mentre usava microfono o suono. Chiudi le altre app che usano il microfono '
-        + 'e, se non basta, spegni e riaccendi l\u2019iPhone. (' + audioStateText() + ')';
-    }
-    return `Non riesco ad aprire il microfono (${name}). Chiudi le altre app che lo usano e riprova. (${audioStateText()})`;
-  }
-
-  function ensureCtx() {
-    if (ctx && ctx.state !== 'closed') return ctx;
-    setPlayAndRecord();
-    const AC = window.AudioContext || window.webkitAudioContext;
-    ctx = new AC({ latencyHint: 'interactive' });
-    noiseBuf = null; // il rumore e il volume generale appartengono al contesto
-    master = null;
-    // Spinta forte seguita da un limitatore: la voce di Lu esce molto più alta senza distorcere.
-    bus = ctx.createGain();
-    bus.gain.value = 2.2;
-    const lim = ctx.createDynamicsCompressor();
-    lim.threshold.value = -7;
-    lim.knee.value = 3;
-    lim.ratio.value = 20;
-    lim.attack.value = 0.002;
-    lim.release.value = 0.12;
-    bus.connect(lim).connect(ctx.destination);
-    newMaster();
-    return ctx;
-  }
 
   // Ogni canzone suona su un proprio volume generale: uscendo lo si sfuma e si stacca,
   // così le note già programmate non continuano a suonare.
   function newMaster() {
     if (master) {
       const old = master;
-      old.gain.setTargetAtTime(0, ctx.currentTime, 0.03);
+      old.gain.setTargetAtTime(0, V.ctx.currentTime, 0.03);
       setTimeout(() => old.disconnect(), 300);
     }
-    master = ctx.createGain();
+    master = V.ctx.createGain();
     master.gain.value = 1;
-    master.connect(bus);
+    master.connect(V.out);
   }
-
-  async function startMic() {
-    setPlayAndRecord();
-    ensureCtx(); // un solo contesto audio per tutta la visita (si chiude solo quando l'app va in background)
-    if (ctx.state !== 'running') ctx.resume().catch(() => {}); // dentro il tocco
-    await resumeAudio();
-    if (micReady && track && track.readyState === 'live') return;
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 },
-    });
-    track = stream.getAudioTracks()[0];
-    track.onended = () => { micReady = false; };
-    await resumeAudio(3000);
-    if (ctx.state !== 'running') await waitForTap();
-    const src = ctx.createMediaStreamSource(stream);
-    analyser = ctx.createAnalyser();
-    analyser.fftSize = 2048;
-    analyser.smoothingTimeConstant = 0;
-    const sink = ctx.createGain();
-    sink.gain.value = 0; // Safari elabora solo i nodi collegati all'uscita
-    src.connect(analyser);
-    analyser.connect(sink);
-    sink.connect(ctx.destination);
-    buf = new Float32Array(analyser.fftSize);
-    micReady = true;
-  }
-
-  function bandpass(freq, q, gain) {
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'bandpass';
-    filter.frequency.value = freq;
-    filter.Q.value = q;
-    const amp = ctx.createGain();
-    amp.gain.value = gain;
-    filter.connect(amp);
-    return { filter, amp };
-  }
-
-  // Voce sintetica che canta una sillaba: dente di sega filtrato sulle formanti della vocale
-  // (voce chiara, da bambino), con una consonante iniziale semplificata, un piccolo scivolamento
-  // d'attacco e un vibrato leggero. Le consonanti sono accennate: contano soprattutto le vocali.
-  const VOWELS = {
-    a: [[850, 1500, 2800], [1, 0.6, 0.14]],
-    e: [[550, 2100, 2900], [1, 0.45, 0.18]],
-    i: [[320, 2600, 3300], [1, 0.35, 0.18]],
-    o: [[520, 950, 2800], [1, 0.55, 0.08]],
-    u: [[400, 950, 2800], [1, 0.45, 0.08]],
-  };
-  function parseSyl(syl) {
-    const w = syl.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z]/g, '').replace(/^h/, '');
-    const m = w.match(/^([^aeiou]*)(.*)$/);
-    let onset = m[1], rest = m[2];
-    // ci, gi, sci davanti a vocale: la i non si sente (ciuf, giù)
-    if (['c', 'g', 'sc'].includes(onset) && rest.length > 1 && rest[0] === 'i' && 'aeou'.includes(rest[1])) { onset += 'i'; rest = rest.slice(1); }
-    const v = rest.match(/^([aeiou]+)(.*)$/);
-    return { onset, vowels: (v ? v[1] : 'u').split(''), coda: v ? v[2] : '' };
-  }
-  function onsetKind(o) {
-    if (!o) return null;
-    if (o === 'l' || o === 'r' || o === 'gl') return 'liquid';
-    if (o === 'm' || o === 'n') return 'nasal';
-    if (['b', 'd', 'g', 'br'].includes(o)) return 'voiced';
-    if (['ci', 'gi', 'z'].includes(o)) return 'affricate';
-    if (o === 'sc' || o === 'sci') return 'sh';
-    if (['f', 'fr', 'v', 's', 'sv'].includes(o)) return 'fricative';
-    return 'stop'; // p, t, c, ch, q, st
-  }
-  let noiseBuf = null;
-  function noise(t, dur, freq, gain, q = 1.2) {
-    if (!noiseBuf) {
-      noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
-      const d = noiseBuf.getChannelData(0);
-      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-    }
-    const src = ctx.createBufferSource();
-    src.buffer = noiseBuf;
-    const bp = ctx.createBiquadFilter();
-    bp.type = 'bandpass';
-    bp.frequency.value = freq;
-    bp.Q.value = q;
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(gain, t + 0.005);
-    g.gain.exponentialRampToValueAtTime(0.0005, t + dur);
-    src.connect(bp).connect(g).connect(master);
-    src.start(t);
-    src.stop(t + dur + 0.02);
-  }
-  function singSyl(midi, t, dur, syl = 'lu', vol = 0.9) {
-    const { onset, vowels, coda } = parseSyl(syl || 'lu');
-    const kind = onsetKind(onset);
-    const f = mtof(midi);
-    const on = { stop: 0.03, voiced: 0.03, affricate: 0.07, sh: 0.08, fricative: 0.07, nasal: 0.07 }[kind] || 0;
-    const codaDur = /^[nm]/.test(coda) ? Math.min(0.12, dur * 0.25) : coda ? Math.min(0.08, dur * 0.2) : 0;
-    const vStart = t + on;
-    const vEnd = Math.max(vStart + 0.08, t + dur - codaDur);
-
-    const out = ctx.createGain();
-    out.gain.value = 0;
-    const lp = ctx.createBiquadFilter();
-    lp.type = 'lowpass';
-    lp.frequency.value = 3400;
-    out.connect(lp).connect(master);
-    const saw = ctx.createOscillator();
-    saw.type = 'sawtooth';
-    saw.frequency.value = f;
-    const sine = ctx.createOscillator();
-    sine.frequency.value = f;
-    const vib = ctx.createOscillator();
-    vib.frequency.value = 5.3;
-    const vibAmt = ctx.createGain();
-    vibAmt.gain.setValueAtTime(0, t);
-    vibAmt.gain.linearRampToValueAtTime(14, t + Math.min(0.45, dur * 0.6));
-    vib.connect(vibAmt);
-    for (const o of [saw, sine]) {
-      vibAmt.connect(o.detune);
-      o.detune.setValueAtTime(-35, t);
-      o.detune.linearRampToValueAtTime(0, t + 0.08);
-    }
-    // formanti della vocale (o delle vocali, che scivolano una nell'altra: mi-ao, pio)
-    const tuned = (v) => {
-      const [fr, gn] = VOWELS[v] || VOWELS.u;
-      const f1 = Math.max(fr[0], f * 1.08);
-      return [[f1, Math.max(fr[1], f1 * 1.4), fr[2]], gn];
-    };
-    const first = tuned(vowels[0]);
-    const bands = [0, 1, 2].map((k) => bandpass(first[0][k], [4, 6, 8][k], first[1][k]));
-    for (const b of bands) { saw.connect(b.filter); b.amp.connect(out); }
-    if (kind === 'liquid') { // la "l": seconda formante che parte alta e scende sulla vocale
-      bands[1].filter.frequency.setValueAtTime(1500, t);
-      bands[1].filter.frequency.exponentialRampToValueAtTime(first[0][1], vStart + 0.08);
-    }
-    const seg = (vEnd - vStart) / vowels.length;
-    let prev = first;
-    vowels.forEach((v, i) => {
-      if (!i) return;
-      const next = tuned(v);
-      const at = vStart + seg * i;
-      bands.forEach((b, k) => {
-        b.filter.frequency.setValueAtTime(prev[0][k], at - seg * 0.4);
-        b.filter.frequency.linearRampToValueAtTime(next[0][k], at);
-        b.amp.gain.setValueAtTime(prev[1][k], at - seg * 0.4);
-        b.amp.gain.linearRampToValueAtTime(next[1][k], at);
-      });
-      prev = next;
-    });
-    const body = ctx.createGain();
-    body.gain.value = 0.35;
-    sine.connect(body).connect(out);
-
-    // inviluppo: le consonanti sonore (l, m, n, b, d) partono già con un po' di voce
-    const voicedOnset = ['liquid', 'nasal', 'voiced'].includes(kind) || !kind;
-    out.gain.setValueAtTime(0, t);
-    if (voicedOnset) {
-      out.gain.linearRampToValueAtTime(vol * (kind === 'nasal' ? 0.3 : 0.5), t + Math.max(0.03, on));
-      out.gain.linearRampToValueAtTime(vol, vStart + 0.06);
-    } else {
-      out.gain.setValueAtTime(0, vStart);
-      out.gain.linearRampToValueAtTime(vol, vStart + 0.03);
-    }
-    out.gain.setValueAtTime(vol, vEnd);
-    if (/^[nm]/.test(coda)) { // din, don, scen: la voce si chiude in un ronzio
-      out.gain.linearRampToValueAtTime(vol * 0.3, vEnd + 0.04);
-      out.gain.setValueAtTime(vol * 0.3, t + dur - 0.04);
-      out.gain.setTargetAtTime(0, t + dur - 0.04, 0.04);
-    } else if (coda) {
-      out.gain.setTargetAtTime(0, vEnd, 0.02);
-    } else {
-      out.gain.setTargetAtTime(0, Math.max(vEnd, t + dur - 0.05), 0.05);
-    }
-    // consonanti di rumore
-    if (kind === 'stop') noise(t, 0.03, /t/.test(onset) ? 3500 : onset === 'p' ? 1000 : 2200, 0.22);
-    else if (kind === 'voiced') noise(t, 0.025, 900, 0.12);
-    else if (kind === 'affricate') noise(t, 0.08, 3200, 0.16);
-    else if (kind === 'sh') noise(t, 0.09, 2600, 0.18);
-    else if (kind === 'fricative') noise(t, 0.08, onset === 's' ? 5500 : 1800, 0.1);
-    if (coda === 'f') noise(vEnd, 0.08, 1800, 0.1);
-    else if (coda === 'c') noise(vEnd + 0.02, 0.03, 2200, 0.15);
-    const end = t + dur + 0.4;
-    for (const o of [saw, sine, vib]) { o.start(t); o.stop(end); }
-  }
+  V.onContext = () => { master = null; newMaster(); }; // il volume generale appartiene al contesto audio
+  // Lu canta con voce da bambino anche sulle note gravi, sul volume della canzone in corso.
+  const singSyl = (midi, t, dur, syl = 'lu', vol = 0.9) => V.singSyl(midi, t, dur, syl, vol, master, true);
 
   function chime(midi, t, vol = 0.12) {
     for (const [iv, a] of [[24, vol], [31, vol * 0.35]]) {
-      const o = ctx.createOscillator();
+      const o = V.ctx.createOscillator();
       o.frequency.value = mtof(midi + iv);
-      const g = ctx.createGain();
+      const g = V.ctx.createGain();
       g.gain.setValueAtTime(0, t);
       g.gain.linearRampToValueAtTime(a, t + 0.005);
       g.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
@@ -935,10 +684,10 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 
   // Piccolo "blup" che dice: tocca a te.
   function bloop(t) {
-    const o = ctx.createOscillator();
+    const o = V.ctx.createOscillator();
     o.frequency.setValueAtTime(520, t);
     o.frequency.exponentialRampToValueAtTime(980, t + 0.12);
-    const g = ctx.createGain();
+    const g = V.ctx.createGain();
     g.gain.setValueAtTime(0, t);
     g.gain.linearRampToValueAtTime(0.1, t + 0.02);
     g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
@@ -955,9 +704,9 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     ivs.forEach((iv, j) => {
       const s = t + j * 0.22;
       for (const [mul, a] of [[1, 0.16], [3, 0.03], [4.2, 0.012]]) {
-        const o = ctx.createOscillator();
+        const o = V.ctx.createOscillator();
         o.frequency.value = mtof(tonic + 12 + iv) * mul;
-        const g = ctx.createGain();
+        const g = V.ctx.createGain();
         g.gain.setValueAtTime(0, s);
         g.gain.linearRampToValueAtTime(a, s + 0.004);
         g.gain.exponentialRampToValueAtTime(0.0001, s + 0.9);
@@ -969,66 +718,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     return 3 * 0.22 + 0.9;
   }
 
-  // ---- Rilevamento nota (YIN) ----
-  let yinD = null, yinR = null;
-  function yin(x, sr) {
-    const tauMin = Math.floor(sr / 1200);
-    const tauMax = Math.min(Math.floor(sr / 70), (x.length >> 1) - 1);
-    const N = x.length - tauMax;
-    if (!yinD || yinD.length < tauMax + 2) { yinD = new Float32Array(tauMax + 2); yinR = new Float32Array(tauMax + 2); }
-    const d = yinD, raw = yinR;
-    d[0] = 1;
-    let run = 0;
-    for (let tau = 1; tau <= tauMax; tau++) {
-      let s = 0;
-      for (let i = 0; i < N; i++) { const v = x[i] - x[i + tau]; s += v * v; }
-      raw[tau] = s;
-      run += s;
-      d[tau] = run ? (s * tau) / run : 1;
-    }
-    let tau = -1;
-    for (let t = tauMin; t < tauMax; t++) {
-      if (d[t] < 0.15) { while (t + 1 < tauMax && d[t + 1] < d[t]) t++; tau = t; break; }
-    }
-    if (tau < 1) return null;
-    // Errore tipico: con la fondamentale debole (voce grave, microfono del telefono, vocali come "u" e "i") la prima
-    // valle cade a metà del periodo, cioè un'ottava sopra. Se al doppio il segnale si ripete molto meglio, il periodo è quello.
-    if (d[tau] > 0.01) {
-      let t2 = -1;
-      for (let t = Math.round(tau * 1.9), e = Math.min(tauMax - 1, Math.round(tau * 2.1)); t <= e; t++) if (t2 < 0 || raw[t] < raw[t2]) t2 = t;
-      if (t2 > 0 && raw[t2] < raw[tau] * 0.4) tau = t2;
-    }
-    const a = d[tau - 1], b = d[tau], c = d[tau + 1];
-    const den = a + c - 2 * b;
-    return { f: sr / (tau + (den ? (a - c) / (2 * den) : 0)), clarity: 1 - b };
-  }
-  // Un salto d'ottava esatto verso l'alto a metà di una nota tenuta, senza pause né scivolate, è quasi sempre un errore
-  // di lettura: per 0,2 s si resta all'ottava di prima. Un salto vero dura e passa; dopo un respiro passa subito.
-  let octLast = NaN, octT = -9, octCalm = 0, octJump = 0;
-  function octaveGuard(m) {
-    if (Number.isNaN(m)) return m;
-    const now = performance.now() / 1000, dd = m - octLast;
-    if (now - octT > 0.06) { octCalm = now; octJump = 0; }
-    else if (dd > 10.8 && dd < 13.2 && now - octCalm >= 0.15) {
-      if (!octJump) octJump = now;
-      if (now - octJump < 0.2) m -= 12; else { octJump = 0; octCalm = now; }
-    } else { octJump = 0; if (Math.abs(dd) > 3) octCalm = now; }
-    octLast = m;
-    octT = now;
-    return m;
-  }
-  const recent = [];
-  function readVoice() {
-    analyser.getFloatTimeDomainData(buf);
-    let sum = 0;
-    for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
-    const db = 10 * Math.log10(sum / buf.length + 1e-12);
-    const r = db > -50 ? yin(buf, ctx.sampleRate) : null;
-    recent.push(r && r.clarity > 0.8 ? 69 + 12 * Math.log2(r.f / 440) : NaN);
-    if (recent.length > 3) recent.shift();
-    const v = recent.filter((x) => !Number.isNaN(x)).sort((a, b) => a - b);
-    return { m: octaveGuard(v.length >= 2 ? v[v.length >> 1] : NaN), db };
-  }
+  const readVoice = V.pitchReader({ gate: -50, fmin: 70 });
 
   // ---- Stato della partita ----
   const voice = { m: NaN, shown: NaN, db: -120, loudSince: null, loud: false };
@@ -1097,7 +787,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     halos = [];
     // carillon di inizio tappa, poi si comincia
     const hc = homeChord(song, tonic);
-    const boxDur = musicBox(hc.root, ctx.currentTime + 0.35, hc.ivs);
+    const boxDur = musicBox(hc.root, V.ctx.currentTime + 0.35, hc.ivs);
     muteUntil = Math.max(muteUntil, now() + 0.35 + boxDur + 0.2);
     run.until = Math.max(muteUntil, now() + 3);
     showTitleCard(song);
@@ -1143,7 +833,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     setCue('listen');
     const spb = 60 / run.song.bpm;
     const lead = 0.25;
-    const at = ctx.currentTime + lead, pt = now() + lead;
+    const at = V.ctx.currentTime + lead, pt = now() + lead;
     let off = 0;
     run.sing = [];
     ph.forEach((n, i) => {
@@ -1160,7 +850,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   function beginCue() {
     const n = run.phrases[run.p][0];
     run.phase = 'cue';
-    const at = ctx.currentTime + 0.05, pt = now() + 0.05;
+    const at = V.ctx.currentTime + 0.05, pt = now() + 0.05;
     singSyl(n.midi, at, 0.7, wordAt(run.p, 0));
     run.sing = [{ p: run.p, i: 0, t0: pt, t1: pt + 0.7, syl: wordAt(run.p, 0) }];
     bloop(at + 0.85);
@@ -1188,7 +878,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 
   function starSings(i) {
     const n = run.phrases[run.p][i];
-    const at = ctx.currentTime + 0.05, pt = now() + 0.05;
+    const at = V.ctx.currentTime + 0.05, pt = now() + 0.05;
     singSyl(n.midi, at, 0.75, wordAt(run.p, i));
     run.sing.push({ p: run.p, i, t0: pt, t1: pt + 0.75, syl: wordAt(run.p, i) });
     muteUntil = Math.max(muteUntil, pt + 1.05);
@@ -1243,7 +933,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     const pos = starPos(run.p, run.k);
     burst(pos.x, pos.y, helped ? 8 : 18, helped, noteColor(n.midi));
     if (!helped) {
-      chime(n.midi, ctx.currentTime + 0.01);
+      chime(n.midi, V.ctx.currentTime + 0.01);
       muteUntil = Math.max(muteUntil, t + 0.4);
     }
     $('starCount').textContent = run.notes.length;
@@ -1269,7 +959,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     setCue('party');
     if (run.mode === 'rainbow' || run.mode === 'free') { // niente melodia da ricantare: solo la fanfara
       const tonic = run.fr ? Math.round(run.fr.home ?? run.fr.view) : run.song.tonic + levelShift(run.song);
-      const at = ctx.currentTime + 0.1;
+      const at = V.ctx.currentTime + 0.1;
       [0, 4, 7, 12].forEach((iv, j) => chime(tonic + iv - 12, at + j * 0.12, 0.25));
       run.sing = [];
       run.until = now() + 1.2;
@@ -1278,7 +968,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     }
     const spb = 60 / run.song.bpm;
     const lead = 0.4;
-    const at = ctx.currentTime + lead, pt = now() + lead;
+    const at = V.ctx.currentTime + lead, pt = now() + lead;
     let off = 0;
     run.sing = [];
     run.phrases.forEach((ph, p) => ph.forEach((n, i) => {
@@ -1421,19 +1111,19 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   function pauseRun() {
     if (!run || run.paused || run.phase === 'done') return;
     run.paused = now();
-    if (ctx) newMaster();
+    if (V.ctx) newMaster();
     $('pauseOv').hidden = false;
   }
   async function resumeRun() {
     if (!run || !run.paused) return;
     // se l'audio è stato rilasciato in background, lo si ricrea in questo tocco
-    if (!micReady || !ctx) {
-      try { await startMic(); } catch (err) { leaveSong(); showMsg(micErrorText(err)); return; }
+    if (!V.micReady || !V.ctx) {
+      try { await V.startMic(); } catch (err) { leaveSong(); showMsg(V.micErrorText(err)); return; }
     }
     const d = now() - run.paused;
     run.paused = 0;
     $('pauseOv').hidden = true;
-    if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {});
+    if (V.ctx && V.ctx.state !== 'running') V.ctx.resume().catch(() => {});
     muteUntil = 0;
     if (run.phase === 'turn') {
       const a = run.active;
@@ -1466,7 +1156,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 
   function leaveSong() {
     if (run && run.phase !== 'done') saveSession(false);
-    if (ctx) newMaster();
+    if (V.ctx) newMaster();
     run = null;
     muteUntil = 0;
     $('reward').hidden = true;
@@ -1478,7 +1168,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   // ---- Aggiornamento a ogni fotogramma ----
   function update(t, dt) {
     voice.m = NaN;
-    if (micReady && analyser) {
+    if (V.micReady && V.analyser) {
       const r = readVoice();
       voice.db = r.db;
       if (t >= muteUntil) voice.m = r.m;
@@ -2207,9 +1897,9 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   async function openLevel(i) {
     const song = LEVELS[i];
     try {
-      await startMic();
+      await V.startMic();
     } catch (err) {
-      showMsg(micErrorText(err));
+      showMsg(V.micErrorText(err));
       return;
     }
     startSong(song);
@@ -2234,35 +1924,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   }
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) { pauseRun(); return; }
-    if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {});
+    if (V.ctx && V.ctx.state !== 'running') V.ctx.resume().catch(() => {});
   });
-
-  // ---- Ciclo di vita: quando l'app va in background si rilascia l'audio ----
-  // Su iPhone, se l'app viene chiusa o scartata mentre microfono e audio sono attivi, la sessione audio
-  // di iOS resta "orfana": da lì in poi ogni pagina nasce muta e sorda finché non si riavvia il telefono
-  // (l'abbiamo già visto in HarmonyArchitect). Quindi: appena l'app è nascosta si sospende l'audio; se
-  // resta nascosta 2,5 secondi si spengono microfono e audio; se la pagina viene chiusa, subito.
-  // Al ritorno si riparte con un tocco, che crea audio e microfono nuovi.
-  function releaseAudio() {
-    try { if (track) track.stop(); } catch (e) {}
-    track = null;
-    analyser = null;
-    micReady = false;
-    if (ctx && ctx.state !== 'closed') { try { ctx.close(); } catch (e) {} }
-    ctx = null;
-    if ('audioSession' in navigator) { try { navigator.audioSession.type = 'auto'; } catch (e) {} }
-  }
-  let hiddenTimer = 0;
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      if (ctx && ctx.state === 'running') ctx.suspend().catch(() => {});
-      clearTimeout(hiddenTimer);
-      hiddenTimer = setTimeout(() => { if (document.hidden) releaseAudio(); }, 2500);
-    } else {
-      clearTimeout(hiddenTimer);
-    }
-  });
-  window.addEventListener('pagehide', releaseAudio);
 
   $('pauseGo').addEventListener('click', resumeRun);
   // toccare il cartellino lo salta (si aspetta solo la fine del carillon)

@@ -308,6 +308,7 @@ a.navlink:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
   </div>
 </nav>
 
+<script src="/shared/voce.js"></script>
 <script>
 (() => {
   const $ = (id) => document.getElementById(id);
@@ -450,212 +451,32 @@ a.navlink:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
   }
 
   // ---- Audio ----
-  let out = null;
-  let ctx = null, stream = null, track = null, analyser = null, buf = null;
-  let listening = false, started = false;
-
-  // Su iPhone l'audio va preparato per "microfono + altoparlante" PRIMA di creare il contesto audio:
-  // così si sente anche col telefono in silenzioso, e accendere il microfono dopo non interrompe l'audio.
-  function setPlayAndRecord() {
-    if ('audioSession' in navigator) { try { navigator.audioSession.type = 'play-and-record'; } catch (e) {} }
-  }
-  // Riprende l'audio senza mai restare appesi: su iPhone, dopo aver acceso il microfono, resume() può non tornare più.
-  function resumeAudio(ms = 1500) {
-    if (!ctx || ctx.state === 'running') return Promise.resolve();
-    return Promise.race([ctx.resume().catch(() => {}), new Promise((r) => setTimeout(r, ms))]);
-  }
-  // Qualsiasi tocco riattiva l'audio, se iOS l'ha sospeso.
-  document.addEventListener('pointerdown', () => { if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {}); }, true);
-
-  // Stato dell'audio in una riga, da mandare se qualcosa non va.
-  function audioStateText() {
-    const sess = 'audioSession' in navigator ? navigator.audioSession.state : 'n/d';
-    return `audio: ${ctx ? ctx.state : 'nessuno'} · sessione: ${sess}`;
-  }
-  // Se iOS tiene fermo l'audio anche col microfono acceso, chiediamo un tocco con una scheda chiara.
-  // Il tocco riavvia lo stesso contesto audio: crearne e chiuderne di continuo confonde iOS.
-  // Se nemmeno il tocco basta, l'audio del telefono è bloccato e lo diciamo (vedi micErrorText).
-  function waitForTap() {
-    return new Promise((resolve, reject) => {
-      const wrap = document.createElement('div');
-      wrap.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.72);display:grid;place-items:center;padding:24px;';
-      wrap.innerHTML = '<div style="background:#fff;color:#1c2126;border-radius:22px;padding:22px 20px;max-width:340px;width:100%;'
-        + 'text-align:center;font:500 16px system-ui,sans-serif;display:grid;gap:12px">'
-        + '<div style="font-size:44px;line-height:1">🔊</div>'
-        + '<b style="font-size:20px">Manca un tocco per il suono</b>'
-        + '<span style="color:#555">Il microfono è acceso, ma l\u2019iPhone tiene fermo l\u2019audio. Tocca il pulsante qui sotto.</span>'
-        + '<button type="button" style="border:0;border-radius:14px;background:#2f86d4;color:#fff;font:700 18px system-ui,sans-serif;padding:16px">Attiva il suono</button>'
-        + '</div>';
-      const btn = wrap.querySelector('button');
-      btn.addEventListener('click', async () => {
-        btn.disabled = true;
-        btn.textContent = 'Avvio\u2026';
-        try { ctx.resume().catch(() => {}); } catch (e) {} // dentro il tocco
-        for (let i = 0; i < 12 && ctx.state !== 'running'; i++) await new Promise((r) => setTimeout(r, 100));
-        wrap.remove();
-        if (ctx.state === 'running') resolve();
-        else reject(Object.assign(new Error('audio fermo'), { name: 'AudioBlocked' }));
-      });
-      document.body.appendChild(wrap);
-    });
-  }
-  function micErrorText(err) {
-    const name = err && err.name;
-    if (name === 'NotAllowedError') return 'Il microfono è bloccato per questo sito. Riattivalo dalle impostazioni del browser (aA nella barra degli indirizzi su Safari) e riprova.';
-    if (name === 'NotReadableError' || name === 'AbortError') return 'Il microfono è occupato da un\u2019altra app (Chrome, una chiamata, un registratore\u2026). Chiudila e riprova.';
-    if (name === 'AudioBlocked') {
-      return 'L\u2019iPhone non riesce ad avviare l\u2019audio. Succede quando la sessione audio del telefono resta bloccata, '
-        + 'per esempio dopo aver chiuso un\u2019app mentre usava microfono o suono. Chiudi le altre app che usano il microfono '
-        + 'e, se non basta, spegni e riaccendi l\u2019iPhone. (' + audioStateText() + ')';
-    }
-    return `Non riesco ad aprire il microfono (${name}). Chiudi le altre app che lo usano e riprova. (${audioStateText()})`;
-  }
-
-  function ensureCtx() {
-    if (ctx && ctx.state !== 'closed') return ctx;
-    setPlayAndRecord();
-    const AC = window.AudioContext || window.webkitAudioContext;
-    ctx = new AC({ latencyHint: 'interactive' });
-    for (const k in waves) delete waves[k]; // le forme d'onda appartengono al contesto
-    // Spinta forte seguita da un limitatore: le note di riferimento escono molto più alte senza distorcere.
-    out = ctx.createGain();
-    out.gain.value = 2.4;
-    const lim = ctx.createDynamicsCompressor();
-    lim.threshold.value = -7;
-    lim.knee.value = 3;
-    lim.ratio.value = 20;
-    lim.attack.value = 0.002;
-    lim.release.value = 0.12;
-    out.connect(lim).connect(ctx.destination);
-    return ctx;
-  }
-
-  // Timbro delle note di riferimento: morbido, ma con armonici decrescenti che cadono dove
-  // l'altoparlante del telefono suona bene (sopra i 300 Hz circa). Più la nota è grave, più
-  // armonici: l'orecchio ricostruisce la nota anche se il telefono non ne riproduce la fondamentale.
-  const HARMONICS = {
-    low: [0, 1, 0.85, 0.65, 0.5, 0.36, 0.26, 0.18, 0.12, 0.08],
-    mid: [0, 1, 0.6, 0.38, 0.24, 0.15, 0.09],
-    high: [0, 1, 0.38, 0.18, 0.08],
-  };
-  const waves = {};
-  function waveFor(f) {
-    const key = f < 180 ? 'low' : f < 350 ? 'mid' : 'high';
-    if (!waves[key]) {
-      const amps = HARMONICS[key];
-      waves[key] = ctx.createPeriodicWave(new Float32Array(amps.length), Float32Array.from(amps));
-    }
-    return waves[key];
-  }
-
-  async function startMic() {
-    setPlayAndRecord();
-    ensureCtx(); // un solo contesto audio per tutta la visita (si chiude solo quando l'app va in background)
-    if (ctx.state !== 'running') ctx.resume().catch(() => {}); // dentro il tocco
-    await resumeAudio();
-    stream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 },
-    });
-    track = stream.getAudioTracks()[0];
-    track.onended = () => { started = false; setListening(false); showOverlay('Il microfono si è interrotto', 'Tocca il pulsante rosso per riprenderlo.'); };
-    await resumeAudio(3000);
-    if (ctx.state !== 'running') await waitForTap();
-    const src = ctx.createMediaStreamSource(stream);
-    analyser = ctx.createAnalyser();
-    analyser.fftSize = 2048;
-    analyser.smoothingTimeConstant = 0;
-    const sink = ctx.createGain();
-    sink.gain.value = 0; // Safari elabora solo i nodi collegati all'uscita
-    src.connect(analyser);
-    analyser.connect(sink);
-    sink.connect(ctx.destination);
-    buf = new Float32Array(analyser.fftSize);
-    started = true;
-  }
+  // Contesto audio, microfono, rilevamento della nota e gestione dell'iPhone sono nel file condiviso dalle
+  // tre app (/shared/voce.js). Qui resta solo la nota che suona toccando un tasto.
+  const V = window.Voce;
+  let listening = false;
+  V.onTrackEnded = () => { setListening(false); showOverlay('Il microfono si è interrotto', 'Tocca il pulsante rosso per riprenderlo.'); };
+  V.onRelease = () => { if (listening) setListening(false); }; // al ritorno, il pulsante rosso riaccende microfono e audio
 
   function playNote(n, dur = 0.7) {
     try {
-      ensureCtx();
+      const ctx = V.ensureCtx();
       if (ctx.state !== 'running') ctx.resume();
       const t = ctx.currentTime;
-      const f = 440 * Math.pow(2, (n - 69) / 12);
-      const o = ctx.createOscillator(), v = ctx.createGain(), lp = ctx.createBiquadFilter();
-      o.setPeriodicWave(waveFor(f));
-      o.frequency.value = f;
-      lp.type = 'lowpass'; // toglie solo l'asprezza in alto
-      lp.frequency.value = Math.min(4500, Math.max(1800, f * 9));
-      lp.Q.value = 0.5;
+      const { o, node } = V.voiceOsc(V.mtof(n));
+      const v = ctx.createGain();
       v.gain.setValueAtTime(0, t);
       v.gain.linearRampToValueAtTime(0.95, t + 0.025);
       v.gain.setTargetAtTime(0, t + dur, 0.12);
-      o.connect(lp).connect(v).connect(out);
+      node.connect(v).connect(V.out);
       o.start(t);
       o.stop(t + dur + 0.7);
     } catch (e) {}
     flash = { n, until: performance.now() + 900 };
   }
 
-  // ---- Rilevamento nota (YIN) ----
-  let yinD = null, yinR = null;
-  function yin(x, sr) {
-    const tauMin = Math.floor(sr / 1200);
-    const tauMax = Math.min(Math.floor(sr / 60), (x.length >> 1) - 1);
-    const N = x.length - tauMax;
-    if (!yinD || yinD.length < tauMax + 2) { yinD = new Float32Array(tauMax + 2); yinR = new Float32Array(tauMax + 2); }
-    const d = yinD, raw = yinR;
-    d[0] = 1;
-    let run = 0;
-    for (let tau = 1; tau <= tauMax; tau++) {
-      let s = 0;
-      for (let i = 0; i < N; i++) { const v = x[i] - x[i + tau]; s += v * v; }
-      raw[tau] = s;
-      run += s;
-      d[tau] = run ? (s * tau) / run : 1;
-    }
-    let tau = -1;
-    for (let t = tauMin; t < tauMax; t++) {
-      if (d[t] < 0.15) { while (t + 1 < tauMax && d[t + 1] < d[t]) t++; tau = t; break; }
-    }
-    if (tau < 1) return null;
-    // Errore tipico: con la fondamentale debole (voce grave, microfono del telefono, vocali come "u" e "i") la prima
-    // valle cade a metà del periodo, cioè un'ottava sopra. Se al doppio il segnale si ripete molto meglio, il periodo è quello.
-    if (d[tau] > 0.01) {
-      let t2 = -1;
-      for (let t = Math.round(tau * 1.9), e = Math.min(tauMax - 1, Math.round(tau * 2.1)); t <= e; t++) if (t2 < 0 || raw[t] < raw[t2]) t2 = t;
-      if (t2 > 0 && raw[t2] < raw[tau] * 0.4) tau = t2;
-    }
-    const a = d[tau - 1], b = d[tau], c = d[tau + 1];
-    const den = a + c - 2 * b;
-    return { f: sr / (tau + (den ? (a - c) / (2 * den) : 0)), clarity: 1 - b };
-  }
-
-  // Un salto d'ottava esatto verso l'alto a metà di una nota tenuta, senza pause né scivolate, è quasi sempre un errore
-  // di lettura: per 0,2 s si resta all'ottava di prima. Un salto vero dura e passa; dopo un respiro passa subito.
-  let octLast = NaN, octT = -9, octCalm = 0, octJump = 0;
-  function octaveGuard(m) {
-    if (Number.isNaN(m)) return m;
-    const now = performance.now() / 1000, dd = m - octLast;
-    if (now - octT > 0.06) { octCalm = now; octJump = 0; }
-    else if (dd > 10.8 && dd < 13.2 && now - octCalm >= 0.15) {
-      if (!octJump) octJump = now;
-      if (now - octJump < 0.2) m -= 12; else { octJump = 0; octCalm = now; }
-    } else { octJump = 0; if (Math.abs(dd) > 3) octCalm = now; }
-    octLast = m;
-    octT = now;
-    return m;
-  }
-  const recent = [];
-  function readPitch() {
-    analyser.getFloatTimeDomainData(buf);
-    let sum = 0;
-    for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
-    const db = 10 * Math.log10(sum / buf.length + 1e-12);
-    const r = db > -55 ? yin(buf, ctx.sampleRate) : null;
-    recent.push(r && r.clarity > 0.8 ? 69 + 12 * Math.log2(r.f / 440) : NaN);
-    if (recent.length > 3) recent.shift();
-    const v = recent.filter((x) => !Number.isNaN(x)).sort((a, b) => a - b);
-    return octaveGuard(v.length >= 2 ? v[v.length >> 1] : NaN); // mediana breve contro i salti isolati
-  }
+  const pitch = V.pitchReader({ gate: -55, fmin: 60 });
+  const readPitch = () => pitch().m;
 
   // ---- Indicatore ----
   function hud(m) {
@@ -678,7 +499,7 @@ a.navlink:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
   function frame(now) {
     const dt = Math.min(0.1, (now - lastFrame) / 1000);
     lastFrame = now;
-    if (listening && analyser) {
+    if (listening && V.analyser) {
       clock += dt;
       let m = readPitch();
       if (now < muteUntil) m = NaN; // non disegnare la nota di riferimento ripresa dal microfono
@@ -721,13 +542,11 @@ a.navlink:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
 
   $('play').addEventListener('click', async () => {
     if (listening) { setListening(false); return; }
-    if (!started) {
-      try { await startMic(); }
-      catch (e) {
-        showOverlay('Microfono non disponibile', micErrorText(e));
-        return;
-      }
-    } else if (ctx && ctx.state !== 'running') { await resumeAudio(); } // mai in attesa all'infinito
+    try { await V.startMic(); } // se è già acceso riprende solo l'audio, senza mai restare in attesa
+    catch (e) {
+      showOverlay('Microfono non disponibile', V.micErrorText(e));
+      return;
+    }
     showOverlay(null);
     setListening(true);
   });
@@ -741,36 +560,8 @@ a.navlink:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
 
   document.addEventListener('visibilitychange', () => {
     if (document.hidden && listening) setListening(false); // in background si mette in pausa
-    if (!document.hidden && ctx && ctx.state !== 'running') ctx.resume().catch(() => {});
+    if (!document.hidden && V.ctx && V.ctx.state !== 'running') V.ctx.resume().catch(() => {});
   });
-
-  // ---- Ciclo di vita: quando l'app va in background si rilascia l'audio ----
-  // Su iPhone, se l'app viene chiusa o scartata mentre microfono e audio sono attivi, la sessione audio
-  // di iOS resta "orfana": da lì in poi ogni pagina nasce muta e sorda finché non si riavvia il telefono
-  // (l'abbiamo già visto in HarmonyArchitect). Quindi: appena l'app è nascosta si sospende l'audio; se
-  // resta nascosta 2,5 secondi si spengono microfono e audio; se la pagina viene chiusa, subito.
-  // Al ritorno si riparte con un tocco, che crea audio e microfono nuovi.
-  function releaseAudio() {
-    try { if (stream) stream.getTracks().forEach((t) => t.stop()); } catch (e) {}
-    stream = track = null;
-    analyser = null;
-    started = false; // il pulsante rosso riaccende microfono e audio
-    if (listening) setListening(false);
-    if (ctx && ctx.state !== 'closed') { try { ctx.close(); } catch (e) {} }
-    ctx = null;
-    if ('audioSession' in navigator) { try { navigator.audioSession.type = 'auto'; } catch (e) {} }
-  }
-  let hiddenTimer = 0;
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      if (ctx && ctx.state === 'running') ctx.suspend().catch(() => {});
-      clearTimeout(hiddenTimer);
-      hiddenTimer = setTimeout(() => { if (document.hidden) releaseAudio(); }, 2500);
-    } else {
-      clearTimeout(hiddenTimer);
-    }
-  });
-  window.addEventListener('pagehide', releaseAudio);
 
   // ---- Gioco: prendi la nota ----
   // Per ogni nota: (eventuale) nota di riferimento, poi il cronometro parte.
@@ -1037,8 +828,7 @@ a.navlink:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
   showBest();
 
   async function ensureListening() {
-    if (!started) await startMic();
-    else if (ctx && ctx.state !== 'running') await resumeAudio(); // mai in attesa all'infinito
+    await V.startMic(); // se è già acceso riprende solo l'audio
     showOverlay(null);
     setListening(true);
   }
@@ -1057,7 +847,7 @@ a.navlink:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
     $('setup').hidden = true;
     try { await ensureListening(); }
     catch (e) {
-      showOverlay('Microfono non disponibile', micErrorText(e));
+      showOverlay('Microfono non disponibile', V.micErrorText(e));
       return;
     }
     startGame();
