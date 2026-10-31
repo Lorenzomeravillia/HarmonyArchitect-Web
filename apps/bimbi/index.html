@@ -474,9 +474,17 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   const SYL = ['do', 're', 'mi', 'fa', 'sol', 'la', 'si'];
   const DEG_COLORS = ['#ff5a5f', '#ff9f1c', '#f2c200', '#34b764', '#12aac8', '#4f6bff', '#b25cf0'];
   const RAINBOW = ['#ff6b6b', '#ffa94d', '#ffe066', '#69db7c', '#4dabf7', '#9775fa'];
+  // I regali del canto libero: semitoni dalla "casa" e l'amico che c'è dentro. Si vede solo il prossimo regalo
+  // in alto e il prossimo in basso; aperto uno, compare quello dopo, un po' più lontano.
+  const GIFTS = [
+    { v: 2, friend: '🎈', x: 0.66 }, { v: 4, friend: '🦋', x: 0.84 }, { v: 7, friend: '🐦', x: 0.62 }, { v: 10, friend: '🌟', x: 0.8 },
+    { v: -2, friend: '🌷', x: 0.74 }, { v: -4, friend: '🐞', x: 0.88 }, { v: -6, friend: '🐸', x: 0.64 },
+  ];
+  const EMOJI = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
 
   // ---- Percorso ----
-  // Tre modi di giocare, dal più guidato al più impegnativo:
+  // Quattro modi di giocare, dal più libero al più impegnativo:
+  //   'free'    canto libero: niente da seguire, la voce va dove vuole e lontano dalla "casa" ci sono dei regali;
   //   'rainbow' l'arcobaleno: nessuna nota da imitare, si segue con la voce una scia che sale e scende;
   //   'note'   eco nota per nota: ogni stella canta la sua nota subito prima del turno;
   //   'phrase' eco di frase: si ascolta la frase intera e poi la si canta stella per stella.
@@ -519,6 +527,11 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   // `words` dà le sillabe frase per frase. `hook` è la frase del cartellino, da leggere ad alta voce.
   const LA = (n) => Array(n).fill('la');
   const LEVELS = [
+    // Canto libero: si scopre che la voce fa volare Lu. La prima nota tenuta diventa la "casa"; sopra e sotto
+    // aspettano dei regali, sempre più lontani: aprirli invita a cambiare nota e ad allargare la voce, senza mai sbagliare.
+    { id: 'regali', phase: 0, title: 'I regali di Lu', icon: '🎁', mode: 'free', tonic: 64,
+      hook: 'Canta come vuoi e Lu vola con la tua voce. In alto e in basso ci sono dei regali!',
+      phrases: [] },
     // L'arcobaleno: una scia larga da seguire con la voce. Avanza solo mentre canta, e le stelle sono
     // sulle cime e nelle valli, così il gioco misura anche dove la sua voce arriva comoda.
     { id: 'vola', phase: 0, title: 'L\u2019arcobaleno di Lu', icon: '🌈', mode: 'rainbow', tonic: 60, tol: 150,
@@ -1043,9 +1056,10 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   function startSong(song) {
     const phrases = songPhrases(song);
     const tonic = song.tonic + levelShift(song);
+    const home0 = settings.range ? (settings.range.lo + settings.range.hi) / 2 : tonic; // casa provvisoria, finché non canta
     const [lo, hi] = song.mode === 'rainbow'
       ? [tonic + Math.min(...song.points), tonic + Math.max(...song.points)]
-      : songRange(song);
+      : song.mode === 'free' ? freeSpan(home0) : songRange(song);
     run = {
       song, phrases, lo, hi, paused: 0,
       mode: song.mode || 'phrase',
@@ -1055,8 +1069,12 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
       phase: 'intro', until: now() + 0.9,
       state: phrases.map((ph) => ph.map(() => 'todo')),
       sing: [], notes: [], active: null,
-      total: song.mode === 'rainbow' ? song.points.length - 1 : phrases.reduce((a, ph) => a + ph.length, 0),
+      total: song.mode === 'rainbow' ? song.points.length - 1 : song.mode === 'free' ? GIFTS.length : phrases.reduce((a, ph) => a + ph.length, 0),
     };
+    if (song.mode === 'free') {
+      run.fr = { home: null, view: home0, sung: 0, first: [], firstT: 0, all: [], lastVoiced: -9, doneAt: 0,
+        gifts: GIFTS.map((gf) => ({ ...gf, state: 'wait', hold: 0, shownAt: 0, opened: 0, jump: -9, near: false })) };
+    }
     if (song.mode === 'rainbow') {
       run.rb = {
         s: 0, end: (song.points.length - 1) * song.spacing + 1.5, lastIn: -9, inside: false,
@@ -1239,8 +1257,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   function beginFinale() {
     run.phase = 'finale';
     setCue('party');
-    if (run.mode === 'rainbow') { // niente melodia da ricantare: solo la fanfara
-      const tonic = run.song.tonic + levelShift(run.song);
+    if (run.mode === 'rainbow' || run.mode === 'free') { // niente melodia da ricantare: solo la fanfara
+      const tonic = run.fr ? Math.round(run.fr.home ?? run.fr.view) : run.song.tonic + levelShift(run.song);
       const at = ctx.currentTime + 0.1;
       [0, 4, 7, 12].forEach((iv, j) => chime(tonic + iv - 12, at + j * 0.12, 0.25));
       run.sing = [];
@@ -1274,7 +1292,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     run.phase = 'done';
     setCue(null);
     const gold = run.notes.filter((n) => !n.helped).length;
-    const stars = rating(gold, run.total);
+    // nel canto libero bastano tre regali per due stelle (e per aprire l'arcobaleno), sei per tre
+    const stars = run.mode === 'free' ? (gold >= 6 ? 3 : gold >= 3 ? 2 : 1) : rating(gold, run.total);
     saveSession(true);
     const idx = LEVELS.indexOf(run.song);
     const nextWasOpen = idx + 1 < LEVELS.length && unlocked(idx + 1);
@@ -1330,6 +1349,59 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
       if (ok) collectFx(W * 0.28, y); else burst(W * 0.28, y, 6, true);
     }
     if (rb.s >= rb.end) { saveRange(); beginFinale(); }
+  }
+
+  // Canto libero. La casa è la prima nota tenuta: 0,6 s senza scostarsi più di un semitono e mezzo
+  // (se dopo 4 s di canto non c'è ancora, è la nota mediana di quello che ha cantato).
+  // Un regalo si apre quando la voce arriva alla sua altezza, o più in là, per un attimo (0,2 s).
+  const freeSpan = (home) => [home - 7, home + 10];
+  const nextGift = (dir) => run.fr.gifts.filter((gf) => gf.state === 'wait' && Math.sign(gf.v) === dir)
+    .sort((a, b) => Math.abs(a.v) - Math.abs(b.v))[0];
+  function stepFree(t, dt) {
+    const fr = run.fr, m = voice.m, voiced = !Number.isNaN(m);
+    if (fr.home == null) {
+      if (voiced) {
+        if (!fr.first.length || Math.abs(m - median(fr.first)) > 1.5) { fr.first = []; fr.firstT = t; }
+        fr.first.push(m);
+        if (fr.all.length < 600) fr.all.push(m);
+        if (t - fr.firstT >= 0.6) fr.home = median(fr.first);
+        else if (fr.sung > 4) fr.home = median(fr.all);
+      } else if (t - fr.lastVoiced > 0.3) fr.first = [];
+    }
+    if (voiced) { fr.sung += dt; fr.lastVoiced = t; }
+    fr.view += ((fr.home ?? fr.view) - fr.view) * (1 - Math.exp(-dt / 0.5));
+    [run.lo, run.hi] = freeSpan(fr.view);
+    if (fr.home == null) return;
+    const d = voiced ? m - fr.home : NaN;
+    for (const dir of [1, -1]) {
+      const gf = nextGift(dir);
+      if (!gf) continue;
+      const reached = voiced && (dir > 0 ? d >= gf.v - 0.5 : d <= gf.v + 0.5);
+      gf.hold = reached ? gf.hold + dt : 0;
+      if (gf.hold >= 0.2) openGift(gf, t);
+    }
+    // gli amici già trovati saltano di gioia quando la voce torna alla loro altezza
+    for (const gf of fr.gifts) {
+      if (gf.state !== 'open') continue;
+      const near = voiced && Math.abs(d - gf.v) < 0.6;
+      if (near && !gf.near && t - gf.jump > 1) {
+        gf.jump = t;
+        burst(gf.x * W, yOf(fr.home + gf.v), 6, false, '#fff3b0');
+      }
+      gf.near = near;
+    }
+    if (!fr.doneAt && fr.gifts.every((gf) => gf.state === 'open')) fr.doneAt = t + 2.5; // un attimo per godersi l'ultimo
+    if ((fr.doneAt && t >= fr.doneAt) || fr.sung >= 45) beginFinale();
+  }
+  function openGift(gf, t) {
+    const fr = run.fr, x = gf.x * W, y = yOf(fr.home + gf.v), far = Math.abs(gf.v) >= 6;
+    gf.state = 'open';
+    gf.opened = t;
+    gf.jump = t;
+    burst(x, y, far ? 30 : 18, false, gf.v > 0 ? '#ffd23f' : '#93d47e');
+    collectFx(x, y); // la stellina vola nel contatore, intorno a Lu un anello d'oro
+    if (far) for (let i = 0; i < 30; i++) confetti(); // i regali lontani fanno più festa
+    run.notes.push({ midi: Math.round(fr.home + gf.v), helped: false, helps: 0, lock: null, cents: null, iv: null, dir: null, first: null });
   }
 
   // Pausa automatica quando si esce dall'app; al ritorno si riprende senza perdere niente.
@@ -1408,7 +1480,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     }
     // Un'ottava sopra o sotto viene "piegata" sulla nota bersaglio, se l'adulto lo permette.
     voice.shown = voice.m;
-    if (run && run.mode !== 'rainbow' && !Number.isNaN(voice.m)) {
+    if (run && run.mode !== 'rainbow' && run.mode !== 'free' && !Number.isNaN(voice.m)) {
       const ph = run.phrases[Math.min(run.p, run.phrases.length - 1)];
       const target = ph[Math.min(run.k, ph.length - 1)].midi;
       if (settings.octave) voice.shown = voice.m + 12 * Math.round((target - voice.m) / 12);
@@ -1418,10 +1490,13 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
       case 'intro':
         if (t >= run.until) {
           hideTitleCard();
-          if (run.mode === 'rainbow') { run.phase = 'rainbow'; setCue('sing'); } else beginPhrase();
+          if (run.mode === 'rainbow') { run.phase = 'rainbow'; setCue('sing'); }
+          else if (run.mode === 'free') { run.phase = 'free'; setCue('sing'); }
+          else beginPhrase();
         }
         break;
       case 'rainbow': stepRainbow(t, dt); break;
+      case 'free': stepFree(t, dt); break;
       case 'listen': if (t >= run.until) { if (run.mode === 'note') beginStarListen(); else beginCue(); } break;
       case 'starListen': if (t >= run.until) activate(); break;
       case 'cue': if (t >= run.until) activate(); break;
@@ -1447,7 +1522,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 
   // colore della nota: per grado della scala rispetto alla tonica della tappa (do mobile)
   function degreeOf(midi) {
-    const rel = ((Math.round(midi - (run.song.tonic + levelShift(run.song))) % 12) + 12) % 12;
+    const tonic = run.fr ? run.fr.home ?? run.fr.view : run.song.tonic + levelShift(run.song); // nel canto libero il "do" è la casa
+    const rel = ((Math.round(midi - tonic) % 12) + 12) % 12;
     return MAJOR.indexOf(rel);
   }
   function noteColor(midi) { const d = degreeOf(midi); return d < 0 ? '#ffffff' : DEG_COLORS[d]; }
@@ -1726,6 +1802,80 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     drawCollectFx(t);
   }
 
+  // Canto libero: la casa, i regali che aspettano, gli amici trovati e Lu che vola dove va la voce.
+  const easeBack = (k) => 1 + 2.7 * (k - 1) ** 3 + 1.7 * (k - 1) ** 2;
+  function drawEmoji(ch, x, y, size, rot = 0, sx = 1) {
+    g.save();
+    g.translate(x, y);
+    g.rotate(rot);
+    g.scale(sx, 1);
+    g.font = `${Math.round(size)}px ${EMOJI}`;
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText(ch, 0, 0);
+    g.restore();
+  }
+  function drawFree(t, dt) {
+    const fr = run.fr, luX = W * 0.3, f = field();
+    const voiced = !Number.isNaN(voice.m);
+    if (fr.home != null) {
+      const y = yOf(fr.home);
+      g.globalAlpha = 0.55;
+      g.strokeStyle = '#ff8fa8';
+      g.lineWidth = 2;
+      g.setLineDash([3, 9]);
+      g.beginPath(); g.moveTo(44, y); g.lineTo(W - 16, y); g.stroke();
+      g.setLineDash([]);
+      g.globalAlpha = 1;
+      drawEmoji('🏠', 24, y, 24);
+    } else drawBubble('luuu'); // prima di tutto una nota lunga: diventa la casa
+    for (const gf of fr.gifts) {
+      const x = gf.x * W, y = yOf((fr.home ?? fr.view) + gf.v);
+      if (gf.state === 'open') { // l'amico resta lì, con il suo piccolo movimento, e salta quando lei torna
+        const k = Math.min(1, (t - gf.opened) / 0.5), s = 44 * easeBack(k);
+        const hop = t - gf.jump < 0.5 ? Math.sin(Math.PI * (t - gf.jump) / 0.5) * 22 : 0;
+        const ph = t + gf.x * 10;
+        let dx = 0, dy = Math.sin(ph * 2) * 4, rot = 0, sx = 1;
+        if (gf.friend === '🎈') { dy = Math.sin(ph * 1.6) * 7; rot = Math.sin(ph * 1.1) * 0.08; }
+        else if (gf.friend === '🦋') sx = 0.7 + 0.3 * Math.abs(Math.sin(ph * 8));
+        else if (gf.friend === '🌟') { rot = ph * 0.6; g.globalAlpha = 0.5 + 0.3 * Math.sin(ph * 3); g.drawImage(glow('#fff3b0'), x - 45, y - 45, 90, 90); g.globalAlpha = 1; }
+        else if (gf.friend === '🌷') { rot = Math.sin(ph * 1.4) * 0.12; dy = 0; }
+        else if (gf.friend === '🐞') { dx = Math.sin(ph * 0.7) * 10; dy = 0; }
+        else if (gf.friend === '🐸') dy = -(Math.max(0, Math.sin(ph * 2.2)) ** 8) * 14;
+        drawEmoji(gf.friend, x + dx, y + dy - hop, s, rot, sx);
+        continue;
+      }
+      if (fr.home == null || gf !== nextGift(Math.sign(gf.v))) continue; // si vede solo il prossimo regalo
+      if (!gf.shownAt) gf.shownAt = t;
+      const k = Math.min(1, (t - gf.shownAt) / 0.5);
+      // più la voce si avvicina, più il regalo brilla e si agita: ci sei quasi
+      const prox = voiced ? clamp(1 - Math.abs(voice.m - fr.home - gf.v) / 2.5, 0, 1) : 0;
+      const gs = 70 + 40 * prox;
+      g.globalAlpha = 0.45 + 0.5 * prox;
+      g.drawImage(glow('#fff3b0'), x - gs / 2, y - gs / 2, gs, gs);
+      g.globalAlpha = 1;
+      drawEmoji('🎁', x, y + Math.sin(t * 2.5 + gf.x * 10) * 4, 36 * easeBack(k), Math.sin(t * 22) * 0.18 * prox);
+    }
+    // Lu
+    let ty = restY(), flying = false;
+    if (voiced) { ty = clamp(yOf(voice.m), f.top - 30, restY()); flying = true; fr.lastY = ty; }
+    else if (t - fr.lastVoiced < 0.3) { ty = fr.lastY; flying = true; } // buco brevissimo: Lu resta dov'è
+    lu.x += (luX - lu.x) * (1 - Math.exp(-dt / 0.18));
+    lu.y += (ty - lu.y) * (1 - Math.exp(-dt / (flying ? 0.08 : 0.35)));
+    // più la voce va lontano da casa, più scintille
+    if (voiced && fr.home != null && !run.paused) {
+      const far = Math.min(1, Math.abs(voice.m - fr.home) / 7);
+      if (Math.random() < far * dt * 40) {
+        particles.push({ x: lu.x + (Math.random() - 0.5) * lu.r * 2, y: lu.y + (Math.random() - 0.5) * lu.r * 2, vx: -40 - Math.random() * 60,
+          vy: (Math.random() - 0.5) * 60, life: 0.9, age: 0, size: 3 + Math.random() * 4 * (0.5 + far), color: Math.random() < 0.5 ? '#ffd23f' : '#fff3b0', kind: 'star', grav: 30 });
+      }
+    }
+    trail(dt);
+    drawParticles(dt);
+    drawLu(g, lu.x, lu.y + (flying ? 0 : Math.sin(t * 2) * 2), lu.r, { time: t, flying, singing: voiced, ears: voice.loud });
+    drawCollectFx(t);
+  }
+
   // L'ultima nota iniziata: fra una nota e l'altra resta valida, così la schermata non salta.
   function lastSung(t) {
     let last = null;
@@ -1756,6 +1906,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     g.beginPath(); g.ellipse(W * 0.85, H + 40, W * 0.65, 120, 0, Math.PI, 0); g.fill();
     if (!run) return;
     if (run.mode === 'rainbow') { drawRainbow(t, dt); return; }
+    if (run.mode === 'free') { drawFree(t, dt); return; }
 
     const sing = singingNow(t);
     const cur = run.phase === 'finale' ? lastSung(t) : null;
@@ -1949,12 +2100,15 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 
   function unlocked(i) {
     return settings.unlockAll || i === 0 || (settings.forced || []).includes(LEVELS[i].id)
-      || (best[LEVELS[i - 1].id] || 0) >= 2;
+      || (best[LEVELS[i - 1].id] || 0) >= 2
+      || (best[LEVELS[i].id] || 0) > 0; // già giocata: resta aperta anche se prima se ne aggiunge una nuova
   }
 
   function renderHome() {
     // la tappa da fare adesso: la prima aperta che non ha ancora almeno 2 stelle
-    const next = LEVELS.findIndex((l, i) => unlocked(i) && (best[l.id] || 0) < 2);
+    // (il canto libero non torna a essere "la prossima" per chi è già andato avanti)
+    const later = (i) => LEVELS.slice(i + 1).some((l) => (best[l.id] || 0) > 0);
+    const next = LEVELS.findIndex((l, i) => unlocked(i) && (best[l.id] || 0) < 2 && !(l.mode === 'free' && later(i)));
     let html = '', phase = -1;
     LEVELS.forEach((l, i) => {
       if (l.phase !== phase) { html += `<div class="phase-title">${PHASES[l.phase]}</div>`; phase = l.phase; }
@@ -2142,7 +2296,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   function syncShift() {
     const s = settings.shift;
     $('shiftOut').textContent = s === 0 ? 'Normale' : (s > 0 ? '+' : '−') + Math.abs(s) + (Math.abs(s) === 1 ? ' semitono' : ' semitoni');
-    const songs = LEVELS.filter((x) => x.mode !== 'rainbow' && !x.fit);
+    const songs = LEVELS.filter((x) => x.mode !== 'rainbow' && x.mode !== 'free' && !x.fit);
     const lows = songs.map((x) => songRange(x)[0]), highs = songs.map((x) => songRange(x)[1]);
     $('rangeOut').textContent = `Gli esercizi vanno da ${noteName(Math.min(...lows))} a ${noteName(Math.max(...highs))}.`;
     const fit = LEVELS.find((x) => x.fit && x.mode === 'phrase');
