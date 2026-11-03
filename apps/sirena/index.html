@@ -965,6 +965,10 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   let viewMid = center - 5;
   const voice = { m: NaN };
   const comet = { y: 0, vis: 0, inside: false };
+  // La scia: la voce vera, un punto per fotogramma (così si vede anche il vibrato). Scorre con il percorso:
+  // ribbonT avanza con il tempo del percorso, e si ferma quando si ferma lui.
+  const ribbon = [];
+  let ribbonT = 0, ribbonGt = 0;
   const calib = { anchor: NaN, since: 0, vals: [], last: -9, progress: 0 };
   let particles = [], floats = [];
 
@@ -1130,8 +1134,9 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
 
     if (world) drawWorld(now, fx);
 
-    // scia della cometa
+    // scia della cometa: la voce vera, sottile e luminosa; dorata dentro il percorso, azzurra fuori
     g.globalCompositeOperation = 'lighter';
+    drawRibbon();
     particles = particles.filter((p) => (p.age += dt) < p.life);
     for (const p of particles) {
       p.x += p.vx * dt;
@@ -1143,17 +1148,32 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     }
     g.globalAlpha = 1;
 
-    // cometa
+    // cometa: un punto preciso con un anello sottile, e un alone allungato nel senso del moto, alto più o meno
+    // quanto il percorso: resta luminosa ma si vede se sei al centro o sul bordo
     if (state !== 'end') {
       const cy = comet.y;
       const bt = beatNow();
       const pulse = 1 + (bt ? (bt.down ? 0.14 : 0.09) * bt.pulse : 0.06 * Math.sin(now * 7)) * fx; // nei brani respira a tempo
-      const size = (comet.inside ? 96 : 70) * (0.35 + 0.65 * comet.vis) * pulse;
-      g.globalAlpha = 0.45 + 0.55 * comet.vis;
-      g.drawImage(comet.inside ? SPR.gold : comet.vis > 0.5 ? SPR.cyan : SPR.dim, cometX - size / 2, cy - size / 2, size, size);
-      const core = size * 0.34;
-      g.drawImage(SPR.white, cometX - core / 2, cy - core / 2, core, core);
+      const tolPx = (((world && world.tol) || 40) / 100) * pxSemi;
+      const w = (comet.inside ? 84 : 66) * (0.4 + 0.6 * comet.vis) * pulse, h = clamp(tolPx * 1.8, 14, 34);
+      g.globalAlpha = 0.4 + 0.5 * comet.vis;
+      g.drawImage(comet.inside ? SPR.gold : comet.vis > 0.5 ? SPR.cyan : SPR.dim, cometX - w * 0.72, cy - h / 2, w, h); // la coda verso sinistra
+      g.drawImage(SPR.white, cometX - 8, cy - 8, 16, 16);
       g.globalAlpha = 1;
+      g.globalCompositeOperation = 'source-over';
+      if (comet.vis > 0.05) {
+        g.globalAlpha = comet.vis;
+        g.fillStyle = '#ffffff';
+        g.beginPath();
+        g.arc(cometX, cy, 3, 0, Math.PI * 2);
+        g.fill();
+        g.strokeStyle = comet.inside ? '#ffd27a' : 'rgba(126,240,255,0.85)';
+        g.lineWidth = 1.5;
+        g.beginPath();
+        g.arc(cometX, cy, 6.5, 0, Math.PI * 2);
+        g.stroke();
+        g.globalAlpha = 1;
+      }
     }
     g.globalCompositeOperation = 'source-over';
 
@@ -1301,15 +1321,69 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     }
   }
 
+  // La scia vera e propria: gruppi di punti con lo stesso colore e la stessa età (fasce di 0,3 s), un tratto per
+  // gruppo, in tre passate: alone, colore, filo chiaro al centro. Sfuma allontanandosi dalla cometa.
+  // Una media su 3 fotogrammi toglie il tremolio della lettura (il vibrato resta quasi tutto) e le curve
+  // morbide fanno del vibrato un'onda invece di uno zig-zag.
+  const RIB = { true: ['255,210,122', '255,246,222'], false: ['126,240,255', '226,251,255'] };
+  function strokeSmooth(pts, width, style) {
+    g.lineWidth = width;
+    g.strokeStyle = style;
+    g.beginPath();
+    g.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length - 1; i++) {
+      g.quadraticCurveTo(pts[i][0], pts[i][1], (pts[i][0] + pts[i + 1][0]) / 2, (pts[i][1] + pts[i + 1][1]) / 2);
+    }
+    g.lineTo(pts[pts.length - 1][0], pts[pts.length - 1][1]);
+    g.stroke();
+  }
+  function drawRibbon() {
+    const n = ribbon.length;
+    if (n < 2) return;
+    const xAt = (t) => cometX - (ribbonT - t) * SPEED, yAt = (m) => clamp(yOf(m), top - 30, bottom + 10);
+    const mAt = (i) => { // media con i vicini che hanno una nota
+      let sum = ribbon[i].m, k = 1;
+      for (const j of [i - 1, i + 1]) if (j >= 0 && j < n && !Number.isNaN(ribbon[j].m)) { sum += ribbon[j].m; k++; }
+      return sum / k;
+    };
+    g.lineJoin = 'round';
+    g.lineCap = 'round';
+    let pts = [], key = null, age = 0, inside = false;
+    const flush = () => {
+      if (pts.length < 2) return;
+      const a = Math.max(0, 1 - age / 3.2) ** 1.3;
+      const [c, core] = RIB[inside];
+      strokeSmooth(pts, 7, `rgba(${c},${0.16 * a})`);
+      strokeSmooth(pts, 2.6, `rgba(${c},${0.55 * a})`);
+      strokeSmooth(pts, 1.2, `rgba(${core},${0.9 * a})`);
+    };
+    for (let i = 0; i < n; i++) {
+      const s = ribbon[i];
+      if (Number.isNaN(s.m)) { flush(); pts = []; key = null; continue; }
+      const k = `${s.inside}|${Math.floor((ribbonT - s.t) / 0.3)}`;
+      if (k !== key) { // il nuovo gruppo riparte dall'ultimo punto, così la linea resta continua
+        flush();
+        pts = pts.length ? [pts[pts.length - 1]] : [];
+        key = k;
+        age = ribbonT - s.t;
+        inside = s.inside;
+      }
+      pts.push([xAt(s.t), yAt(mAt(i))]);
+    }
+    if (pts.length && comet.vis > 0.3 && !Number.isNaN(ribbon[n - 1].m)) pts.push([cometX, comet.y]); // fino alla testa
+    flush();
+  }
+  // Qualche scintilla piccola intorno alla testa: decorano senza coprire la linea.
   function emitTrail(dt) {
     if (comet.vis < 0.3) return;
-    const n = Math.round((comet.inside ? 5 : 2) * fxK() * dt * 60);
+    const rate = (comet.inside ? 1.4 : 0.6) * fxK() * dt * 60;
+    const n = Math.floor(rate) + (Math.random() < rate % 1 ? 1 : 0);
     for (let i = 0; i < n; i++) {
       particles.push({
-        x: cometX - 4 + Math.random() * 8, y: comet.y + (Math.random() - 0.5) * 8,
-        vx: -SPEED * (0.75 + Math.random() * 0.3), vy: (Math.random() - 0.5) * 24,
-        life: 0.6 + Math.random() * 0.7, age: 0, size: 10 + Math.random() * 14,
-        spr: comet.inside ? (Math.random() < 0.7 ? SPR.gold : SPR.rose) : SPR.cyan, a: comet.inside ? 0.9 : 0.5,
+        x: cometX - 2 + Math.random() * 4, y: comet.y + (Math.random() - 0.5) * 6,
+        vx: -SPEED * (0.55 + Math.random() * 0.35), vy: (Math.random() - 0.5) * 60,
+        life: 0.4 + Math.random() * 0.45, age: 0, size: 4 + Math.random() * 6,
+        spr: comet.inside ? (Math.random() < 0.7 ? SPR.gold : SPR.rose) : SPR.cyan, a: comet.inside ? 0.85 : 0.4,
       });
     }
   }
@@ -1341,6 +1415,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     state = 'calib';
     world = null;
     particles = [];
+    ribbon.length = 0;
     floats = [];
     Object.assign(calib, { anchor: NaN, since: 0, vals: [], last: -9, progress: 0 });
     viewMid = (lastCenter ?? 55) + 2;
@@ -1378,6 +1453,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     world = buildWorld(exercise, mode);
     gt = 0;
     particles = particles.filter((p) => p.age < 0.2);
+    ribbon.length = 0;
     $('hud').hidden = false;
     $('combo').hidden = false;
     $('score').textContent = '0';
@@ -1397,6 +1473,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     resize();
     gt = 0;
     particles = particles.filter((p) => p.age < 0.2);
+    ribbon.length = 0;
     $('menu').hidden = true;
     $('hud').hidden = false;
     $('score').textContent = mode === 'studio' ? '♪' : '0';
@@ -1567,6 +1644,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
 
   function toMenu() {
     state = 'menu';
+    ribbon.length = 0;
     speedK = 0.16;
     speedFix = 0;
     center = lastCenter ?? 55; // dopo un brano si torna alla nota comoda degli esercizi
@@ -1647,7 +1725,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     if (!Number.isNaN(voice.m)) {
       const ty = clamp(yOf(voice.m), top - 30, bottom + 10);
       if (comet.vis < 0.05) comet.y = ty;
-      comet.y += (ty - comet.y) * (1 - Math.exp(-dt / 0.05));
+      comet.y += (ty - comet.y) * (1 - Math.exp(-dt / 0.025));
       comet.vis = Math.min(1, comet.vis + dt * 6);
     } else if (state !== 'paused') {
       comet.vis = Math.max(0, comet.vis - dt * 2.5);
@@ -1655,6 +1733,14 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
       if (comet.vis < 0.05 && state !== 'end') comet.y += (yOf(center) - comet.y) * (1 - Math.exp(-dt / 1.5));
     }
     if (state !== 'paused' && state !== 'end') emitTrail(dt);
+    // la scia scorre con il percorso; in calibrazione il percorso è fermo e scorre da sola
+    ribbonT += state === 'calib' ? dt : Math.max(0, gt - ribbonGt);
+    ribbonGt = gt;
+    if (state !== 'paused') {
+      if (!Number.isNaN(voice.m) && comet.vis > 0.3) ribbon.push({ t: ribbonT, m: voice.m, inside: comet.inside });
+      else if (ribbon.length && !Number.isNaN(ribbon[ribbon.length - 1].m)) ribbon.push({ t: ribbonT, m: NaN });
+      while (ribbon.length && ribbon[0].t < ribbonT - 3.5) ribbon.shift();
+    }
 
     draw(now, state === 'paused' ? 0 : dt);
     requestAnimationFrame(frame);
