@@ -136,6 +136,22 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
 .ex b { display: block; font-size: 18px; font-weight: 500; }
 .ex small { display: block; color: var(--muted); font-size: 13px; }
 .ex small.goal { color: rgba(126,240,255,.75); font-size: 12.5px; margin-top: 2px; }
+.ex .acts.one { grid-template-columns: 1fr; }
+/* Esplora: gli intervalli da scoprire, sotto la barra in alto; il prossimo da cercare respira appena */
+.explore-bar {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  top: calc(max(10px, env(safe-area-inset-top, 0px)) + 56px);
+  width: min(92vw, 440px);
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 5px;
+  pointer-events: none;
+}
+.explore-bar span {
+  font-size: 12px; padding: 3px 9px; border-radius: 12px;
+  border: 1px solid var(--line); background: var(--glass); color: var(--muted);
+}
+.explore-bar span.on { color: var(--night); background: var(--gold); border-color: var(--gold); font-weight: 600; box-shadow: 0 0 14px rgba(255,210,122,.45); }
+.explore-bar span.next { color: var(--gold); border-color: rgba(255,210,122,.6); animation: breathe 2.2s ease-in-out infinite; }
+@keyframes breathe { 50% { box-shadow: 0 0 12px rgba(255,210,122,.4); } }
 .ex .rec { font-size: 12px; color: var(--gold); font-variant-numeric: tabular-nums; text-align: right; line-height: 1.2; }
 .ex .acts { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
 .pick {
@@ -236,7 +252,9 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   </button>
   <div class="score"><b id="score">0</b><small id="scoreLabel">sfida</small></div>
   <div class="combo" id="combo" aria-label="Moltiplicatore">×1</div>
+  <button class="btn small" id="exploreEnd" hidden>Fine</button>
 </div>
+<div class="explore-bar" id="exploreBar" hidden aria-label="Intervalli da scoprire"></div>
 
 <div class="center-msg" id="centerMsg" hidden>
   <h2 id="cmTitle"></h2>
@@ -485,6 +503,10 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   // Ogni esercizio con quello che si fa (desc) e quello che allena (goal): stanno scritti nella sua scheda,
   // così la differenza fra onde e sirena si capisce prima di provarle.
   const EXERCISES = [
+    { id: 'esplora', name: 'Esplora', free: true,
+      desc: 'Canta come vuoi: accanto alla cometa vedi di quanto sali o scendi, e se fai un\u2019onda.',
+      goal: 'Prepara alle onde: impari a vedere quanto è grande un intervallo.',
+      icon: 'M6 5 V25 M2 5 H10 M2 25 H10 M16 21 C22 5 30 5 36 15 S50 27 62 9' },
     { id: 'gradini', name: 'Gradini', desc: 'Note tenute, passo dopo passo.', goal: 'Allena a prendere la nota giusta e a tenerla ferma.',
       icon: 'M2 24 H14 V16 H26 V20 H38 V8 H50 V14 H62' },
     { id: 'onde', name: 'Onde', desc: 'Piccole onde regolari fra due note vicine, attorno alla casa.', goal: 'Allena la precisione nelle scivolate brevi.',
@@ -495,7 +517,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     { id: 'tempesta', name: 'Tempesta', desc: 'Gradini, onde e sirena, uno dopo l\u2019altro.', goal: 'Mette insieme tutto.',
       icon: 'M2 18 C8 6 12 6 16 16 H24 V8 H32 C40 8 44 28 52 24 L62 6' },
   ];
-  const MODE_NAME = { allena: 'Allenati', sfida: 'Sfida', studio: 'Studio' };
+  const MODE_NAME = { allena: 'Allenati', sfida: 'Sfida', studio: 'Studio', esplora: 'Libera' };
 
   // ---- Canzoniere ----
   // Ogni brano ha le note assolute nella tonalità originale (come arriverebbero da un file ABC o MIDI),
@@ -931,6 +953,212 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     beginRun();
   }
 
+  // ---- Esplora ----
+  // Nessun percorso. Una nota tenuta (0,45 s, intonata entro la tolleranza del livello) diventa il punto di
+  // partenza: da lì un righello accanto alla cometa misura di quanto sali o scendi. Fermarsi intonati su
+  // un'altra nota chiude l'intervallo: se è fra quelli da scoprire, si accende in alto. Andare avanti e
+  // indietro fra due note è un'onda, e l'app ne mostra l'ampiezza: è la preparazione all'esercizio Onde.
+  const IV_NAMES = ['unisono', 'seconda minore', 'seconda maggiore', 'terza minore', 'terza maggiore', 'quarta giusta', 'tritono',
+    'quinta giusta', 'sesta minore', 'sesta maggiore', 'settima minore', 'settima maggiore', 'ottava'];
+  const ivName = (s) => (s <= 12 ? IV_NAMES[s] : `ottava e ${IV_NAMES[s - 12]}`);
+  const semiText = (s) => `${s} ${s === 1 ? 'semitono' : 'semitoni'}`;
+  const DISCOVER = [
+    { name: 'seconda', iv: [1, 2] }, { name: 'terza', iv: [3, 4] }, { name: 'quarta', iv: [5] },
+    { name: 'quinta', iv: [7] }, { name: 'sesta', iv: [8, 9] }, { name: 'ottava', iv: [12] },
+  ];
+  let exp = null;
+  function showExploreUi(on) {
+    $('exploreBar').hidden = !on;
+    $('exploreEnd').hidden = !on;
+  }
+  function beginExplore() {
+    speedK = 0.12;
+    speedFix = 0;
+    resize();
+    world = { ex: exercise, mode: 'esplora', explore: true, segs: [], gates: [], tol: L().tol, freezeUntil: 0, pan: center + 2 };
+    exp = { anchor: null, cand: null, last: null, found: new Set(), lo: null, hi: null, count: 0, lastVoiced: -9,
+      sm: [], v: NaN, wave: { dir: 0, ext: null, start: null, turns: [], cur: null, best: null } };
+    gt = 0;
+    particles = particles.filter((p) => p.age < 0.2);
+    ribbon.length = 0;
+    $('hud').hidden = false;
+    $('combo').hidden = true;
+    $('scoreLabel').textContent = 'intervalli';
+    showExploreUi(true);
+    renderExploreBar();
+    setCenterMsg('Esplora', 'Tieni una nota, poi sali o scendi: accanto alla cometa vedi di quanto. In alto, gli intervalli da scoprire.');
+    msgTimer = wall() + 4;
+  }
+  function renderExploreBar() {
+    const next = DISCOVER.findIndex((d, i) => !exp.found.has(i));
+    $('exploreBar').innerHTML = DISCOVER.map((d, i) => `<span class="${exp.found.has(i) ? 'on' : i === next ? 'next' : ''}">${d.name}</span>`).join('');
+    $('score').textContent = `${exp.found.size}/${DISCOVER.length}`;
+  }
+  function stepExplore(dt) {
+    gt += dt;
+    const e = exp, t = wall(), m = voice.m, tol = L().tol;
+    comet.inside = !Number.isNaN(m) && Math.abs(m - Math.round(m)) * 100 <= tol; // dorata quando sei intonata su una nota
+    if (Number.isNaN(m)) {
+      if (t - e.lastVoiced > 0.25) e.cand = null;
+    } else {
+      e.lastVoiced = t;
+      // nota ferma: la voce resta entro 0,7 semitoni dalla stessa nota, e alla fine la media è intonata
+      if (!e.cand || Math.abs(m - e.cand.n) > 0.7) e.cand = { n: Math.round(m), since: t, vals: [], done: false };
+      e.cand.vals.push(m);
+      if (!e.cand.done && t - e.cand.since >= 0.45 && Math.abs(median(e.cand.vals) - e.cand.n) * 100 <= tol) {
+        e.cand.done = true;
+        settleNote(e.cand.n, t);
+      }
+    }
+    trackWave(m, t);
+  }
+  function settleNote(n, t) {
+    const e = exp;
+    e.lo = e.lo == null ? n : Math.min(e.lo, n);
+    e.hi = e.hi == null ? n : Math.max(e.hi, n);
+    if (e.anchor != null && n !== e.anchor) {
+      const size = Math.abs(n - e.anchor);
+      e.last = { from: e.anchor, to: n, t };
+      e.count++;
+      const i = DISCOVER.findIndex((d) => d.iv.includes(size));
+      if (i >= 0 && !e.found.has(i)) { // un intervallo nuovo: si accende in alto
+        e.found.add(i);
+        renderExploreBar();
+        floats.push({ x: cometX + 70, y: Math.max(top + 34, comet.y - 36), text: `${DISCOVER[i].name}!`, color: '#ffd27a', age: 0, life: 1.5, world: false });
+        burst(cometX, comet.y, 18, SPR.gold, 120);
+      }
+    }
+    e.anchor = n;
+  }
+  // Onde libere: la voce, ammorbidita su 0,15 s (così il vibrato non conta), cambia direzione quando torna
+  // indietro di almeno 0,8 semitoni dal suo estremo. Quattro svolte di fila alternate fra due altezze
+  // (valle-cima-valle-cima o il contrario) sono un'onda: un salto e ritorno da solo non basta.
+  function trackWave(m, t) {
+    const e = exp, w = e.wave;
+    if (Number.isNaN(m)) {
+      if (t - e.lastVoiced > 0.5) { e.sm = []; w.dir = 0; w.ext = null; w.start = null; w.turns = []; }
+      e.v = NaN;
+      return;
+    }
+    e.sm.push(m);
+    if (e.sm.length > 9) e.sm.shift();
+    const v = e.sm.reduce((a, b) => a + b, 0) / e.sm.length;
+    e.v = v; // anche il righello usa la voce ammorbidita: il vibrato non lo fa sfarfallare
+    if (!w.start) { w.start = { v, t }; w.ext = { v, t }; return; }
+    if (w.dir === 0) {
+      if (Math.abs(v - w.start.v) >= 0.8) { w.dir = Math.sign(v - w.start.v); w.turns.push({ ...w.start }); w.ext = { v, t }; }
+      return;
+    }
+    if (w.dir > 0 ? v > w.ext.v : v < w.ext.v) { w.ext = { v, t }; return; }
+    if (Math.abs(v - w.ext.v) < 0.8) return;
+    w.turns.push({ ...w.ext }); // si torna indietro: l'estremo era una svolta
+    if (w.turns.length > 6) w.turns.shift();
+    w.dir = -w.dir;
+    w.ext = { v, t };
+    const q = w.turns.slice(-4);
+    if (q.length < 4) return;
+    const [a, b, c, d] = q;
+    if (Math.abs(a.v - c.v) > 0.9 || Math.abs(b.v - d.v) > 0.9 || Math.abs(b.v - a.v) < 1.5) return;
+    for (let i = 1; i < 4; i++) if (q[i].t - q[i - 1].t < 0.35 || q[i].t - q[i - 1].t > 5) return;
+    const lo = Math.round(Math.min(a.v, b.v)), hi = Math.round(Math.max(a.v, b.v));
+    const fresh = !w.cur || w.cur.lo !== lo || w.cur.hi !== hi || t - w.cur.t > 3;
+    w.cur = { lo, hi, t };
+    if (!w.best || hi - lo > w.best.hi - w.best.lo) w.best = { lo, hi };
+    if (fresh) burst(cometX, comet.y, 10, SPR.gold, 90);
+  }
+  // Il righello e le guide dell'onda, disegnati sopra la cometa.
+  function drawExplore() {
+    const e = exp, t = wall(), m = voice.m, lv = L();
+    const tolPx = (lv.tol / 100) * pxSemi;
+    const yAt = (n) => clamp(yOf(n), top - 30, bottom + 10);
+    g.textBaseline = 'alphabetic';
+    // l'onda in corso: due linee guida alle sue altezze, sulla scia appena cantata, con il suo nome
+    const wv = e.wave.cur;
+    if (wv && t - wv.t < 3) {
+      const a = clamp(3 - (t - wv.t), 0, 1);
+      g.setLineDash([4, 6]);
+      g.lineWidth = 1.5;
+      g.strokeStyle = `rgba(255,210,122,${0.6 * a})`;
+      for (const n of [wv.lo, wv.hi]) { g.beginPath(); g.moveTo(34, yAt(n)); g.lineTo(cometX + 14, yAt(n)); g.stroke(); }
+      g.setLineDash([]);
+      g.font = `600 13px ${FONT}`;
+      g.fillStyle = `rgba(255,210,122,${a})`;
+      g.shadowColor = 'rgba(7,10,31,0.95)';
+      g.shadowBlur = 6;
+      g.fillText(`Onda: ${ivName(wv.hi - wv.lo)}`, 36, yAt(wv.hi) - 8);
+      g.shadowBlur = 0;
+    }
+    if (e.anchor == null) return;
+    // il punto di partenza: una riga breve tratteggiata
+    const ya = yAt(e.anchor);
+    g.setLineDash([3, 5]);
+    g.lineWidth = 1.5;
+    g.strokeStyle = 'rgba(226,251,255,0.55)';
+    g.beginPath(); g.moveTo(cometX - 46, ya); g.lineTo(cometX + 40, ya); g.stroke();
+    g.setLineDash([]);
+    // il righello: dalla partenza a dove sei; finito l'intervallo, resta scritto per un paio di secondi
+    let from = null, to = null, done = false, alpha = 1;
+    if (!Number.isNaN(m) && !Number.isNaN(e.v) && comet.vis > 0.3 && Math.abs(e.v - e.anchor) >= 0.7) { from = e.anchor; to = e.v; }
+    else if (e.last && t - e.last.t < 2.5) { from = e.last.from; to = e.last.to; done = true; alpha = clamp((2.5 - (t - e.last.t)) / 0.6, 0, 1); }
+    if (from == null) return;
+    const size = Math.round(Math.abs(to - from)), up = to > from;
+    const x = cometX + 32, y0 = yAt(from), y1 = done ? yAt(to) : comet.y;
+    const col = done || comet.inside ? '255,210,122' : '226,251,255';
+    g.globalAlpha = alpha;
+    g.strokeStyle = `rgba(${col},0.9)`;
+    g.lineWidth = 2;
+    g.beginPath();
+    g.moveTo(x - 6, y0); g.lineTo(x, y0); g.lineTo(x, y1); g.lineTo(x - 6, y1);
+    g.stroke();
+    const ly = clamp((y0 + y1) / 2, top + 10, bottom - 10);
+    g.shadowColor = 'rgba(7,10,31,0.95)';
+    g.shadowBlur = 6;
+    g.fillStyle = `rgba(${col},1)`;
+    g.font = `600 16px ${FONT}`;
+    g.fillText(size ? ivName(size) : 'unisono', x + 10, ly);
+    g.font = `500 13px ${FONT}`;
+    g.fillStyle = 'rgba(226,251,255,0.8)';
+    g.fillText(`${up ? '\u2191' : '\u2193'} ${semiText(size)}`, x + 10, ly + 17);
+    g.shadowBlur = 0;
+    g.globalAlpha = 1;
+  }
+  // La vista resta ferma finché la voce non si avvicina ai bordi, poi la segue.
+  function exploreMid() {
+    const w = world;
+    let lo = Infinity, hi = -Infinity;
+    for (const s of ribbon) if (!Number.isNaN(s.m) && s.t > ribbonT - 2.5) { lo = Math.min(lo, s.m); hi = Math.max(hi, s.m); }
+    if (exp.anchor != null) { lo = Math.min(lo, exp.anchor); hi = Math.max(hi, exp.anchor); }
+    if (lo > hi) return w.pan;
+    const half = SPAN_MIN / 2 - 2.5;
+    w.pan = hi - lo > 2 * half ? (lo + hi) / 2 : clamp(w.pan, hi - half, lo + half);
+    return w.pan;
+  }
+  function endExplore() {
+    state = 'end';
+    const e = exp;
+    $('hud').hidden = true;
+    showExploreUi(false);
+    setCenterMsg(null);
+    const found = DISCOVER.filter((d, i) => e.found.has(i)).map((d) => d.name);
+    $('quip').textContent = (found.length ? `Hai scoperto: ${found.join(', ')}.` : 'Questa volta nessun intervallo: tieni una nota, poi sali e fermati intonata su un\u2019altra.')
+      + (e.lo != null && e.hi > e.lo ? ` Hai esplorato da ${noteName(e.lo)} a ${noteName(e.hi)}.` : '');
+    $('endPanel').querySelector('.big-score').hidden = false;
+    $('endPanel').querySelector('.stats').hidden = false;
+    $('endScore').textContent = `${e.found.size}/${DISCOVER.length}`;
+    $('endRecord').textContent = 'intervalli scoperti';
+    const stat = (id, value, label) => { $(id).textContent = value; $(id).nextElementSibling.textContent = label; };
+    stat('endAcc', e.lo != null ? semiText(e.hi - e.lo) : '–', 'Estensione');
+    stat('endGates', String(e.count), 'Intervalli cantati');
+    stat('endCombo', e.wave.best ? ivName(e.wave.best.hi - e.wave.best.lo) : '–', 'Onda più ampia');
+    $('suggest').hidden = true;
+    $('copyOut').hidden = true;
+    $('endMain').textContent = 'Ancora';
+    $('endSecond').textContent = 'Prova le Onde';
+    $('endPanel').hidden = false;
+    endChime(center);
+  }
+  $('exploreEnd').addEventListener('click', () => { if (state === 'run' && world && world.explore) endExplore(); });
+
   // Colpo del conteggio: un legnetto breve, più acuto sul primo tempo.
   function click(t, down) {
     const o = V.ctx.createOscillator();
@@ -1236,6 +1464,8 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     }
     g.globalCompositeOperation = 'source-over';
 
+    if (world && world.explore && state !== 'end') drawExplore();
+
     // anello di calibrazione
     if (state === 'calib' && calib.progress > 0) {
       g.strokeStyle = 'rgba(255,210,122,0.9)';
@@ -1509,7 +1739,10 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   function stepCalib() {
     const t = wall(), m = voice.m;
     if (!Number.isNaN(m)) {
-      if (Number.isNaN(calib.anchor) || Math.abs(m - calib.anchor) > 0.6) { calib.anchor = m; calib.since = t; calib.vals = []; }
+      // si confronta con la mediana di quello che ha cantato finora, non con la prima lettura: con il vibrato
+      // la prima lettura può cadere su una punta, e l'altra punta farebbe ricominciare la misura all'infinito
+      const ref = calib.vals.length >= 3 ? median(calib.vals) : calib.anchor;
+      if (Number.isNaN(calib.anchor) || Math.abs(m - ref) > 0.7) { calib.anchor = m; calib.since = t; calib.vals = []; }
       calib.vals.push(m);
       calib.last = t;
     } else if (t - calib.last > 0.3) {
@@ -1528,7 +1761,9 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
 
   function beginRun() {
     state = 'run';
+    showExploreUi(false);
     if (song) { beginSongRun(); return; }
+    if (exercise.free) { beginExplore(); return; }
     speedK = mode === 'allena' ? 0.12 : 0.16; // in allenamento la scia scorre più piano e se ne vede di più
     resize();
     world = buildWorld(exercise, mode);
@@ -1583,6 +1818,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
 
   function stepRun(dt) {
     if (world.studio) { stepStudio(dt); return; }
+    if (world.explore) { stepExplore(dt); return; }
     const r = world;
     // mentre suonano le note della pausa il percorso aspetta
     if (wall() >= r.freezeUntil) gt += dt;
@@ -1697,6 +1933,9 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     $('endAcc').textContent = Math.round(acc * 100) + '%';
     $('endGates').textContent = `${r.gatesOk}/${r.gates.length}`;
     $('endCombo').textContent = `×${r.bestCombo}`;
+    $('endAcc').nextElementSibling.textContent = 'Nella scia'; // Esplora le cambia
+    $('endGates').nextElementSibling.textContent = 'Porte';
+    $('endCombo').nextElementSibling.textContent = 'Combo max';
 
     // Dopo tre sfide di fila sopra l'85% propone il livello successivo; non lo cambia mai da solo.
     let next = null;
@@ -1726,6 +1965,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   function toMenu() {
     state = 'menu';
     ribbon.length = 0;
+    showExploreUi(false);
     speedK = 0.16;
     speedFix = 0;
     center = lastCenter ?? 55; // dopo un brano si torna alla nota comoda degli esercizi
@@ -1791,7 +2031,8 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     // la vista si centra dolcemente; nel menu la demo vola nella parte alta, sopra il pannello;
     // nei brani segue le note in arrivo
     const view = state !== 'menu' && world && world.lo != null ? songView(world) : null;
-    const wantMid = state === 'calib' ? viewMid : state === 'menu' ? center - 5 : view ? view.mid : center + 2;
+    const wantMid = state === 'calib' ? viewMid : state === 'menu' ? center - 5 : view ? view.mid
+      : world && world.explore ? exploreMid() : center + 2;
     const oldMid = viewMid, oldPx = pxSemi;
     const ease = 1 - Math.exp(-dt / 0.4);
     viewMid += (wantMid - viewMid) * ease;
@@ -1843,9 +2084,10 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
         <svg viewBox="0 0 64 30" aria-hidden="true"><path d="${ex.icon}"/></svg>
         <span><b>${ex.name}</b><small>${ex.desc}</small><small class="goal">${ex.goal}</small></span>
         <span class="rec">${rec ? 'record<br>' + rec : ''}</span>
-        <div class="acts">
-          <button class="btn small" data-ex="${ex.id}" data-mode="allena">Allenati</button>
-          <button class="btn small go" data-ex="${ex.id}" data-mode="sfida">Sfida</button>
+        <div class="acts${ex.free ? ' one' : ''}">${ex.free
+          ? `<button class="btn small go" data-ex="${ex.id}" data-mode="esplora">Inizia</button>`
+          : `<button class="btn small" data-ex="${ex.id}" data-mode="allena">Allenati</button>
+          <button class="btn small go" data-ex="${ex.id}" data-mode="sfida">Sfida</button>`}
         </div>
       </div>`;
     }).join('');
@@ -2239,6 +2481,16 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   });
   $('endSecond').addEventListener('click', async () => {
     if (mode === 'studio') { $('endPanel').hidden = true; startStudio(song.id); return; } // riascolta
+    if (mode === 'esplora') { // dalla prova libera alle Onde, con la stessa casa
+      if (!(await ensureMic())) return;
+      $('endPanel').hidden = true;
+      exercise = EXERCISES.find((x) => x.id === 'onde');
+      mode = 'allena';
+      settings.last = { ex: exercise.id, mode };
+      saveSettings();
+      beginRun();
+      return;
+    }
     if (mode === 'allena') { if (!(await ensureMic())) return; $('endPanel').hidden = true; beginRun(); return; }
     const lines = ['Sirena – ultime partite'];
     for (const h of history.slice(0, 15)) {
