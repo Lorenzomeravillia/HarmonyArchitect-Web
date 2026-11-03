@@ -198,6 +198,14 @@ select {
 a.navlink { color: var(--fg); width: 48px; height: 48px; border-radius: 12px; display: grid; place-items: center; }
 a.navlink svg { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
 a.navlink:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
+/* Versioni e novità, in fondo alla scheda del gioco */
+.versions { border-top: 1px solid var(--line); padding-top: 8px; font-size: 14px; }
+.versions summary { cursor: pointer; color: var(--muted); padding: 6px 0; }
+.ver-list { max-height: 40vh; overflow-y: auto; padding-right: 4px; }
+.ver h3 { margin: 12px 0 4px; font-size: 15px; font-weight: 600; }
+.ver h3 small { margin-left: 6px; color: var(--muted); font-weight: 400; font-size: 13px; }
+.ver ul { margin: 0; padding-left: 18px; color: var(--muted); }
+.ver li { margin: 3px 0; line-height: 1.35; }
 </style>
 </head>
 <body>
@@ -272,6 +280,10 @@ a.navlink:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
         <button id="setupCancel">Annulla</button>
         <button class="go" id="setupGo">Inizia</button>
       </div>
+      <details class="versions" id="versions">
+        <summary id="versionsSum">Versioni e novità</summary>
+        <div class="ver-list" id="versionsList"></div>
+      </details>
     </div>
   </div>
 
@@ -329,6 +341,7 @@ a.navlink:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
 </nav>
 
 <script src="/shared/voce.js"></script>
+<script src="/shared/versioni.js"></script>
 <script>
 (() => {
   const $ = (id) => document.getElementById(id);
@@ -879,6 +892,11 @@ a.navlink:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
     if (game) { stopGame(); return; }
     $('setup').hidden = false;
   });
+  // Versioni e novità, in fondo alla scheda del gioco: chiuse finché non si aprono.
+  if (window.Versioni) {
+    $('versionsSum').textContent = `Versioni e novità · ${Versioni.current('rullo')}`;
+    $('versionsList').innerHTML = Versioni.html('rullo');
+  } else $('versions').hidden = true;
   $('setupCancel').addEventListener('click', () => { $('setup').hidden = true; });
   $('setupGo').addEventListener('click', async () => {
     let lo = +$('lowNote').value, hi = +$('highNote').value;

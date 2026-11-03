@@ -160,6 +160,14 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
 .explore-bar span.on { color: var(--night); background: var(--gold); border-color: var(--gold); font-weight: 600; box-shadow: 0 0 14px rgba(255,210,122,.45); }
 .explore-bar span.next { color: var(--gold); border-color: rgba(255,210,122,.6); animation: breathe 2.2s ease-in-out infinite; }
 @keyframes breathe { 50% { box-shadow: 0 0 12px rgba(255,210,122,.4); } }
+/* Versioni e novità, in fondo alle impostazioni */
+.versions { border-top: 1px solid var(--line); padding-top: 8px; font-size: 14px; }
+.versions summary { cursor: pointer; color: var(--muted); padding: 6px 0; }
+.ver-list { max-height: 45vh; overflow-y: auto; padding-right: 4px; }
+.ver h3 { margin: 12px 0 4px; font-size: 15px; font-weight: 600; }
+.ver h3 small { margin-left: 6px; color: var(--muted); font-weight: 400; font-size: 13px; }
+.ver ul { margin: 0; padding-left: 18px; color: var(--muted); }
+.ver li { margin: 3px 0; line-height: 1.35; }
 .ex .rec { font-size: 12px; color: var(--gold); font-variant-numeric: tabular-nums; text-align: right; line-height: 1.2; }
 .ex .acts { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
 .pick {
@@ -469,6 +477,10 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
       <button class="btn" id="settingsLevel">Cambia livello</button>
       <button class="btn go" id="closeSettings">Fatto</button>
     </div>
+    <details class="versions" id="versions">
+      <summary id="versionsSum">Versioni e novità</summary>
+      <div class="ver-list" id="versionsList"></div>
+    </details>
   </div>
 </section>
 
@@ -481,6 +493,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
 </section>
 
 <script src="/shared/voce.js"></script>
+<script src="/shared/versioni.js"></script>
 <script src="/sirena/import.js"></script>
 <script>
 (() => {
@@ -2571,6 +2584,11 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     syncNamesSeg();
   });
   bindSeg('fxSeg', 'fx');
+  // Versioni e novità, in fondo alle impostazioni: chiuse finché non si aprono.
+  if (window.Versioni) {
+    $('versionsSum').textContent = `Versioni e novità · ${Versioni.current('sirena')}`;
+    $('versionsList').innerHTML = Versioni.html('sirena');
+  } else $('versions').hidden = true;
   $('openSettings').addEventListener('click', () => { $('settingsPanel').hidden = false; });
   $('closeSettings').addEventListener('click', () => { $('settingsPanel').hidden = true; renderMenu(); });
 

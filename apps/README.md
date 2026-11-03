@@ -14,6 +14,9 @@ Il codice audio comune a Rullo, Sirena e Canta con Lu sta in `apps/shared/voce.j
 contesto audio e sessione dell'iPhone, microfono, rilevamento della nota, note di riferimento, voce che canta le sillabe
 e rilascio dell'audio quando l'app va in background. Una correzione fatta lì vale per tutte e tre; ogni app tiene
 solo i suoi suoni e i suoi parametri (volume, soglia del microfono, nota più grave da cercare).
+L'elenco delle versioni di ogni app, con date e novità, sta in `apps/shared/versioni.js` e si legge in fondo alle
+impostazioni (Sirena), all'Area adulti (Canta con Lu) e alla scheda del gioco (Rullo): a ogni rilascio si aggiunge
+una voce in cima alla lista dell'app.
 Il test del microfono resta a sé, per poter diagnosticare l'audio anche se il codice comune avesse un problema.
 
 I vecchi indirizzi (`/pitch-roll.html`, `/bimbi.html`, `/mic-test.html`) rimandano a quelli nuovi.

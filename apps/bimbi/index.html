@@ -287,6 +287,14 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 @media (prefers-reduced-motion: reduce) {
   .cue.sing, .sticker-big, .node.next .bubble, .node.shake, .count.bump, .title-card.show .tc-ico { animation: none; }
 }
+/* Versioni e novità, in fondo all'Area adulti */
+.versions { border-top: 1px solid var(--line); padding-top: 8px; font-size: 14px; color: var(--ink); }
+.versions summary { cursor: pointer; color: var(--muted); padding: 6px 0; }
+.ver-list { max-height: 45vh; overflow-y: auto; padding-right: 4px; }
+.ver h3 { margin: 12px 0 4px; font-size: 15px; font-weight: 600; }
+.ver h3 small { margin-left: 6px; color: var(--muted); font-weight: 400; font-size: 13px; }
+.ver ul { margin: 0; padding-left: 18px; color: var(--muted); }
+.ver li { margin: 3px 0; line-height: 1.35; }
 </style>
 </head>
 <body>
@@ -449,10 +457,15 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
       <button id="resetAll" class="danger">Azzera tutto</button>
       <button id="closeAdult" class="primary">Chiudi</button>
     </div>
+    <details class="versions" id="versions">
+      <summary id="versionsSum">Versioni e novità</summary>
+      <div class="ver-list" id="versionsList"></div>
+    </details>
   </div>
 </div>
 
 <script src="/shared/voce.js"></script>
+<script src="/shared/versioni.js"></script>
 <script>
 (() => {
   'use strict';
@@ -2062,6 +2075,11 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     $('resetAll').textContent = 'Azzera tutto';
     $('adult').hidden = false;
   }
+  // Versioni e novità, in fondo all'Area adulti: chiuse finché non si aprono.
+  if (window.Versioni) {
+    $('versionsSum').textContent = `Versioni e novità · ${Versioni.current('bimbi')}`;
+    $('versionsList').innerHTML = Versioni.html('bimbi');
+  } else $('versions').hidden = true;
   $('closeAdult').addEventListener('click', () => { $('adult').hidden = true; renderHome(); });
 
   function resultsText() {
