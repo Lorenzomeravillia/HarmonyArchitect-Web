@@ -153,19 +153,22 @@ window.Voce = (() => {
   window.addEventListener('pagehide', releaseAudio);
 
   // ---- Rilevamento nota (YIN) ----
-  let yinD = null, yinR = null;
+  // Niente controllo del "sottomultiplo" (scegliere il doppio del periodo quando lì il segnale si ripete meglio):
+  // toglieva gli errori all'ottava sopra con la fondamentale debole, ma con una voce appena ruvida, con un ciclo
+  // delle corde vocali più debole dell'altro, leggeva l'ottava sotto per frasi intere. I salti brevi all'ottava
+  // sopra li ferma la tenuta del lettore, qui sotto.
+  let yinD = null;
   function yin(x, sr, fmin, fmax) {
     const tauMin = Math.floor(sr / fmax);
     const tauMax = Math.min(Math.floor(sr / fmin), (x.length >> 1) - 1);
     const N = x.length - tauMax;
-    if (!yinD || yinD.length < tauMax + 2) { yinD = new Float32Array(tauMax + 2); yinR = new Float32Array(tauMax + 2); }
-    const d = yinD, raw = yinR;
+    if (!yinD || yinD.length < tauMax + 2) yinD = new Float32Array(tauMax + 2);
+    const d = yinD;
     d[0] = 1;
     let run = 0;
     for (let tau = 1; tau <= tauMax; tau++) {
       let s = 0;
       for (let i = 0; i < N; i++) { const v = x[i] - x[i + tau]; s += v * v; }
-      raw[tau] = s;
       run += s;
       d[tau] = run ? (s * tau) / run : 1;
     }
@@ -174,13 +177,6 @@ window.Voce = (() => {
       if (d[t] < 0.15) { while (t + 1 < tauMax && d[t + 1] < d[t]) t++; tau = t; break; }
     }
     if (tau < 1) return null;
-    // Errore tipico: con la fondamentale debole (voce grave, microfono del telefono, vocali come "u" e "i") la prima
-    // valle cade a metà del periodo, cioè un'ottava sopra. Se al doppio il segnale si ripete molto meglio, il periodo è quello.
-    if (d[tau] > 0.01) {
-      let t2 = -1;
-      for (let t = Math.round(tau * 1.9), e = Math.min(tauMax - 1, Math.round(tau * 2.1)); t <= e; t++) if (t2 < 0 || raw[t] < raw[t2]) t2 = t;
-      if (t2 > 0 && raw[t2] < raw[tau] * 0.4) tau = t2;
-    }
     const a = d[tau - 1], b = d[tau], c = d[tau + 1];
     const den = a + c - 2 * b;
     return { f: sr / (tau + (den ? (a - c) / (2 * den) : 0)), clarity: 1 - b };
@@ -190,7 +186,8 @@ window.Voce = (() => {
   function pitchReader({ gate = -55, fmin = 60, fmax = 1200 } = {}) {
     const recent = [];
     // Un salto d'ottava esatto verso l'alto a metà di una nota tenuta, senza pause né scivolate, è quasi sempre un errore
-    // di lettura: per 0,2 s si resta all'ottava di prima. Un salto vero dura e passa; dopo un respiro passa subito.
+    // di lettura (fondamentale debole per un attimo): per 0,35 s si resta all'ottava di prima. Un salto vero dura e
+    // passa; dopo un respiro o con una scivolata passa subito.
     let octLast = NaN, octT = -9, octCalm = 0, octJump = 0;
     function octaveGuard(m) {
       if (Number.isNaN(m)) return m;
@@ -198,7 +195,7 @@ window.Voce = (() => {
       if (now - octT > 0.06) { octCalm = now; octJump = 0; }
       else if (dd > 10.8 && dd < 13.2 && now - octCalm >= 0.15) {
         if (!octJump) octJump = now;
-        if (now - octJump < 0.2) m -= 12; else { octJump = 0; octCalm = now; }
+        if (now - octJump < 0.35) m -= 12; else { octJump = 0; octCalm = now; }
       } else { octJump = 0; if (Math.abs(dd) > 3) octCalm = now; }
       octLast = m;
       octT = now;

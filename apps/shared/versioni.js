@@ -8,9 +8,13 @@ window.Versioni = (() => {
     + 'e le vocali «u» e «i».';
   const CONDIVISO = (altre) => `L’audio è in comune con ${altre}: ogni correzione d’ora in poi vale per tutte e tre le app.`;
   const ELENCO = (dove) => `Questo elenco delle versioni, ${dove}.`;
+  const RUVIDA = (chi) => 'Corretto un errore arrivato con la correzione delle ottave del 31 ottobre: con una voce un po\u2019 ruvida '
+    + `(raucedine, finali di frase) la nota veniva letta un\u2019ottava sotto e ${chi} saltava su e giù. `
+    + 'I brevi salti all\u2019ottava sopra restano fermati, ora un po\u2019 più a lungo.';
 
   const LISTE = {
     rullo: [
+      { v: '1.8', date: '2026-11-03', items: [RUVIDA('il disegno')] },
       { v: '1.7', date: '2026-11-03', items: [ELENCO('in fondo alla scheda del gioco')] },
       { v: '1.6', date: '2026-10-31', items: [
         'Trascinando verso destra si rivedono gli ultimi 5 minuti del disegno; la vista resta ferma mentre si continua a cantare, '
@@ -26,6 +30,7 @@ window.Versioni = (() => {
       { v: '1.0', date: '2026-10-26', items: ['Il rullo di pianoforte che scorre e mostra la nota cantata, con l’indicatore dei cents.'] },
     ],
     sirena: [
+      { v: '2.1', date: '2026-11-03', items: [RUVIDA('la cometa')] },
       { v: '2.0', date: '2026-11-03', items: [ELENCO('nelle impostazioni')] },
       { v: '1.9', date: '2026-11-03', items: [
         'Nuova modalità Esplora, per prima nel menu: canto libero, con accanto alla cometa il nome della nota e la sua distanza dalla '
@@ -65,6 +70,7 @@ window.Versioni = (() => {
       { v: '1.0', date: '2026-10-27', items: ['La cometa luminosa da far volare con la voce lungo una scia di luce, attraverso le porte.'] },
     ],
     bimbi: [
+      { v: '1.8', date: '2026-11-03', items: [RUVIDA('Lu')] },
       { v: '1.7', date: '2026-11-03', items: [ELENCO('nell’Area adulti')] },
       { v: '1.6', date: '2026-10-31', items: [
         'L’arcobaleno arriva dopo «I gattini» ed è più dolce: salite e discese di al massimo una quinta.',
