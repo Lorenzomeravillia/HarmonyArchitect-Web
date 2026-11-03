@@ -46,10 +46,18 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   padding-top: max(10px, env(safe-area-inset-top, 0px));
   padding-left: max(14px, env(safe-area-inset-left, 0px));
   padding-right: max(14px, env(safe-area-inset-right, 0px));
-  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px;
   pointer-events: none;
 }
 .hud > * { pointer-events: auto; }
+.hud > .icon-btn { justify-self: start; }
+.hud-right { justify-self: end; display: flex; align-items: center; gap: 8px; }
+.names-btn {
+  height: 34px; padding-inline: 12px; border-radius: 17px;
+  border: 1px solid var(--line); background: var(--glass); color: inherit;
+  font-size: 13px; font-weight: 500; white-space: nowrap;
+}
+#exploreEnd { padding-inline: 14px; }
 .icon-btn {
   width: 46px; height: 46px; border-radius: 50%;
   border: 1px solid var(--line); background: var(--glass);
@@ -251,8 +259,11 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     <svg viewBox="0 0 24 24"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>
   </button>
   <div class="score"><b id="score">0</b><small id="scoreLabel">sfida</small></div>
-  <div class="combo" id="combo" aria-label="Moltiplicatore">×1</div>
-  <button class="btn small" id="exploreEnd" hidden>Fine</button>
+  <div class="hud-right">
+    <button class="names-btn" id="namesToggle" aria-label="Nomi delle note: tocca per passare da do mobile a do fisso">do mobile</button>
+    <div class="combo" id="combo" aria-label="Moltiplicatore">×1</div>
+    <button class="btn small" id="exploreEnd" hidden>Fine</button>
+  </div>
 </div>
 <div class="explore-bar" id="exploreBar" hidden aria-label="Intervalli da scoprire"></div>
 
@@ -504,7 +515,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   // così la differenza fra onde e sirena si capisce prima di provarle.
   const EXERCISES = [
     { id: 'esplora', name: 'Esplora', free: true,
-      desc: 'Canta come vuoi: accanto alla cometa vedi di quanto sali o scendi, e se fai un\u2019onda.',
+      desc: 'Canta come vuoi: accanto alla cometa vedi che nota è e quanto dista dalla casa, e se fai un\u2019onda.',
       goal: 'Prepara alle onde: impari a vedere quanto è grande un intervallo.',
       icon: 'M6 5 V25 M2 5 H10 M2 25 H10 M16 21 C22 5 30 5 36 15 S50 27 62 9' },
     { id: 'gradini', name: 'Gradini', desc: 'Note tenute, passo dopo passo.', goal: 'Allena a prendere la nota giusta e a tenerla ferma.',
@@ -954,10 +965,11 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   }
 
   // ---- Esplora ----
-  // Nessun percorso. Una nota tenuta (0,45 s, intonata entro la tolleranza del livello) diventa il punto di
-  // partenza: da lì un righello accanto alla cometa misura di quanto sali o scendi. Fermarsi intonati su
-  // un'altra nota chiude l'intervallo: se è fra quelli da scoprire, si accende in alto. Andare avanti e
-  // indietro fra due note è un'onda, e l'app ne mostra l'ampiezza: è la preparazione all'esercizio Onde.
+  // Nessun percorso. Tutto si misura dalla casa, la nota comoda della calibrazione: accanto alla cometa ci sono
+  // il nome della nota che canti e la sua distanza dalla casa, e un righello dalla riga della casa alla cometa.
+  // Un riferimento fisso si impara (sol è sempre la quinta sopra la casa); misurare dall'ultima nota tenuta
+  // cambiava riferimento di continuo. Fermarsi intonati (0,45 s entro la tolleranza del livello) su una nota a
+  // un certo intervallo dalla casa lo fa scoprire. Andare avanti e indietro fra due note è un'onda.
   const IV_NAMES = ['unisono', 'seconda minore', 'seconda maggiore', 'terza minore', 'terza maggiore', 'quarta giusta', 'tritono',
     'quinta giusta', 'sesta minore', 'sesta maggiore', 'settima minore', 'settima maggiore', 'ottava'];
   const ivName = (s) => (s <= 12 ? IV_NAMES[s] : `ottava e ${IV_NAMES[s - 12]}`);
@@ -976,7 +988,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     speedFix = 0;
     resize();
     world = { ex: exercise, mode: 'esplora', explore: true, segs: [], gates: [], tol: L().tol, freezeUntil: 0, pan: center + 2 };
-    exp = { anchor: null, cand: null, last: null, found: new Set(), lo: null, hi: null, count: 0, lastVoiced: -9,
+    exp = { cand: null, last: null, lastNote: null, found: new Set(), lo: null, hi: null, count: 0, lastVoiced: -9,
       sm: [], v: NaN, wave: { dir: 0, ext: null, start: null, turns: [], cur: null, best: null } };
     gt = 0;
     particles = particles.filter((p) => p.age < 0.2);
@@ -986,8 +998,8 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     $('scoreLabel').textContent = 'intervalli';
     showExploreUi(true);
     renderExploreBar();
-    setCenterMsg('Esplora', 'Tieni una nota, poi sali o scendi: accanto alla cometa vedi di quanto. In alto, gli intervalli da scoprire.');
-    msgTimer = wall() + 4;
+    setCenterMsg('Esplora', 'La riga dorata è la casa. Allontanati e fermati su una nota: accanto alla cometa vedi quale nota è e quanto dista dalla casa.');
+    msgTimer = wall() + 4.5;
   }
   function renderExploreBar() {
     const next = DISCOVER.findIndex((d, i) => !exp.found.has(i));
@@ -1013,22 +1025,22 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     trackWave(m, t);
   }
   function settleNote(n, t) {
-    const e = exp;
+    const e = exp, iv = n - center;
     e.lo = e.lo == null ? n : Math.min(e.lo, n);
     e.hi = e.hi == null ? n : Math.max(e.hi, n);
-    if (e.anchor != null && n !== e.anchor) {
-      const size = Math.abs(n - e.anchor);
-      e.last = { from: e.anchor, to: n, t };
-      e.count++;
-      const i = DISCOVER.findIndex((d) => d.iv.includes(size));
-      if (i >= 0 && !e.found.has(i)) { // un intervallo nuovo: si accende in alto
-        e.found.add(i);
-        renderExploreBar();
-        floats.push({ x: cometX + 70, y: Math.max(top + 34, comet.y - 36), text: `${DISCOVER[i].name}!`, color: '#ffd27a', age: 0, life: 1.5, world: false });
-        burst(cometX, comet.y, 18, SPR.gold, 120);
-      }
+    if (n === e.lastNote) return;
+    e.lastNote = n;
+    e.last = { n, t };
+    if (!iv) return; // di nuovo a casa
+    if (msgTimer) { setCenterMsg(null); msgTimer = 0; } // il benvenuto non deve coprire le scritte accanto alla cometa
+    e.count++;
+    const i = DISCOVER.findIndex((d) => d.iv.includes(Math.abs(iv)));
+    if (i >= 0 && !e.found.has(i)) { // un intervallo nuovo dalla casa: si accende in alto
+      e.found.add(i);
+      renderExploreBar();
+      floats.push({ x: cometX + 70, y: Math.max(top + 34, comet.y - 40), text: `${DISCOVER[i].name}!`, color: '#ffd27a', age: 0, life: 1.5, world: false });
+      burst(cometX, comet.y, 18, SPR.gold, 120);
     }
-    e.anchor = n;
   }
   // Onde libere: la voce, ammorbidita su 0,15 s (così il vibrato non conta), cambia direzione quando torna
   // indietro di almeno 0,8 semitoni dal suo estremo. Quattro svolte di fila alternate fra due altezze
@@ -1043,7 +1055,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     e.sm.push(m);
     if (e.sm.length > 9) e.sm.shift();
     const v = e.sm.reduce((a, b) => a + b, 0) / e.sm.length;
-    e.v = v; // anche il righello usa la voce ammorbidita: il vibrato non lo fa sfarfallare
+    e.v = v; // anche le scritte accanto alla cometa usano la voce ammorbidita: il vibrato non le fa sfarfallare
     if (!w.start) { w.start = { v, t }; w.ext = { v, t }; return; }
     if (w.dir === 0) {
       if (Math.abs(v - w.start.v) >= 0.8) { w.dir = Math.sign(v - w.start.v); w.turns.push({ ...w.start }); w.ext = { v, t }; }
@@ -1066,70 +1078,70 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     if (!w.best || hi - lo > w.best.hi - w.best.lo) w.best = { lo, hi };
     if (fresh) burst(cometX, comet.y, 10, SPR.gold, 90);
   }
-  // Il righello e le guide dell'onda, disegnati sopra la cometa.
+  // La riga della casa, l'onda in corso, il righello e le scritte accanto alla cometa.
   function drawExplore() {
-    const e = exp, t = wall(), m = voice.m, lv = L();
-    const tolPx = (lv.tol / 100) * pxSemi;
+    const e = exp, t = wall(), m = voice.m;
     const yAt = (n) => clamp(yOf(n), top - 30, bottom + 10);
     g.textBaseline = 'alphabetic';
+    g.shadowColor = 'rgba(7,10,31,0.95)';
+    // la casa: una riga dorata su tutta la larghezza, con il suo nome a destra
+    const yh = yAt(center), home = anyLabel(center);
+    g.setLineDash([6, 6]);
+    g.lineWidth = 1.5;
+    g.strokeStyle = 'rgba(255,210,122,0.55)';
+    g.beginPath(); g.moveTo(34, yh); g.lineTo(W - 12, yh); g.stroke();
+    g.setLineDash([]);
+    g.textAlign = 'right';
+    g.font = `600 13px ${FONT}`;
+    g.fillStyle = 'rgba(255,210,122,0.9)';
+    g.shadowBlur = 6;
+    g.fillText(`casa · ${home.text}`, W - 14, yh - 7);
+    g.textAlign = 'start';
     // l'onda in corso: due linee guida alle sue altezze, sulla scia appena cantata, con il suo nome
     const wv = e.wave.cur;
     if (wv && t - wv.t < 3) {
       const a = clamp(3 - (t - wv.t), 0, 1);
       g.setLineDash([4, 6]);
-      g.lineWidth = 1.5;
       g.strokeStyle = `rgba(255,210,122,${0.6 * a})`;
       for (const n of [wv.lo, wv.hi]) { g.beginPath(); g.moveTo(34, yAt(n)); g.lineTo(cometX + 14, yAt(n)); g.stroke(); }
       g.setLineDash([]);
       g.font = `600 13px ${FONT}`;
       g.fillStyle = `rgba(255,210,122,${a})`;
-      g.shadowColor = 'rgba(7,10,31,0.95)';
-      g.shadowBlur = 6;
       g.fillText(`Onda: ${ivName(wv.hi - wv.lo)}`, 36, yAt(wv.hi) - 8);
-      g.shadowBlur = 0;
     }
-    if (e.anchor == null) return;
-    // il punto di partenza: una riga breve tratteggiata
-    const ya = yAt(e.anchor);
-    g.setLineDash([3, 5]);
-    g.lineWidth = 1.5;
-    g.strokeStyle = 'rgba(226,251,255,0.55)';
-    g.beginPath(); g.moveTo(cometX - 46, ya); g.lineTo(cometX + 40, ya); g.stroke();
-    g.setLineDash([]);
-    // il righello: dalla partenza a dove sei; finito l'intervallo, resta scritto per un paio di secondi
-    let from = null, to = null, done = false, alpha = 1;
-    if (!Number.isNaN(m) && !Number.isNaN(e.v) && comet.vis > 0.3 && Math.abs(e.v - e.anchor) >= 0.7) { from = e.anchor; to = e.v; }
-    else if (e.last && t - e.last.t < 2.5) { from = e.last.from; to = e.last.to; done = true; alpha = clamp((2.5 - (t - e.last.t)) / 0.6, 0, 1); }
-    if (from == null) return;
-    const size = Math.round(Math.abs(to - from)), up = to > from;
-    const x = cometX + 32, y0 = yAt(from), y1 = done ? yAt(to) : comet.y;
-    const col = done || comet.inside ? '255,210,122' : '226,251,255';
-    g.globalAlpha = alpha;
-    g.strokeStyle = `rgba(${col},0.9)`;
-    g.lineWidth = 2;
-    g.beginPath();
-    g.moveTo(x - 6, y0); g.lineTo(x, y0); g.lineTo(x, y1); g.lineTo(x - 6, y1);
-    g.stroke();
-    const ly = clamp((y0 + y1) / 2, top + 10, bottom - 10);
-    g.shadowColor = 'rgba(7,10,31,0.95)';
-    g.shadowBlur = 6;
-    g.fillStyle = `rgba(${col},1)`;
-    g.font = `600 16px ${FONT}`;
-    g.fillText(size ? ivName(size) : 'unisono', x + 10, ly);
-    g.font = `500 13px ${FONT}`;
-    g.fillStyle = 'rgba(226,251,255,0.8)';
-    g.fillText(`${up ? '\u2191' : '\u2193'} ${semiText(size)}`, x + 10, ly + 17);
     g.shadowBlur = 0;
-    g.globalAlpha = 1;
+    if (Number.isNaN(m) || Number.isNaN(e.v) || comet.vis < 0.3) return;
+    // il righello: dalla casa alla cometa, appena ci si allontana
+    const n = Math.round(e.v), iv = n - center, size = Math.abs(iv);
+    const held = e.cand && e.cand.done && e.cand.n === n; // ferma e intonata su questa nota
+    const col = held || comet.inside ? '255,210,122' : '226,251,255';
+    const x = cometX + 30;
+    if (Math.abs(e.v - center) >= 0.7) {
+      g.strokeStyle = `rgba(${col},0.85)`;
+      g.lineWidth = 2;
+      g.beginPath();
+      g.moveTo(x - 6, yh); g.lineTo(x, yh); g.lineTo(x, comet.y); g.lineTo(x - 6, comet.y);
+      g.stroke();
+    }
+    // accanto alla cometa: la nota, grande e del suo colore; sotto, quanto dista dalla casa
+    const lab = anyLabel(n), ly = clamp(comet.y, top + 24, bottom - 34);
+    g.shadowBlur = 8;
+    g.font = `700 24px ${FONT}`;
+    g.fillStyle = lab.color;
+    g.fillText(lab.text, x + 12, ly + 8);
+    g.font = `600 14px ${FONT}`;
+    g.fillStyle = `rgba(${col},${held ? 1 : 0.85})`;
+    g.fillText(iv ? `${ivName(size)} ${iv > 0 ? '\u2191' : '\u2193'} · ${semiText(size)}` : 'casa', x + 12, ly + 28);
+    g.shadowBlur = 0;
   }
-  // La vista resta ferma finché la voce non si avvicina ai bordi, poi la segue.
+  // La vista tiene in vista la casa finché la voce non si allontana troppo, poi segue la voce.
   function exploreMid() {
     const w = world;
     let lo = Infinity, hi = -Infinity;
     for (const s of ribbon) if (!Number.isNaN(s.m) && s.t > ribbonT - 2.5) { lo = Math.min(lo, s.m); hi = Math.max(hi, s.m); }
-    if (exp.anchor != null) { lo = Math.min(lo, exp.anchor); hi = Math.max(hi, exp.anchor); }
     if (lo > hi) return w.pan;
     const half = SPAN_MIN / 2 - 2.5;
+    if (Math.max(hi, center) - Math.min(lo, center) <= 2 * half) { lo = Math.min(lo, center); hi = Math.max(hi, center); }
     w.pan = hi - lo > 2 * half ? (lo + hi) / 2 : clamp(w.pan, hi - half, lo + half);
     return w.pan;
   }
@@ -1140,7 +1152,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     showExploreUi(false);
     setCenterMsg(null);
     const found = DISCOVER.filter((d, i) => e.found.has(i)).map((d) => d.name);
-    $('quip').textContent = (found.length ? `Hai scoperto: ${found.join(', ')}.` : 'Questa volta nessun intervallo: tieni una nota, poi sali e fermati intonata su un\u2019altra.')
+    $('quip').textContent = (found.length ? `Hai trovato, dalla casa: ${found.join(', ')}.` : 'Questa volta nessun intervallo: allontanati dalla casa e fermati intonata su una nota.')
       + (e.lo != null && e.hi > e.lo ? ` Hai esplorato da ${noteName(e.lo)} a ${noteName(e.hi)}.` : '');
     $('endPanel').querySelector('.big-score').hidden = false;
     $('endPanel').querySelector('.stats').hidden = false;
@@ -1148,7 +1160,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     $('endRecord').textContent = 'intervalli scoperti';
     const stat = (id, value, label) => { $(id).textContent = value; $(id).nextElementSibling.textContent = label; };
     stat('endAcc', e.lo != null ? semiText(e.hi - e.lo) : '–', 'Estensione');
-    stat('endGates', String(e.count), 'Intervalli cantati');
+    stat('endGates', String(e.count), 'Note tenute');
     stat('endCombo', e.wave.best ? ivName(e.wave.best.hi - e.wave.best.lo) : '–', 'Onda più ampia');
     $('suggest').hidden = true;
     $('copyOut').hidden = true;
@@ -1241,6 +1253,13 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     if (deg < 0) return null;
     return { text: style === 'numeri' ? String(deg + 1) : MOBILE[deg], color: COLORS[deg] };
   }
+  // Come labelFor, ma dà un nome anche alle note fuori dalla scala: nel do mobile sono il grado sotto con il diesis.
+  function anyLabel(n) {
+    const lab = labelFor(n);
+    if (lab) return lab;
+    const deg = MAJOR.indexOf(relPc(n) - 1);
+    return { text: (nameStyle() === 'numeri' ? String(deg + 1) : MOBILE[deg]) + '\u266f', color: 'rgba(226,251,255,0.9)' };
+  }
 
   // ---- Stato ----
   let state = 'menu'; // menu | calib | run | paused | end
@@ -1327,7 +1346,10 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   function drawAxis() {
     const lo = Math.floor(viewMid - span / 2) - 1, hi = Math.ceil(viewMid + span / 2) + 1;
     const atonal = L().atonal, labels = state !== 'menu';
+    const sung = (state === 'run' || state === 'calib') && !Number.isNaN(voice.m) ? Math.round(voice.m) : null; // la nota che stai cantando
     g.textBaseline = 'middle';
+    g.shadowColor = 'rgba(7,10,31,0.9)';
+    g.shadowBlur = 4;
     for (let n = lo; n <= hi; n++) {
       const y = yOf(n);
       if (y < top - 20 || y > bottom + 20) continue;
@@ -1335,11 +1357,11 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
         g.fillStyle = 'rgba(163,172,220,0.07)';
         g.fillRect(0, Math.round(y), W, 1);
         if (labels) {
-          const lab = labelFor(n);
-          g.font = '600 12px ' + FONT;
-          g.globalAlpha = 0.75;
+          const lab = labelFor(n), on = n === sung;
+          g.font = (on ? '700 16px ' : '600 13px ') + FONT;
+          g.globalAlpha = on ? 1 : 0.8;
           g.fillStyle = lab.color;
-          g.fillText(lab.text, 10, y - 8);
+          g.fillText(lab.text, 10, y - 9);
           g.globalAlpha = 1;
         }
         continue;
@@ -1353,14 +1375,15 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
       g.fillStyle = tonic ? 'rgba(255,210,122,0.22)' : sc ? 'rgba(163,172,220,0.11)' : 'rgba(163,172,220,0.035)';
       g.fillRect(0, Math.round(y), W, 1);
       if (labels && sc) {
-        const lab = labelFor(n);
-        g.font = (tonic ? '700' : '500') + ' 11px ' + FONT;
-        g.globalAlpha = tonic ? 0.9 : 0.55;
+        const lab = labelFor(n), on = n === sung;
+        g.font = (on ? '700 17px ' : tonic ? '700 14px ' : '600 13px ') + FONT;
+        g.globalAlpha = on || tonic ? 1 : 0.8;
         g.fillStyle = lab.color;
-        g.fillText(lab.text, 10, y - 7);
+        g.fillText(lab.text, 10, y - 9);
         g.globalAlpha = 1;
       }
     }
+    g.shadowBlur = 0;
   }
 
   function draw(now, dt) {
@@ -1762,6 +1785,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   function beginRun() {
     state = 'run';
     showExploreUi(false);
+    syncNamesToggle();
     if (song) { beginSongRun(); return; }
     if (exercise.free) { beginExplore(); return; }
     speedK = mode === 'allena' ? 0.12 : 0.16; // in allenamento la scia scorre più piano e se ne vede di più
@@ -2529,8 +2553,23 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
       sync();
     });
     sync();
+    return sync;
   }
-  bindSeg('namesSeg', 'names');
+  const syncNamesSeg = bindSeg('namesSeg', 'names');
+  // Il pulsante in alto a destra durante il gioco: do mobile (o i numeri) oppure do fisso, con un tocco.
+  // A Esperto i nomi sono sempre quelli reali, e il pulsante non c'è.
+  const NAMES_LABEL = { mobile: 'do mobile', numeri: 'gradi 1-7', reali: 'Do fisso' };
+  function syncNamesToggle() {
+    $('namesToggle').hidden = !!L().atonal;
+    $('namesToggle').textContent = NAMES_LABEL[settings.names] || NAMES_LABEL.mobile;
+  }
+  $('namesToggle').addEventListener('click', () => {
+    if (settings.names === 'reali') settings.names = settings.relNames || 'mobile';
+    else { settings.relNames = settings.names; settings.names = 'reali'; }
+    saveSettings();
+    syncNamesToggle();
+    syncNamesSeg();
+  });
   bindSeg('fxSeg', 'fx');
   $('openSettings').addEventListener('click', () => { $('settingsPanel').hidden = false; });
   $('closeSettings').addEventListener('click', () => { $('settingsPanel').hidden = true; renderMenu(); });
