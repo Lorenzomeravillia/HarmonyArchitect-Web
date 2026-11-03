@@ -134,7 +134,8 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
 }
 .ex svg { width: 64px; height: 30px; fill: none; stroke: var(--cyan); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 4px rgba(126,240,255,.6)); }
 .ex b { display: block; font-size: 18px; font-weight: 500; }
-.ex small { color: var(--muted); font-size: 13px; }
+.ex small { display: block; color: var(--muted); font-size: 13px; }
+.ex small.goal { color: rgba(126,240,255,.75); font-size: 12.5px; margin-top: 2px; }
 .ex .rec { font-size: 12px; color: var(--gold); font-variant-numeric: tabular-nums; text-align: right; line-height: 1.2; }
 .ex .acts { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
 .pick {
@@ -476,16 +477,23 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   // Il livello si sceglie una volta e decide da solo tutto il resto: materiale dei percorsi,
   // contesto tonale nelle pause, larghezza della scia, nomi delle note.
   const LEVELS = [
-    { id: 'base', name: 'Principiante', desc: 'Passi piccoli e tanta guida. Va bene anche senza esperienza.', tol: 50, hold: 1.6, amp: 0.6, ctx: 'arpeggio' },
-    { id: 'medio', name: 'Intermedio', desc: 'Scale e arpeggi. Per chi canta già un po’.', tol: 40, hold: 1.4, amp: 0.8, ctx: 'arpeggio' },
-    { id: 'avanzato', name: 'Avanzato', desc: 'Salti più ampi, percorsi meno prevedibili.', tol: 30, hold: 1.25, amp: 1, ctx: 'tonica' },
-    { id: 'esperto', name: 'Esperto', desc: 'Sequenze atonali e scia stretta. Le note usano il nome reale.', tol: 25, hold: 1.1, amp: 1.15, ctx: 'none', atonal: true },
+    { id: 'base', name: 'Principiante', desc: 'Passi piccoli e tanta guida. Va bene anche senza esperienza.', tol: 50, hold: 1.6, ctx: 'arpeggio' },
+    { id: 'medio', name: 'Intermedio', desc: 'Scale e arpeggi. Per chi canta già un po’.', tol: 40, hold: 1.4, ctx: 'arpeggio' },
+    { id: 'avanzato', name: 'Avanzato', desc: 'Salti più ampi, percorsi meno prevedibili.', tol: 30, hold: 1.25, ctx: 'tonica' },
+    { id: 'esperto', name: 'Esperto', desc: 'Sequenze atonali e scia stretta. Le note usano il nome reale.', tol: 25, hold: 1.1, ctx: 'none', atonal: true },
   ];
+  // Ogni esercizio con quello che si fa (desc) e quello che allena (goal): stanno scritti nella sua scheda,
+  // così la differenza fra onde e sirena si capisce prima di provarle.
   const EXERCISES = [
-    { id: 'onde', name: 'Onde', desc: 'Scivola su e giù con calma.', icon: 'M2 15 C10 2 18 2 26 15 S42 28 50 15 S58 6 62 12' },
-    { id: 'gradini', name: 'Gradini', desc: 'Note tenute, passo dopo passo.', icon: 'M2 24 H14 V16 H26 V20 H38 V8 H50 V14 H62' },
-    { id: 'sirena', name: 'Sirena', desc: 'Grandi salite e discese.', icon: 'M2 26 C14 26 18 3 32 3 S50 27 62 27' },
-    { id: 'tempesta', name: 'Tempesta', desc: 'Un po’ di tutto.', icon: 'M2 18 C8 6 12 6 16 16 H24 V8 H32 C40 8 44 28 52 24 L62 6' },
+    { id: 'gradini', name: 'Gradini', desc: 'Note tenute, passo dopo passo.', goal: 'Allena a prendere la nota giusta e a tenerla ferma.',
+      icon: 'M2 24 H14 V16 H26 V20 H38 V8 H50 V14 H62' },
+    { id: 'onde', name: 'Onde', desc: 'Piccole onde regolari fra due note vicine, attorno alla casa.', goal: 'Allena la precisione nelle scivolate brevi.',
+      icon: 'M2 15 C6 8 10 8 14 15 S22 22 26 15 S34 8 38 15 S46 22 50 15 S58 8 62 15' },
+    { id: 'sirena', name: 'Sirena', desc: 'Grandi giri lenti dal grave all\u2019acuto, con la nota in cima da tenere. Ogni giro sale un po\u2019 di più.',
+      goal: 'Allarga la voce e ammorbidisce i passaggi di registro.',
+      icon: 'M2 26 C7 26 9 17 13 17 H16 C20 17 22 26 27 26 C33 26 36 5 42 5 H46 C52 5 55 26 62 26' },
+    { id: 'tempesta', name: 'Tempesta', desc: 'Gradini, onde e sirena, uno dopo l\u2019altro.', goal: 'Mette insieme tutto.',
+      icon: 'M2 18 C8 6 12 6 16 16 H24 V8 H32 C40 8 44 28 52 24 L62 6' },
   ];
   const MODE_NAME = { allena: 'Allenati', sfida: 'Sfida', studio: 'Studio' };
 
@@ -549,6 +557,13 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   const settings = Object.assign({ level: null, names: 'mobile', fx: old.fx || 'full', last: null, highRuns: null, voice: null, songKeys: {}, songTempo: {}, studioVoice: true }, load(KEYS.settings, {}));
   const saveSettings = () => save(KEYS.settings, settings);
   let best = load(KEYS.best, {});
+  // Onde e sirena sono state rifatte (e la tempesta le contiene): i loro vecchi record non si confrontano più.
+  if (!settings.wavesV2) {
+    for (const k of Object.keys(best)) if (/^(onde|sirena|tempesta)\|/.test(k)) delete best[k];
+    save(KEYS.best, best);
+    settings.wavesV2 = true;
+    saveSettings();
+  }
   let history = load(KEYS.history, []);
   let lastCenter = load(KEYS.center, null);
   // brani importati: si aggiungono al canzoniere
@@ -648,21 +663,56 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
       },
     };
   }
-  function makeOnde(lv, dur) {
-    const A = (1.6 + Math.random() * 1.4) * lv.amp, P = lv.atonal ? 4 + Math.random() * 1.5 : 5 + Math.random() * 2;
-    const base = Math.random() * 1.5 - 0.5, ph = -Math.PI / 2 + (Math.random() - 0.5);
-    return { dur, fn: (u) => base + A * Math.sin((2 * Math.PI * u) / P + ph) };
-  }
-  function makeSirena(lv, dur) {
-    const pts = [[0, Math.random() * 2 - 1]];
-    let t = 0, up = true;
-    while (t < dur + 4) {
-      t += (lv.atonal ? 2.2 : 2.6) + Math.random() * 0.9;
-      pts.push([t, up ? Math.min(9.5, (3 + Math.random() * 5) * lv.amp) : Math.max(-5.5, -(2 + Math.random() * 3) * lv.amp)]);
-      up = !up;
+  // Onde: piccole onde regolari fra due note vicine attorno alla casa (una seconda, una terza), tutte uguali
+  // dentro lo stesso tratto. Cime e valli cadono sulle note e ne portano il nome: si vede di quanto salire.
+  // Nei livelli tonali le coppie sono note della scala; in quelli atonali, coppie qualsiasi.
+  const ONDE_PAIRS = {
+    base: [[0, 2], [0, 2], [0, 4], [0, 4]],
+    medio: [[0, 2], [0, 4], [-3, 0], [0, 4]],
+    avanzato: [[0, 4], [-3, 0], [-1, 2], [2, 5]],
+  };
+  const ONDE_HALF = { base: 2.6, medio: 2.4, avanzato: 2.2, esperto: 2.0 }; // secondi per ogni salita o discesa
+  function makeOnde(lv, dur, k) {
+    let lo, hi;
+    if (lv.atonal) {
+      lo = -3 + Math.floor(Math.random() * 5);
+      hi = lo + 2 + Math.floor(Math.random() * 3);
+    } else {
+      const list = ONDE_PAIRS[lv.id] || ONDE_PAIRS.base;
+      [lo, hi] = list[k % list.length];
     }
+    const half = ONDE_HALF[lv.id] || 2.4, n = Math.max(2, Math.round(dur / half));
+    const first = k % 2 ? hi : lo; // un tratto parte dal basso, il successivo dall'alto
+    const peaks = Array.from({ length: n + 1 }, (_, j) => ({ t: j * half, v: j % 2 ? (first === lo ? hi : lo) : first }));
     return {
-      dur,
+      dur: n * half,
+      peaks,
+      gateAt: peaks.slice(1, -1).map((p) => p.t), // una porta su ogni cima e ogni valle
+      fn: (u) => {
+        const j = clamp(Math.floor(u / half), 0, n - 1), x = clamp(u / half - j, 0, 1);
+        const a = peaks[j].v, b = peaks[j + 1].v;
+        return a + (b - a) * (0.5 - 0.5 * Math.cos(Math.PI * x));
+      },
+    };
+  }
+  // Sirena: grandi giri lenti dal grave all'acuto e ritorno, con la nota in cima da tenere un attimo.
+  // Ogni giro sale un po' di più (e scende un po' di più): la voce si allarga senza forzare.
+  // Fondo e cima sono note con il loro nome; nei livelli alti la cima arriva all'ottava sopra la casa.
+  const SIRENA_ROUNDS = {
+    base: [[0, 4], [0, 5], [0, 7], [0, 7]],
+    medio: [[0, 5], [0, 7], [-1, 9], [-3, 12]],
+    avanzato: [[0, 7], [-3, 9], [-5, 12], [-5, 12]],
+    esperto: [[-2, 7], [-3, 10], [-5, 12], [-6, 14]],
+  };
+  function makeSirena(lv, k) {
+    const list = SIRENA_ROUNDS[lv.id] || SIRENA_ROUNDS.base;
+    const [lo, hi] = list[Math.min(k, list.length - 1)];
+    const up = 3.4, hold = 1.1, down = 3.4;
+    const pts = [[0, lo], [up, hi], [up + hold, hi], [up + hold + down, lo]];
+    return {
+      dur: up + hold + down,
+      peaks: [{ t: 0, v: lo }, { t: up + hold / 2, v: hi }],
+      gateAt: [up + hold / 2], // la porta è sulla nota in cima
       fn: (u) => {
         let i = 0;
         while (i < pts.length - 2 && u > pts[i + 1][0]) i++;
@@ -712,22 +762,29 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     const dur = allena ? 7 : 11;
     const segs = [], gates = [];
     let t = 0.4;
+    const nth = {}; // quante onde (o giri di sirena) di quel tipo ci sono già state
     for (let i = 0; i < nSeg; i++) {
-      const kind = ex.id === 'tempesta' ? ['onde', 'gradini', 'sirena'][i % 3] : ex.id;
+      const kind = ex.id === 'tempesta' ? ['gradini', 'onde', 'sirena'][i % 3] : ex.id;
+      const k = (nth[kind] = (nth[kind] ?? -1) + 1);
       const seg = kind === 'gradini' ? makeGradini(lv, dur, lv.hold * (allena ? 1.1 : 1))
-        : kind === 'onde' ? makeOnde(lv, dur) : makeSirena(lv, dur);
+        : kind === 'onde' ? makeOnde(lv, dur, k) : makeSirena(lv, k);
       seg.kind = kind;
       seg.plan = planPause(seg, lv, allena);
       t += 0.6 + LEAD;
       Object.assign(seg, { t0: t, t1: t + seg.dur, audioAt: t - LEAD, audioDone: false, marks: [], refWall: -9 });
       segs.push(seg);
-      for (let gt0 = seg.t0 + 1.6; gt0 < seg.t1 - 0.6; gt0 += 2.4) gates.push({ t: gt0, seg, state: 'todo', fade: 1 });
+      if (seg.gateAt) for (const u of seg.gateAt) gates.push({ t: seg.t0 + u, seg, state: 'todo', fade: 1 });
+      else for (let gt0 = seg.t0 + 1.6; gt0 < seg.t1 - 0.6; gt0 += 2.4) gates.push({ t: gt0, seg, state: 'todo', fade: 1 });
       t = seg.t1;
     }
+    // estensione del percorso: la vista si centra lì, e se la sirena sale molto la segue come nei brani
+    let lo = Infinity, hi = -Infinity;
+    for (const sg of segs) for (let u = 0; u <= sg.dur; u += 0.1) { const v = sg.fn(u); lo = Math.min(lo, v); hi = Math.max(hi, v); }
     return {
       ex, mode, segs, gates, end: t + 2.2, tol: lv.tol, freezeUntil: 0,
       score: 0, streak: 0, outFor: 0, combo: 1, bestCombo: 1,
       pathTime: 0, inTime: 0, lastIn: -9, gatesOk: 0,
+      lo: center + lo, hi: center + hi, mid: center + (lo + hi) / 2, pan: null,
     };
   }
   // Un brano del canzoniere: ogni riga è un'onda a gradini, con la durata vera di ogni nota e le pause
@@ -902,8 +959,8 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
 
   // Nel menu la cometa vola da sola su un'onda lunga: una "demo" come nelle sale giochi.
   function buildDemo() {
-    const o = makeOnde(LEVELS[1], 1e6);
-    return { segs: [{ t0: -1e6, t1: 1e6, fn: (u) => o.fn(u), refWall: -9, marks: [] }], gates: [], tol: 40 };
+    const A = 2 + Math.random(), P = 5.5 + Math.random() * 1.5, ph = Math.random() * 6.28;
+    return { segs: [{ t0: -1e6, t1: 1e6, fn: (u) => 0.5 + A * Math.sin((2 * Math.PI * u) / P + ph), refWall: -9, marks: [] }], gates: [], tol: 40 };
   }
   function pathAt(w, time) {
     for (const s of w.segs) {
@@ -926,11 +983,13 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
     let lo = Infinity, hi = -Infinity, n = 0;
     scan: for (const s of w.segs) {
       if (s.t1 < t0 || s.t0 > t1) continue;
-      for (const st of s.steps) {
-        const a = s.t0 + st.t;
-        if (a + st.dur < t0) continue;
+      // note del tratto come [inizio, durata, semitoni]; le onde e la sirena si leggono ogni 0,1 s
+      const notes = s.steps ? s.steps.map((st) => [s.t0 + st.t, st.dur ?? s.hold, st.v]) : [];
+      if (!s.steps) for (let u = Math.max(0, t0 - s.t0); u <= Math.min(s.dur, t1 - s.t0); u += 0.1) notes.push([s.t0 + u, 0.1, s.fn(u)]);
+      for (const [a, d, v] of notes) {
+        if (a + d < t0) continue;
         if (a > t1) break scan;
-        const m = center + st.v;
+        const m = center + v;
         if (Math.max(hi, m) - Math.min(lo, m) + 2 * pad > (n++ < 2 || a < gt + 1.2 ? SPAN_MAX : most)) break scan;
         lo = Math.min(lo, m);
         hi = Math.max(hi, m);
@@ -1281,8 +1340,30 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
       }
     }
 
-    // nomi dei gradini, colorati, sopra la scia; si accendono quando l'anteprima li suona
+    // nomi delle note su cime e valli di onde e sirena, sopra e sotto la porta: si vede di quanto salire o scendere
     const big = L().atonal;
+    g.textAlign = 'center';
+    g.textBaseline = 'alphabetic';
+    for (const s of world.segs) {
+      if (!s.peaks) continue;
+      s.peaks.forEach((pk, k) => {
+        const x = xOfTime(s.t0 + pk.t);
+        if (x < cometX - 30 || x > W + 30) return;
+        const lab = labelFor(center + pk.v);
+        if (!lab) return;
+        const nb = s.peaks[k + 1] || s.peaks[k - 1], crest = !nb || pk.v >= nb.v;
+        const y = yOf(center + pk.v), off = tolPx * 1.7 + 6;
+        g.font = `${big ? 700 : 600} ${big ? 16 : 14}px ${FONT}`;
+        g.fillStyle = lab.color;
+        g.shadowColor = 'rgba(7,10,31,0.95)';
+        g.shadowBlur = 6;
+        g.fillText(lab.text, x, crest ? y - off - 6 : y + off + 16);
+        g.shadowBlur = 0;
+      });
+    }
+    g.textAlign = 'start';
+
+    // nomi dei gradini, colorati, sopra la scia; si accendono quando l'anteprima li suona
     g.textBaseline = 'alphabetic';
     for (const s of world.segs) {
       if (!s.steps) continue;
@@ -1760,7 +1841,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
       const rec = best[`${ex.id}|${settings.level}`];
       return `<div class="ex">
         <svg viewBox="0 0 64 30" aria-hidden="true"><path d="${ex.icon}"/></svg>
-        <span><b>${ex.name}</b><small>${ex.desc}</small></span>
+        <span><b>${ex.name}</b><small>${ex.desc}</small><small class="goal">${ex.goal}</small></span>
         <span class="rec">${rec ? 'record<br>' + rec : ''}</span>
         <div class="acts">
           <button class="btn small" data-ex="${ex.id}" data-mode="allena">Allenati</button>
