@@ -30,6 +30,10 @@ window.Versioni = (() => {
       { v: '1.0', date: '2026-10-26', items: ['Il rullo di pianoforte che scorre e mostra la nota cantata, con l’indicatore dei cents.'] },
     ],
     sirena: [
+      { v: '2.2', date: '2026-11-04', items: [
+        'Prima dei Gradini, ai livelli Principiante e Intermedio, la tonalità si sente come accordo, con le note tutte insieme, '
+          + 'e non più come arpeggio, che sembrava già la melodia da cantare. Lo stesso all\u2019inizio dei brani del Canzoniere.',
+      ] },
       { v: '2.1', date: '2026-11-03', items: [RUVIDA('la cometa')] },
       { v: '2.0', date: '2026-11-03', items: [ELENCO('nelle impostazioni')] },
       { v: '1.9', date: '2026-11-03', items: [

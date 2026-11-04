@@ -519,8 +519,8 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   // Il livello si sceglie una volta e decide da solo tutto il resto: materiale dei percorsi,
   // contesto tonale nelle pause, larghezza della scia, nomi delle note.
   const LEVELS = [
-    { id: 'base', name: 'Principiante', desc: 'Passi piccoli e tanta guida. Va bene anche senza esperienza.', tol: 50, hold: 1.6, ctx: 'arpeggio' },
-    { id: 'medio', name: 'Intermedio', desc: 'Scale e arpeggi. Per chi canta già un po’.', tol: 40, hold: 1.4, ctx: 'arpeggio' },
+    { id: 'base', name: 'Principiante', desc: 'Passi piccoli e tanta guida. Va bene anche senza esperienza.', tol: 50, hold: 1.6, ctx: 'accordo' },
+    { id: 'medio', name: 'Intermedio', desc: 'Scale e arpeggi. Per chi canta già un po’.', tol: 40, hold: 1.4, ctx: 'accordo' },
     { id: 'avanzato', name: 'Avanzato', desc: 'Salti più ampi, percorsi meno prevedibili.', tol: 30, hold: 1.25, ctx: 'tonica' },
     { id: 'esperto', name: 'Esperto', desc: 'Sequenze atonali e scia stretta. Le note usano il nome reale.', tol: 25, hold: 1.1, ctx: 'none', atonal: true },
   ];
@@ -770,16 +770,17 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   }
 
   // Cosa si sente nella pausa prima di un'onda. Senza cuffie il suono può esserci solo qui.
-  //  - Gradini nei livelli tonali: prima la tonalità (arpeggio o tonica).
+  //  - Gradini nei livelli tonali: prima la tonalità (accordo o tonica). Un accordo, non un arpeggio:
+  //    note in fila sembravano già la melodia da cantare.
   //  - Allenati: tutta l'onda in versione rapida, poi di nuovo la prima nota.
   //  - Sfida: solo la prima nota, lunga.
   function planPause(seg, lv, allena) {
     const ev = [];
     let t = 0;
     if (seg.steps && !lv.atonal) {
-      if (lv.ctx === 'arpeggio') {
-        for (const iv of [0, 4, 7, 12]) { ev.push({ type: 'tone', midi: center + iv, at: t, dur: 0.34, vol: 0.75 }); t += 0.3; }
-        t += 0.45;
+      if (lv.ctx === 'accordo') {
+        for (const iv of [0, 4, 7, 12]) ev.push({ type: 'tone', midi: center + iv, at: t, dur: 1.1, vol: 0.4 });
+        t += 1.4;
       } else if (lv.ctx === 'tonica') {
         ev.push({ type: 'tone', midi: center, at: t, dur: 1.0, vol: 0.8 });
         t += 1.2;
@@ -838,10 +839,10 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   function planSongPause(seg, song, shift, li, allena) {
     const ev = [];
     let t = 0;
-    if (li === 0) { // la tonalità del brano, una volta all'inizio: l'accordo di casa
+    if (li === 0) { // la tonalità del brano, una volta all'inizio: l'accordo di casa, tutte le note insieme
       const root = song.tonic + shift;
-      for (const iv of song.minor ? [0, 3, 7, 12] : [0, 4, 7, 12]) { ev.push({ type: 'tone', midi: root + iv, at: t, dur: 0.34, vol: 0.75 }); t += 0.3; }
-      t += 0.45;
+      for (const iv of song.minor ? [0, 3, 7, 12] : [0, 4, 7, 12]) ev.push({ type: 'tone', midi: root + iv, at: t, dur: 1.1, vol: 0.4 });
+      t += 1.4;
     }
     if (allena) { // tutta la riga, col suo ritmo
       seg.steps.forEach((st, i) => ev.push({ type: 'tone', midi: center + st.v, at: t + st.t, dur: st.dur * 0.9, vol: 0.8, mark: i }));
